@@ -1,0 +1,21 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.react-chatbot-kit-wrapper {
+  width: 275px;
+  border-radius: 5px;
+  box-shadow: 5px 5px 13px rgb(91 81 81 / 40%);
+  position: fixed;
+  right: 20px;
+  bottom: 100px;
+}
+
+.react-chatbot-kit-chat-inner-container {
+  background-color: #fff;
+  border-radius: 5px;
+  height: 500px;
+}
