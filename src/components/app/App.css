@@ -5,6 +5,15 @@
   text-align: center;
 }
 
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .react-chatbot-kit-wrapper {
   width: 275px;
   border-radius: 5px;
@@ -18,4 +27,5 @@
   background-color: #fff;
   border-radius: 5px;
   height: 500px;
+  animation: fadeIn 0.5s;
 }
