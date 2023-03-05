@@ -4,6 +4,7 @@ import { MessageParser } from "../messageParser/MessageParser";
 import { ActionProvider } from "../actionProvider/ActionProvider";
 import { FloatingButton } from "../floatingButton/FloatingButton";
 import { config } from "../../config";
+import "react-chatbot-kit/build/main.css";
 import "./App.css";
 
 function App() {
