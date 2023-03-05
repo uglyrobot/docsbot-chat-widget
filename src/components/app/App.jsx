@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import Chatbot from "react-chatbot-kit";
-import root from "react-shadow/styled-components";
 import ReactShadowRoot from "react-shadow-root";
 import { MessageParser } from "../messageParser/MessageParser";
 import { ActionProvider } from "../actionProvider/ActionProvider";
@@ -16,7 +15,7 @@ import linkListStyles from "!raw-loader!../linkList/LinkList.css";
 
 fontAwesomeConfig.autoAddCss = false;
 
-function App() {
+function App({ apiKey = null } = {}) {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <ReactShadowRoot>

@@ -1,12 +1,16 @@
 import React from "react";
+import { useConfig } from "../configContext/ConfigContext";
 
 export const ActionProvider = ({
   createChatBotMessage,
   setState,
   children,
 }) => {
+  const { apiKey } = useConfig();
   const handleFetchData = (message) => {
-    console.log(`pass ${message} to api here!`);
+    console.log(`pass ${message} to api here`);
+    console.log(`pass ${apiKey} to api here`);
+
     fetch(`https://jsonplaceholder.typicode.com/todos/1`)
       .then((response) => response.json())
       .then((json) => {

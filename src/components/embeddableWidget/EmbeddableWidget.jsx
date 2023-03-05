@@ -1,12 +1,17 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import Widget from "../app/App";
+import App from "../app/App";
+import { ConfigProvider } from "../configContext/ConfigContext";
 
 export default class EmbeddableWidget {
   static el;
 
   static init({ parentElement = null, ...props } = {}) {
-    const component = <Widget {...props} />;
+    const component = (
+      <ConfigProvider {...props}>
+        <App {...props} />
+      </ConfigProvider>
+    );
 
     function doRender() {
       if (EmbeddableWidget.el) {
