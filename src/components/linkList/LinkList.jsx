@@ -1,5 +1,3 @@
-import "./LinkList.css";
-
 export const LinkList = (props) => {
   const linkMarkup = props.options.map((link) => (
     <li key={link.id} className="link-list-item">

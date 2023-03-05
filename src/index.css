@@ -1,16 +1,5 @@
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-body {
-  min-width: 320px;
-  min-height: 100vh;
-}
+@import "react-chatbot-kit/build/main.css";
+@import './components/app/App.css'
+@import './components/floatingButton/FloatingButton.css'
+@import './components/initialOptions/InitialOptions.css'
+@import './components/linkList/LinkList.css'

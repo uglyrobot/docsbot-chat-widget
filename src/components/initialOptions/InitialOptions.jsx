@@ -1,5 +1,3 @@
-import "./InitialOptions.css";
-
 export const InitialOptions = (props) => {
   const options = [
     {

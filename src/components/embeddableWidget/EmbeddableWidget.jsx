@@ -13,7 +13,6 @@ export default class EmbeddableWidget {
         throw new Error("EmbeddableWidget is already mounted, unmount first");
       }
       const el = document.createElement("div");
-      el.setAttribute("class", "cleanslate");
 
       if (parentElement) {
         document.querySelector(parentElement).appendChild(el);

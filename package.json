@@ -13,10 +13,7 @@
     "css-loader": "^6.7.3",
     "cssimportant-loader": "^0.4.0",
     "html-webpack-plugin": "^5.5.0",
-    "mini-css-extract-plugin": "^2.7.2",
-    "postcss": "^8.4.21",
-    "postcss-increase-specificity": "^0.6.0",
-    "postcss-loader": "^7.0.2",
+    "raw-loader": "^4.0.2",
     "style-loader": "^3.3.1",
     "webpack": "^5.75.0",
     "webpack-cli": "^5.0.1",
@@ -28,6 +25,9 @@
     "@fortawesome/react-fontawesome": "^0.2.0",
     "react": "^18.2.0",
     "react-chatbot-kit": "^2.1.2",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-shadow": "^20.0.0",
+    "react-shadow-root": "^6.2.0",
+    "styled-components": "^5.3.8"
   }
 }

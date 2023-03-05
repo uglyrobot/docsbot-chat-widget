@@ -1,33 +1,6 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const increaseSpecificity = require("postcss-increase-specificity");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
-
-function getCssConfig(mode) {
-  if (mode === "production") {
-    return [
-      MiniCssExtractPlugin.loader,
-      "css-loader",
-      "cssimportant-loader",
-      {
-        loader: "postcss-loader",
-        options: {
-          postcssOptions: {
-            plugins: [
-              increaseSpecificity({
-                stackableRoot: ".cleanslate",
-                repeat: 1,
-              }),
-            ],
-          },
-        },
-      },
-    ];
-  }
-
-  return ["style-loader", "css-loader", "cssimportant-loader"];
-}
 
 module.exports = (_, { mode }) => {
   return {
@@ -44,13 +17,10 @@ module.exports = (_, { mode }) => {
       new HtmlWebpackPlugin({
         template: path.join(__dirname, "public", "index.html"),
       }),
-      new MiniCssExtractPlugin({
-        filename:
-          mode === "production" ? "[name].[contenthash].css" : "[name].css",
-        chunkFilename:
-          mode === "production" ? "[name].[contenthash].css" : "[name].css",
+      new CleanWebpackPlugin({
+        protectWebpackAssets: false,
+        cleanAfterEveryBuildPatterns: ["*.LICENSE.txt"],
       }),
-      new CleanWebpackPlugin(),
     ],
     devServer: {
       static: {
@@ -68,8 +38,9 @@ module.exports = (_, { mode }) => {
         },
         {
           test: /\.css$/i,
-          use: getCssConfig(mode),
+          use: ["style-loader", "css-loader"],
         },
+        { resourceQuery: /raw/, type: "asset/source" },
       ],
     },
 
