@@ -1,6 +1,7 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+const TerserPlugin = require("terser-webpack-plugin");
 
 module.exports = (_, { mode }) => {
   return {
@@ -17,10 +18,7 @@ module.exports = (_, { mode }) => {
       new HtmlWebpackPlugin({
         template: path.join(__dirname, "public", "index.html"),
       }),
-      new CleanWebpackPlugin({
-        protectWebpackAssets: false,
-        cleanAfterEveryBuildPatterns: ["*.LICENSE.txt"],
-      }),
+      new CleanWebpackPlugin(),
     ],
     devServer: {
       static: {
@@ -43,7 +41,14 @@ module.exports = (_, { mode }) => {
         { resourceQuery: /raw/, type: "asset/source" },
       ],
     },
-
+    optimization: {
+      minimize: true,
+      minimizer: [
+        new TerserPlugin({
+          extractComments: false,
+        }),
+      ],
+    },
     resolve: {
       extensions: ["*", ".js", ".jsx"],
     },
