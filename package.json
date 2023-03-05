@@ -11,7 +11,6 @@
     "clean-webpack-plugin": "^4.0.0",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.7.3",
-    "cssimportant-loader": "^0.4.0",
     "html-webpack-plugin": "^5.5.0",
     "raw-loader": "^4.0.2",
     "style-loader": "^3.3.1",
@@ -26,8 +25,6 @@
     "react": "^18.2.0",
     "react-chatbot-kit": "^2.1.2",
     "react-dom": "^18.2.0",
-    "react-shadow": "^20.0.0",
-    "react-shadow-root": "^6.2.0",
-    "styled-components": "^5.3.8"
+    "react-shadow-root": "^6.2.0"
   }
 }
