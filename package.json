@@ -3,7 +3,7 @@
     "build": "webpack --mode production",
     "start": "webpack serve --mode development",
     "preview": "npm run build && serve build",
-    "prepare": "npm run build && rm -rf build/index.html"
+    "prepare": "npm run build && rm build/index.html"
   },
   "devDependencies": {
     "@babel/core": "^7.21.0",
