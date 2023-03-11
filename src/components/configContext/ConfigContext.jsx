@@ -11,13 +11,16 @@ export function useConfig() {
 }
 
 export function ConfigProvider(props = {}) {
-  const { apiKey, children } = props;
+  const { botName, teamId, botId, children } = props;
   const value = useMemo(
     () => ({
-      apiKey,
+      botName,
+      teamId,
+      botId,
     }),
-    [apiKey]
+    [botName, teamId, botId]
   );
+
   return (
     <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>
   );

@@ -6,20 +6,31 @@ export const ActionProvider = ({
   setState,
   children,
 }) => {
-  const { apiKey } = useConfig();
+  const { teamId, botId } = useConfig();
   const handleFetchData = (message) => {
     console.log(`pass ${message} to api here`);
-    console.log(`pass ${apiKey} to api here`);
+    console.log(`pass ${teamId} to api here`);
 
-    fetch(`https://jsonplaceholder.typicode.com/todos/1`)
+    fetch(`https://api.docsbot.ai/teams/${teamId}/bots/${botId}/ask`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ question: message }),
+    })
       .then((response) => response.json())
       .then((json) => {
-        const message = createChatBotMessage(json.title, {
+        const message = createChatBotMessage(json.answer, {
           loading: true,
           terminateLoading: true,
+          widget: "javascriptLinks",
         });
         updateChatbotState(message);
-      });
+      })
+      .catch((error) => {
+        console.log(error);
+      })
   };
 
   const handleRandomFact = () => {

@@ -1,5 +1,5 @@
 import React from "react";
-import ReactDOM from "react-dom";
+import ReactDOM from "react-dom/client";
 import App from "../app/App";
 import { ConfigProvider } from "../configContext/ConfigContext";
 
@@ -24,7 +24,7 @@ export default class EmbeddableWidget {
       } else {
         document.body.appendChild(el);
       }
-      ReactDOM.render(component, el);
+      ReactDOM.createRoot(el).render(component);
       EmbeddableWidget.el = el;
     }
     if (document.readyState === "complete") {
