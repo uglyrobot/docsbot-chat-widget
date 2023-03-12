@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader } from "../loader/Loader";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faRobot } from "@fortawesome/free-solid-svg-icons";
 
 export const MessageWidget = (props) => {
   const { teamId, botId, message } = props.state.payload;
@@ -29,8 +31,9 @@ export const MessageWidget = (props) => {
         setApiResults(json);
         setLoading(false);
       })
-      .catch((_) => {
+      .catch((error) => {
         setLoading(false);
+        console.log(error)
         setError(
           "I'm sorry, I don't understand what you're asking. Can you please provide more context or a specific question related to Infinite Uploads?"
         );
@@ -41,7 +44,7 @@ export const MessageWidget = (props) => {
     <div className="react-chatbot-kit-chat-bot-message-container">
       <div className="react-chatbot-kit-chat-bot-avatar">
         <div className="react-chatbot-kit-chat-bot-avatar-container">
-          <p className="react-chatbot-kit-chat-bot-avatar-letter">B</p>
+          <p className="react-chatbot-kit-chat-bot-avatar-letter"><FontAwesomeIcon icon={faRobot} /></p>
         </div>
       </div>
       <div
