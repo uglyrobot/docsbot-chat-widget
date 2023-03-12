@@ -11,26 +11,14 @@ export const ActionProvider = ({
     console.log(`pass ${message} to api here`);
     console.log(`pass ${teamId} to api here`);
 
-    fetch(`https://api.docsbot.ai/teams/${teamId}/bots/${botId}/ask`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ question: message }),
-    })
-      .then((response) => response.json())
-      .then((json) => {
-        const message = createChatBotMessage(json.answer, {
-          loading: true,
-          terminateLoading: true,
-          widget: "javascriptLinks",
-        });
-        updateChatbotState(message);
-      })
-      .catch((error) => {
-        console.log(error);
-      })
+    const chatboxMessage = createChatBotMessage("Here are your results:", {
+      loading: true,
+      terminateLoading: true,
+      widget: "messageWidget",
+      payload: { teamId, botId, message },
+    });
+
+    updateChatbotState(chatboxMessage);
   };
 
   const handleRandomFact = () => {
@@ -50,6 +38,30 @@ export const ActionProvider = ({
     );
 
     updateChatbotState(message);
+  };
+
+  const editChatbotMessage = (id, message) => {
+    setState((prevState) => {
+      return {
+        ...prevState,
+        messages: prevState.messages.map((message) => {
+          if (message.id === id) {
+            return { ...message, message: message.message };
+          }
+
+          return message;
+        }),
+      };
+    });
+  };
+
+  const removeChatbotMessage = (id) => {
+    setState((prevState) => {
+      return {
+        ...prevState,
+        messages: prevState.messages.filter((message) => message.id !== id),
+      };
+    });
   };
 
   const updateChatbotState = (message) => {

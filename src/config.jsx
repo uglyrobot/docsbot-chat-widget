@@ -1,8 +1,8 @@
 import { createChatBotMessage } from "react-chatbot-kit";
 import { InitialOptions } from "./components/initialOptions/InitialOptions";
 import { LinkList } from "./components/linkList/LinkList";
+import { MessageWidget } from "./components/messageWidget/MessageWidget";
 import { ThemeColors } from "./constants/theme";
-
 
 export const config = () => {
   return {
@@ -37,6 +37,10 @@ export const config = () => {
             },
           ],
         },
+      },
+      {
+        widgetName: "messageWidget",
+        widgetFunc: (props) => <MessageWidget {...props} />,
       },
     ],
     // customComponents: {
