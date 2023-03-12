@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Loader } from "../loader/Loader";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faRobot,
@@ -13,14 +12,14 @@ import remarkGfm from "remark-gfm";
 import { useConfig } from "../configContext/ConfigContext";
 import { ThemeColors } from "../../constants/theme";
 
-export const MessageWidget = (props) => {
-  const { teamId, botId, message } = props.state.payload;
+export const MessageWidget = ({ message, loader, props }) => {
+  console.log("MessageWidget", message, loader, props);
   const [loading, setLoading] = useState();
   const [apiResults, setApiResults] = useState();
   const [answerHtml, setAnswerHtml] = useState("");
   const [error, setError] = useState();
   const [showSources, setShowSources] = useState(false);
-  const { colors } = useConfig();
+  const { colors, teamId, botId } = useConfig();
 
   useEffect(() => {
     setLoading(true);
@@ -72,10 +71,9 @@ export const MessageWidget = (props) => {
 
     return (
       <li>
-        <FontAwesomeIcon icon={icon} a />
+        <FontAwesomeIcon icon={icon} />
         {source.url ? (
-          <a href={source.url} target="_blank"
-          rel="noopener norefferer">
+          <a href={source.url} target="_blank" rel="noopener norefferer">
             {source.title}
             {page}
           </a>
@@ -90,52 +88,43 @@ export const MessageWidget = (props) => {
   };
 
   return (
-    <div className="react-chatbot-kit-chat-bot-message-container">
-      <div className="react-chatbot-kit-chat-bot-avatar">
-        <div className="react-chatbot-kit-chat-bot-avatar-container">
-          <p className="react-chatbot-kit-chat-bot-avatar-letter">
-            <FontAwesomeIcon icon={faRobot} />
-          </p>
-        </div>
-      </div>
+    <div
+      className="react-chatbot-kit-chat-bot-message"
+      style={{ backgroundColor: colors?.primary || ThemeColors.primaryColor }}
+    >
+      {(() => {
+        if (loading) {
+          return loader;
+        }
+
+        if (error) {
+          return <span>{error}</span>;
+        }
+
+        if (apiResults) {
+          return (
+            <>
+              <span dangerouslySetInnerHTML={{ __html: answerHtml }} />
+              <button onClick={() => setShowSources(!showSources)}>
+                Sources <FontAwesomeIcon icon={faChevronDown} />
+              </button>
+              {showSources && (
+                <ul className="docsbot-sources">
+                  {apiResults?.sources?.map((source, index) => (
+                    <Source key={index} source={source} />
+                  ))}
+                </ul>
+              )}
+            </>
+          );
+        }
+      })()}
       <div
-        className="react-chatbot-kit-chat-bot-message"
-        style={{ backgroundColor: colors?.primary || ThemeColors.primaryColor }}
-      >
-        {(() => {
-          if (loading) {
-            return <Loader />;
-          }
-
-          if (error) {
-            return <span>{error}</span>;
-          }
-
-          if (apiResults) {
-            return (
-              <>
-                <span dangerouslySetInnerHTML={{ __html: answerHtml }} />
-                <button onClick={() => setShowSources(!showSources)}>
-                  Sources <FontAwesomeIcon icon={faChevronDown} />
-                </button>
-                {showSources && (
-                  <ul className="docsbot-sources">
-                    {apiResults?.sources?.map((source, index) => (
-                      <Source key={index} source={source} />
-                    ))}
-                  </ul>
-                )}
-              </>
-            );
-          }
-        })()}
-        <div
-          className="react-chatbot-kit-chat-bot-message-arrow"
-          style={{
-            borderRightColor: colors?.primary || ThemeColors.primaryColor,
-          }}
-        ></div>
-      </div>
+        className="react-chatbot-kit-chat-bot-message-arrow"
+        style={{
+          borderRightColor: colors?.primary || ThemeColors.primaryColor,
+        }}
+      ></div>
     </div>
   );
 };

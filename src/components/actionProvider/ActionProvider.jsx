@@ -11,11 +11,8 @@ export const ActionProvider = ({
     console.log(`pass ${message} to api here`);
     console.log(`pass ${teamId} to api here`);
 
-    const chatboxMessage = createChatBotMessage("Here are your results:", {
+    const chatboxMessage = createChatBotMessage(message, {
       loading: true,
-      terminateLoading: true,
-      widget: "messageWidget",
-      payload: { teamId, botId, message },
     });
 
     updateChatbotState(chatboxMessage);
