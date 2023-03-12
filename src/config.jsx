@@ -2,6 +2,7 @@ import { createChatBotMessage } from "react-chatbot-kit";
 import { InitialOptions } from "./components/initialOptions/InitialOptions";
 import { LinkList } from "./components/linkList/LinkList";
 import { MessageWidget } from "./components/messageWidget/MessageWidget";
+import { CustomBotChatMessage } from "./components/customBotChatMessage/CustomBotChatMessage";
 import { ThemeColors } from "./constants/theme";
 
 export const config = () => {
@@ -43,6 +44,9 @@ export const config = () => {
         widgetFunc: (props) => <MessageWidget {...props} />,
       },
     ],
+    customComponents: {
+      botChatMessage: (props) => <CustomBotChatMessage {...props} />,
+    },
     // customComponents: {
     //   // Replaces the default header
     //   header: () => (
