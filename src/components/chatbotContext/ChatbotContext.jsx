@@ -16,7 +16,7 @@ function chatbotReducer(state, action) {
         chatInput: "",
       };
     case "add_message":
-      const id = uuidv4();
+      const id = action.payload.id || uuidv4();
       return {
         ...state,
         messages: {
@@ -25,7 +25,18 @@ function chatbotReducer(state, action) {
             id,
             variant: action.payload.variant,
             message: action.payload.message,
-            isLoading: action.payload.isLoading || false,
+            loading: action.payload.loading || false,
+          },
+        },
+      };
+    case "update_message":
+      return {
+        ...state,
+        messages: {
+          ...state.messages,
+          [action.payload.id]: {
+            ...state.messages[action.payload.id],
+            ...action.payload,
           },
         },
       };

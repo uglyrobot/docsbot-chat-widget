@@ -21,7 +21,7 @@ export const BotChatMessage = ({ loading, message }) => {
             return <Loader />;
           }
 
-          return <span>{message}</span>;
+          return <span dangerouslySetInnerHTML={{ __html: message }} />;
         })()}
         <div
           className="react-chatbot-kit-chat-bot-message-arrow"
