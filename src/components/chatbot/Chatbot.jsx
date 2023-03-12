@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { remark } from "remark";
 import html from "remark-html";
@@ -9,6 +9,7 @@ import { useConfig } from "../configContext/ConfigContext";
 import { BotChatMessage } from "../botChatMessage/BotChatMessage";
 import { UserChatMessage } from "../userChatMessage/UserChatMessage";
 import { SendIcon } from "../icons/SendIcon";
+import { Source } from "../source/Source";
 
 export const Chatbot = ({ initialMessages }) => {
   const { dispatch, state } = useChatbot();
@@ -22,10 +23,6 @@ export const Chatbot = ({ initialMessages }) => {
       });
     });
   }, [initialMessages]);
-
-  const [answerHtml, setAnswerHtml] = useState("");
-  const [error, setError] = useState();
-  const [showSources, setShowSources] = useState(false);
 
   function fetchDocsBot() {
     const id = uuidv4();
@@ -68,6 +65,7 @@ export const Chatbot = ({ initialMessages }) => {
                 id,
                 variant: "chatbot",
                 message: parsedHtml,
+                sources: json?.sources,
                 loading: false,
               },
             });
@@ -87,41 +85,6 @@ export const Chatbot = ({ initialMessages }) => {
       });
   }
 
-  //convert markdown to html when answer changes or is appended to
-  // useEffect(() => {
-  //   if (apiResults?.answer) {
-  //     remark()
-  //       .use(html)
-  //       .use(remarkGfm)
-  //       .process(apiResults?.answer)
-  //       .then((html) => {
-  //         setAnswerHtml(html.toString());
-  //       });
-  //   }
-  // }, [apiResults, setAnswerHtml]);
-
-  const Source = ({ source }) => {
-    const icon = source.url ? faLink : faFile;
-    const page = source.page ? ` - Page ${source.page}` : "";
-
-    return (
-      <li>
-        <FontAwesomeIcon icon={icon} a />
-        {source.url ? (
-          <a href={source.url} target="_blank" rel="noopener norefferer">
-            {source.title}
-            {page}
-          </a>
-        ) : (
-          <span>
-            {source.title || source.url}
-            {page}
-          </span>
-        )}
-      </li>
-    );
-  };
-
   return (
     <div className="react-chatbot-kit-wrapper">
       <div>
@@ -135,11 +98,18 @@ export const Chatbot = ({ initialMessages }) => {
                 {Object.keys(state.messages).map((key) => {
                   const message = state.messages[key];
                   return message.variant === "chatbot" ? (
-                    <BotChatMessage
-                      key={key}
-                      loading={message.loading}
-                      message={message.message}
-                    />
+                    <>
+                      <BotChatMessage
+                        key={key}
+                        loading={message.loading}
+                        message={message.message}
+                      />
+                      {message?.sources?.map((source) => (
+                        <ul>
+                          <Source key={source.url} source={source} />
+                        </ul>
+                      ))}
+                    </>
                   ) : (
                     <UserChatMessage
                       key={key}
@@ -154,6 +124,7 @@ export const Chatbot = ({ initialMessages }) => {
                   className="react-chatbot-kit-chat-input-form"
                   onSubmit={(e) => {
                     e.preventDefault();
+
                     dispatch({
                       type: "add_message",
                       payload: {
