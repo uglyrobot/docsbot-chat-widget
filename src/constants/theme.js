@@ -1,3 +1,3 @@
 export const ThemeColors = {
-  TEAL: "rgb(8, 145, 178)",
+  primaryColor: "#1292EE",
 };

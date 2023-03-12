@@ -12,8 +12,10 @@ import reactChatbotStyles from "!raw-loader!react-chatbot-kit/build/main.css";
 import appStyles from "!raw-loader!./App.css";
 import floatingButtonStyles from "!raw-loader!../floatingButton/FloatingButton.css";
 import initialOptionsStyles from "!raw-loader!../initialOptions/InitialOptions.css";
+import messageWidgetStyles from "!raw-loader!../messageWidget/MessageWidget.css";
 import linkListStyles from "!raw-loader!../linkList/LinkList.css";
 import { useConfig } from "../configContext/ConfigContext";
+import { ThemeColors } from "../../constants/theme";
 
 fontAwesomeConfig.autoAddCss = false;
 
@@ -34,6 +36,15 @@ function App({} = {}) {
     setUserConfig((prevConfig) => ({
       ...prevConfig,
       botName: userConf.botName || prevConfig.botName,
+      //initialMessages: customMessages,
+      customStyles: {
+        botMessageBox: {
+          backgroundColor: userConf?.colors?.primary || ThemeColors.primaryColor,
+        },
+        chatButton: {
+          backgroundColor: userConf?.colors?.primary || ThemeColors.primaryColor,
+        },
+      },
     }));
   }, []);
 
@@ -45,6 +56,7 @@ function App({} = {}) {
       <style type="text/css">{floatingButtonStyles}</style>
       <style type="text/css">{initialOptionsStyles}</style>
       <style type="text/css">{linkListStyles}</style>
+      <style type="text/css">{messageWidgetStyles}</style>
       <FloatingButton onClick={() => setIsOpen(!isOpen)} />
       {isOpen ? (
         <div className="react-chatbot-kit-wrapper">

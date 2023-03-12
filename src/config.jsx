@@ -14,10 +14,10 @@ export const config = () => {
     ],
     customStyles: {
       botMessageBox: {
-        backgroundColor: ThemeColors.TEAL,
+        backgroundColor: ThemeColors.primaryColor,
       },
       chatButton: {
-        backgroundColor: ThemeColors.TEAL,
+        backgroundColor: ThemeColors.primaryColor,
       },
     },
     widgets: [

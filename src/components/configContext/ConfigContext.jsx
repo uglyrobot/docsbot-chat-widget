@@ -11,14 +11,16 @@ export function useConfig() {
 }
 
 export function ConfigProvider(props = {}) {
-  const { botName, teamId, botId, children } = props;
+  const { botName, teamId, botId, colors, icon, children } = props;
   const value = useMemo(
     () => ({
       botName,
       teamId,
       botId,
+      colors,
+      icon
     }),
-    [botName, teamId, botId]
+    [botName, teamId, botId, colors, icon]
   );
 
   return (
