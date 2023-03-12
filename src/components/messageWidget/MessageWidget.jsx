@@ -2,11 +2,15 @@ import { useEffect, useState } from "react";
 import { Loader } from "../loader/Loader";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRobot } from "@fortawesome/free-solid-svg-icons";
+import { remark } from 'remark'
+import html from 'remark-html'
+import remarkGfm from 'remark-gfm'
 
 export const MessageWidget = (props) => {
   const { teamId, botId, message } = props.state.payload;
   const [loading, setLoading] = useState();
   const [apiResults, setApiResults] = useState();
+  const [answerHtml, setAnswerHtml] = useState('')
   const [error, setError] = useState();
 
   useEffect(() => {
@@ -40,6 +44,19 @@ export const MessageWidget = (props) => {
       });
   }, [setApiResults, teamId, botId, message]);
 
+    //convert markdown to html when answer changes or is appended to
+    useEffect(() => {
+      if (apiResults?.answer) {
+        remark()
+          .use(html)
+          .use(remarkGfm)
+          .process(apiResults?.answer)
+          .then((html) => {
+            setAnswerHtml(html.toString())
+          })
+      }
+    }, [apiResults, setAnswerHtml])
+
   return (
     <div className="react-chatbot-kit-chat-bot-message-container">
       <div className="react-chatbot-kit-chat-bot-avatar">
@@ -61,7 +78,7 @@ export const MessageWidget = (props) => {
           }
 
           if (apiResults) {
-            return <span>{apiResults.answer}</span>;
+            return <span dangerouslySetInnerHTML={{ __html: answerHtml }} />;
           }
         })()}
         <div
