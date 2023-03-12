@@ -12,7 +12,7 @@ import reactChatbotStyles from "!raw-loader!react-chatbot-kit/build/main.css";
 import appStyles from "!raw-loader!./App.css";
 import floatingButtonStyles from "!raw-loader!../floatingButton/FloatingButton.css";
 import initialOptionsStyles from "!raw-loader!../initialOptions/InitialOptions.css";
-import messageWidgetStyles from "!raw-loader!../messageWidget/MessageWidget.css";
+import messageWidgetStyles from "!raw-loader!../botMessage/BotMessage.css";
 import linkListStyles from "!raw-loader!../linkList/LinkList.css";
 import { useConfig } from "../configContext/ConfigContext";
 import { ThemeColors } from "../../constants/theme";

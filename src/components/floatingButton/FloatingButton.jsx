@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faComment, faComments, faRobot, faLifeRing, faQuestionCircle, faQuestion, faBook } from "@fortawesome/free-solid-svg-icons";
+import { faComment, faComments, faRobot, faLifeRing, faQuestion, faBook } from "@fortawesome/free-solid-svg-icons";
 import { ThemeColors } from "../../constants/theme";
 import { useConfig } from "../configContext/ConfigContext";
 
@@ -12,7 +12,6 @@ export const FloatingButton = ({ onClick }) => {
     comments: faComments,
     robot: faRobot,
     "life-ring": faLifeRing,
-    "question-circle": faQuestionCircle,
     question: faQuestion,
     book: faBook,
   };

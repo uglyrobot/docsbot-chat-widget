@@ -8,11 +8,11 @@ export const ActionProvider = ({
 }) => {
   const { teamId, botId } = useConfig();
   const handleFetchData = (message) => {
-    console.log(`pass ${message} to api here`);
-    console.log(`pass ${teamId} to api here`);
 
-    const chatboxMessage = createChatBotMessage(message, {
+    const args = {message, }
+    const chatboxMessage = createChatBotMessage(args, {
       loading: true,
+      withAvatar: false,
     });
 
     updateChatbotState(chatboxMessage);

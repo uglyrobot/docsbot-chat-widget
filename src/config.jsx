@@ -1,7 +1,8 @@
 import { createChatBotMessage } from "react-chatbot-kit";
 import { InitialOptions } from "./components/initialOptions/InitialOptions";
 import { LinkList } from "./components/linkList/LinkList";
-import { MessageWidget } from "./components/messageWidget/MessageWidget";
+import { BotMessage } from "./components/botMessage/BotMessage";
+import { BotAvatar } from "./components/botAvatar/BotAvatar"
 import { ThemeColors } from "./constants/theme";
 
 export const config = () => {
@@ -53,9 +54,9 @@ export const config = () => {
     //     </div>
     //   ),
     //   // Replaces the default bot avatar
-    //   botAvatar: (props) => <MyAvatar {...props} />,
+       botAvatar: (props) => <BotAvatar {...props} />,
     //   // Replaces the default bot chat message container
-       botChatMessage: (props) => <MessageWidget {...props} />,
+       botChatMessage: (props) => <BotMessage {...props} />,
     //   // Replaces the default user icon
     //   userAvatar: (props) => <MyCustomAvatar {...props} />,
     //   // Replaces the default user chat message
