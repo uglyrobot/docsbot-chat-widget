@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { remark } from "remark";
 import html from "remark-html";
@@ -16,10 +16,16 @@ import { chatbotConfig } from "../../config";
 export const Chatbot = () => {
   const { dispatch, state } = useChatbot();
   const { teamId, botId } = useConfig();
+  const ref = useRef();
 
   const config = useMemo(() => {
     return chatbotConfig({ dispatch });
   }, [dispatch]);
+
+  // Scroll to bottom each time a message is added
+  useEffect(() => {
+    ref.current.scrollTop = ref.current.scrollHeight;
+  }, [state.messages]);
 
   useEffect(() => {
     config.initialMessages.forEach((message) => {
@@ -104,7 +110,10 @@ export const Chatbot = () => {
               <div className="react-chatbot-kit-chat-header">
                 Conversation with Infinite Uploads
               </div>
-              <div className="react-chatbot-kit-chat-message-container">
+              <div
+                className="react-chatbot-kit-chat-message-container"
+                ref={ref}
+              >
                 {Object.keys(state.messages).map((key) => {
                   const message = state.messages[key];
 
