@@ -6,7 +6,6 @@ import fontAwesomeStyles from "!raw-loader!@fortawesome/fontawesome-svg-core/sty
 import reactChatbotStyles from "!raw-loader!../../chatbot.css";
 import appStyles from "!raw-loader!./App.css";
 import floatingButtonStyles from "!raw-loader!../floatingButton/FloatingButton.css";
-import messageWidgetStyles from "!raw-loader!../botMessage/BotMessage.css";
 import optionsStyles from "!raw-loader!../options/Options.css";
 import linkListStyles from "!raw-loader!../linkList/LinkList.css";
 import { chatbotConfig } from "../../config";
@@ -41,7 +40,6 @@ function App({} = {}) {
       <style type="text/css">{floatingButtonStyles}</style>
       <style type="text/css">{optionsStyles}</style>
       <style type="text/css">{linkListStyles}</style>
-      <style type="text/css">{messageWidgetStyles}</style>
 
       <FloatingButton onClick={() => setIsOpen(!isOpen)} />
       {isOpen ? (
@@ -54,12 +52,3 @@ function App({} = {}) {
 }
 
 export default App;
-
-// <div className="initial-options-container">
-//   <button className="initial-option-button">
-//     Need help using Docsbot
-//   </button>
-//   <button className="initial-option-button">
-//     Give me a random fact
-//   </button>
-// </div>

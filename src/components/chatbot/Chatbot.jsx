@@ -119,7 +119,7 @@ export const Chatbot = () => {
                         <Options options={message.options} />
                       ) : null}
                       {message?.sources?.map((source) => (
-                        <ul>
+                        <ul key={source.url}>
                           <Source key={source.url} source={source} />
                         </ul>
                       ))}
