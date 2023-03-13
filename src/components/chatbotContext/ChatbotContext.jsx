@@ -26,6 +26,8 @@ function chatbotReducer(state, action) {
             variant: action.payload.variant,
             message: action.payload.message,
             loading: action.payload.loading || false,
+            options: action.payload.options || [],
+            ...action.payload,
           },
         },
       };

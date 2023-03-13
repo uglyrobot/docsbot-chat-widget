@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { remark } from "remark";
 import html from "remark-html";
@@ -10,19 +10,29 @@ import { BotChatMessage } from "../botChatMessage/BotChatMessage";
 import { UserChatMessage } from "../userChatMessage/UserChatMessage";
 import { SendIcon } from "../icons/SendIcon";
 import { Source } from "../source/Source";
+import { Options } from "../options/Options";
+import { chatbotConfig } from "../../config";
 
-export const Chatbot = ({ initialMessages }) => {
+export const Chatbot = () => {
   const { dispatch, state } = useChatbot();
   const { teamId, botId } = useConfig();
 
+  const config = useMemo(() => {
+    return chatbotConfig({ dispatch });
+  }, [dispatch]);
+
   useEffect(() => {
-    initialMessages.forEach((message) => {
+    config.initialMessages.forEach((message) => {
       dispatch({
         type: "add_message",
-        payload: { variant: "chatbot", message },
+        payload: {
+          variant: "chatbot",
+          options: message.options,
+          message: message.message,
+        },
       });
     });
-  }, [initialMessages]);
+  }, [config.initialMessages]);
 
   function fetchDocsBot() {
     const id = uuidv4();
@@ -97,6 +107,7 @@ export const Chatbot = ({ initialMessages }) => {
               <div className="react-chatbot-kit-chat-message-container">
                 {Object.keys(state.messages).map((key) => {
                   const message = state.messages[key];
+
                   return message.variant === "chatbot" ? (
                     <>
                       <BotChatMessage
@@ -104,11 +115,15 @@ export const Chatbot = ({ initialMessages }) => {
                         loading={message.loading}
                         message={message.message}
                       />
+                      {message?.options ? (
+                        <Options options={message.options} />
+                      ) : null}
                       {message?.sources?.map((source) => (
                         <ul>
                           <Source key={source.url} source={source} />
                         </ul>
                       ))}
+                      {message?.widget}
                     </>
                   ) : (
                     <UserChatMessage
