@@ -8,8 +8,7 @@ export const ActionProvider = ({
 }) => {
   const { teamId, botId } = useConfig();
   const handleFetchData = (message) => {
-
-    const args = {message, }
+    const args = { message };
     const chatboxMessage = createChatBotMessage(args, {
       loading: true,
       withAvatar: false,
