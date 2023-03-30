@@ -16,6 +16,11 @@
     cursor: pointer;
 }
 
+
+.react-chatbot-kit-chat-bot-message .docsbot-sources button > *:first {
+    margin-right: 0.25em;
+}
+
 .react-chatbot-kit-chat-bot-message .docsbot-sources {
     list-style: none;
     padding: 0;

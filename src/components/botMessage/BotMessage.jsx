@@ -16,8 +16,10 @@ export const BotMessage = ({ message, loader }) => {
   //if args is an object
   let userMessage = null;
   let systemMessage = null;
+  let setState = null;
   if (typeof message === "object") {
     userMessage = message.message;
+    setState = message.setState;
   } else {
     systemMessage = message;
   }
@@ -25,6 +27,7 @@ export const BotMessage = ({ message, loader }) => {
   console.log("MessageWidget", userMessage, systemMessage);
   const [loading, setLoading] = useState();
   const [apiResults, setApiResults] = useState();
+  const [currentAnswer, setCurrentAnswer] = useState("");
   const [answerHtml, setAnswerHtml] = useState("");
   const [error, setError] = useState();
   const [showSources, setShowSources] = useState(false);
@@ -33,48 +36,74 @@ export const BotMessage = ({ message, loader }) => {
   useEffect(() => {
     if (userMessage) {
       setLoading(true);
-      fetch(`https://api.docsbot.ai/teams/${teamId}/bots/${botId}/ask`, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ question: userMessage }),
-      })
-        .then((response) => {
-          if (response.status >= 200 && response.status < 300) {
-            return Promise.resolve(response);
-          } else {
-            return Promise.reject(new Error(response));
+
+      const req = { question: userMessage, markdown: true, history: [] };
+
+      const apiUrl = `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
+      const ws = new WebSocket(apiUrl);
+
+      // Send message to server when connection is established
+      ws.onopen = function (event) {
+        ws.send(JSON.stringify(req));
+      };
+
+      ws.onerror = function (event) {
+        console.log("error", event);
+        setError("There was a connection error. Please try again.");
+        setLoading(false);
+      };
+
+      ws.onclose = function (event) {
+        setLoading(false);
+      };
+
+      // Receive message from server word by word. Display the words as they are received.
+      ws.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        if (data.sender === "bot") {
+          if (data.type === "start") {
+          } else if (data.type === "stream") {
+            //append to answer
+            setCurrentAnswer((prev) => {
+              return prev + data.message;
+            });
+            setLoading(false);
+          } else if (data.type === "info") {
+            console.log(data.message);
+          } else if (data.type === "end") {
+            const finalData = JSON.parse(data.message);
+            console.log(finalData);
+            setState((prevState) => {
+              return {
+                ...prevState,
+                chatHistory: finalData.history,
+              };
+            });
+            setCurrentAnswer(finalData.answer);
+            setApiResults(finalData);
+            ws.close();
+          } else if (data.type === "error") {
+            setError(data.message);
+            setLoading(false);
+            ws.close();
           }
-        })
-        .then((response) => response.json())
-        .then((json) => {
-          setApiResults(json);
-          setLoading(false);
-        })
-        .catch((error) => {
-          setLoading(false);
-          console.log(error);
-          setError(
-            "I'm sorry, I don't understand what you're asking. Can you please provide more context or a specific question related to Infinite Uploads?"
-          );
-        });
+        }
+      };
     }
-  }, [setApiResults, teamId, botId, userMessage]);
+  }, [setApiResults, teamId, botId, userMessage, setCurrentAnswer]);
 
   //convert markdown to html when answer changes or is appended to
   useEffect(() => {
-    if (apiResults?.answer) {
+    if (currentAnswer) {
       remark()
         .use(html)
         .use(remarkGfm)
-        .process(apiResults?.answer)
+        .process(currentAnswer)
         .then((html) => {
           setAnswerHtml(html.toString());
         });
     }
-  }, [apiResults, setAnswerHtml]);
+  }, [currentAnswer, setAnswerHtml]);
 
   const Source = ({ source }) => {
     const icon = source.url ? faLink : faFile;
@@ -116,24 +145,28 @@ export const BotMessage = ({ message, loader }) => {
           return <span>{systemMessage}</span>;
         }
 
-        if (apiResults) {
+        if (answerHtml) {
           return (
             <>
               <span dangerouslySetInnerHTML={{ __html: answerHtml }} />
-              <button onClick={() => setShowSources(!showSources)}>
-                Sources
-                {showSources ? (
-                  <FontAwesomeIcon icon={faChevronUp} />
-                ) : (
-                  <FontAwesomeIcon icon={faChevronDown} />
-                )}
-              </button>
-              {showSources && (
-                <ul className="docsbot-sources">
-                  {apiResults?.sources?.map((source, index) => (
-                    <Source key={index} source={source} />
-                  ))}
-                </ul>
+              {apiResults && (
+                <>
+                  <button onClick={() => setShowSources(!showSources)}>
+                    Sources
+                    {showSources ? (
+                      <FontAwesomeIcon icon={faChevronUp} />
+                    ) : (
+                      <FontAwesomeIcon icon={faChevronDown} />
+                    )}
+                  </button>
+                  {showSources && (
+                    <ul className="docsbot-sources">
+                      {apiResults?.sources?.map((source, index) => (
+                        <Source key={index} source={source} />
+                      ))}
+                    </ul>
+                  )}
+                </>
               )}
             </>
           );

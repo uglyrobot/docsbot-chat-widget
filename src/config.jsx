@@ -8,6 +8,7 @@ import { ThemeColors } from "./constants/theme";
 export const config = () => {
   return {
     botName: "DocsBot",
+    headerText: "DocsBot",
     initialMessages: [
       createChatBotMessage(`What can I help you with?`, {
         widget: "initialOptions",
