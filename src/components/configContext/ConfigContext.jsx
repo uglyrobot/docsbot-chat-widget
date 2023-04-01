@@ -15,7 +15,7 @@ export function ConfigProvider(props = {}) {
   const [config, setConfig] = useState(null);
 
   useEffect(() => {
-    if (id) {
+    if (id && !config) {
       const apiUrl = `http://localhost:3001/api/widget/${id}`;
 
       fetch(apiUrl, {
@@ -29,7 +29,7 @@ export function ConfigProvider(props = {}) {
           console.warn(e);
         });
     }
-  }, [id]);
+  }, [id, config]);
 
   if (!config) return null;
 
