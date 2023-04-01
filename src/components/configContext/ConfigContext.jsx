@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 const ConfigContext = createContext();
 
@@ -11,20 +11,30 @@ export function useConfig() {
 }
 
 export function ConfigProvider(props = {}) {
-  const { botName, teamId, botId, colors, icon, botIcon, children } = props;
-  const value = useMemo(
-    () => ({
-      botName,
-      teamId,
-      botId,
-      colors,
-      icon,
-      botIcon
-    }),
-    [botName, teamId, botId, colors, icon, botIcon]
-  );
+  const { id, supportCallback, children } = props;
+  const [config, setConfig] = useState(null);
+
+  useEffect(() => {
+    if (id) {
+      const apiUrl = `http://localhost:3001/api/widget/${id}`;
+
+      fetch(apiUrl, {
+        method: "GET",
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          console.log(data);
+          setConfig({ ...data, supportCallback });
+        })
+        .catch((e) => {
+          console.warn(e);
+        });
+    }
+  }, [id]);
+
+  if (!config) return null;
 
   return (
-    <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>
+    <ConfigContext.Provider value={config}>{children}</ConfigContext.Provider>
   );
 }

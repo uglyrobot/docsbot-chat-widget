@@ -5,15 +5,10 @@ const ChatbotContext = React.createContext();
 
 function chatbotReducer(state, action) {
   switch (action.type) {
-    case "update_input":
+    case "save_history":
       return {
         ...state,
-        chatInput: action.payload.chatInput,
-      };
-    case "clear_input":
-      return {
-        ...state,
-        chatInput: "",
+        chatHistory: action.payload.chatHistory,
       };
     case "add_message":
       const id = action.payload.id || uuidv4();

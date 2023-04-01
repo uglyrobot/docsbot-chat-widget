@@ -11,16 +11,13 @@
     <h1>Embeddable Widget Demo</h1>
     <script src="./docsbotai-widget.js"></script>
     <script>
-      DocsbotAI.init({
-        botName: "Infinite Uploads",
-        teamId: "ZrbLG98bbxZ9EFqiPvyl",
-        botId: "SQMV36O8xi43xbZRzYLy",
-        colors: {
-          primary: "#1292EE",
-          secondary: "#ffffff",
+      DocsBotAI.init({
+        id: "ZrbLG98bbxZ9EFqiPvyl/SQMV36O8xi43xbZRzYLy",
+        supportCallback: function (event, history) {
+          event.preventDefault();
+          console.log(history, DocsBotAI);
+
         },
-        icon: 'question',
-        botIcon: 'info',
       });
     </script>
   </body>

@@ -6,6 +6,7 @@ export const chatbotConfig = ({ dispatch }) => {
     initialMessages: [
       {
         message: "What can I help you with?",
+        /*
         options: [
           {
             id: uuidv4(),
@@ -35,20 +36,36 @@ export const chatbotConfig = ({ dispatch }) => {
           },
           {
             id: uuidv4(),
-            text: "Give me a random fact",
+            text: "What is DocsBot AI?",
             handler: () => {
               dispatch({
                 type: "add_message",
                 payload: {
-                  variant: "chatbot",
+                  variant: "user",
                   message:
-                    "The United Nations estimates that there are over three million shipwrecks on the ocean floors. Lost, destroyed, or deliberately sunk, these wrecks are of interest to divers, underwater archaeologists, and treasure hunters alike.",
+                    "What is DocsBot AI?",
+                  loading: false,
+                },
+              });
+            },
+          },
+          {
+            id: uuidv4(),
+            text: "List your features.",
+            handler: () => {
+              dispatch({
+                type: "add_message",
+                payload: {
+                  variant: "user",
+                  message:
+                    "List your features.",
                   loading: false,
                 },
               });
             },
           },
         ],
+        */
       },
     ],
   };

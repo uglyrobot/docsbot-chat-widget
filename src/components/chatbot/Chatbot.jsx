@@ -1,26 +1,24 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { remark } from "remark";
 import html from "remark-html";
 import remarkGfm from "remark-gfm";
-
 import { useChatbot } from "../chatbotContext/ChatbotContext";
 import { useConfig } from "../configContext/ConfigContext";
 import { BotChatMessage } from "../botChatMessage/BotChatMessage";
 import { UserChatMessage } from "../userChatMessage/UserChatMessage";
 import { SendIcon } from "../icons/SendIcon";
-import { Source } from "../source/Source";
 import { Options } from "../options/Options";
-import { chatbotConfig } from "../../config";
+import { DocsBotLogo } from "../icons/DocsBotLogo";
+import { decideTextColor, getLighterColor } from "../../utils/colors";
 
 export const Chatbot = () => {
+  const [chatInput, setChatInput] = useState("");
   const { dispatch, state } = useChatbot();
-  const { teamId, botId } = useConfig();
+  const { color, teamId, botId, botName, description, branding, labels, supportCallback } =
+    useConfig();
   const ref = useRef();
-
-  const config = useMemo(() => {
-    return chatbotConfig({ dispatch });
-  }, [dispatch]);
+  const inputRef = useRef();
 
   // Scroll to bottom each time a message is added
   useEffect(() => {
@@ -28,19 +26,20 @@ export const Chatbot = () => {
   }, [state.messages]);
 
   useEffect(() => {
-    config.initialMessages.forEach((message) => {
+    if (labels.firstMessage) {
       dispatch({
         type: "add_message",
         payload: {
+          id: uuidv4(),
           variant: "chatbot",
-          options: message.options,
-          message: message.message,
+          message: labels.firstMessage,
         },
       });
-    });
-  }, [config.initialMessages]);
+    }
+    inputRef.current.focus();
+  }, [labels.firstMessage]);
 
-  function fetchDocsBot() {
+  function fetchAnswer() {
     const id = uuidv4();
 
     dispatch({
@@ -53,86 +52,153 @@ export const Chatbot = () => {
       },
     });
 
-    fetch(`https://api.docsbot.ai/teams/${teamId}/bots/${botId}/ask`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ question: state.chatInput }),
-    })
-      .then((response) => {
-        if (response.status >= 200 && response.status < 300) {
-          return Promise.resolve(response);
-        } else {
-          return Promise.reject(new Error(response));
-        }
-      })
-      .then((response) => response.json())
-      .then((json) => {
-        remark()
-          .use(html)
-          .use(remarkGfm)
-          .process(json?.answer)
-          .then((parsedHtml) => {
-            dispatch({
-              type: "update_message",
-              payload: {
-                id,
-                variant: "chatbot",
-                message: parsedHtml,
-                sources: json?.sources,
-                loading: false,
-              },
-            });
-          });
-      })
-      .catch((_) => {
+    let answer = "";
+    const history = state.chatHistory || [];
+    const req = { question: chatInput, markdown: true, history };
+
+    const apiUrl = `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
+    const ws = new WebSocket(apiUrl);
+
+    // Send message to server when connection is established
+    ws.onopen = function (event) {
+      ws.send(JSON.stringify(req));
+    };
+
+    ws.onerror = function (event) {
+      console.log("error", event);
+      dispatch({
+        type: "update_message",
+        payload: {
+          id,
+          variant: "chatbot",
+          message: "There was a connection error. Please try again.",
+          loading: false,
+        },
+      });
+    };
+
+    ws.onclose = function (event) {
+      if (!event.wasClean) {
         dispatch({
           type: "update_message",
           payload: {
             id,
-            variant: "chatbot",
-            message:
-              "I'm sorry, I don't understand what you're asking. Can you please provide more context or a specific question related to Infinite Uploads?",
+            message: "There was a network error. Please try again.",
             loading: false,
           },
         });
+      }
+    };
+
+    // Receive message from server word by word. Display the words as they are received.
+    ws.onmessage = async function (event) {
+      const data = JSON.parse(event.data);
+      if (data.sender === "bot") {
+        if (data.type === "start") {
+        } else if (data.type === "stream") {
+          //append to answer
+          answer += data.message;
+          dispatch({
+            type: "update_message",
+            payload: {
+              id,
+              variant: "chatbot",
+              message: await parseMarkdown(answer),
+              sources: null,
+              loading: false,
+            },
+          });
+        } else if (data.type === "info") {
+          console.log(data.message);
+        } else if (data.type === "end") {
+          const finalData = JSON.parse(data.message);
+          dispatch({
+            type: "update_message",
+            payload: {
+              id,
+              variant: "chatbot",
+              message: await parseMarkdown(finalData.answer),
+              sources: finalData.sources,
+              answerId: finalData.id,
+              rating: finalData.rating,
+              loading: false,
+            },
+          });
+          dispatch({
+            type: "save_history",
+            payload: { chatHistory: finalData.history },
+          });
+          ws.close();
+        } else if (data.type === "error") {
+          dispatch({
+            type: "update_message",
+            payload: {
+              id,
+              variant: "chatbot",
+              message: data.message,
+              loading: true,
+            },
+          });
+          ws.close();
+        }
+      }
+    };
+  }
+
+  async function parseMarkdown(text) {
+    return await remark()
+      .use(html)
+      .use(remarkGfm)
+      .process(text)
+      .then((html) => {
+        return html.toString();
       });
   }
 
   return (
-    <div className="react-chatbot-kit-wrapper">
+    <div className="docsbot-wrapper">
       <div>
         <div>
-          <div className="react-chatbot-kit-chat-container">
-            <div className="react-chatbot-kit-chat-inner-container">
-              <div className="react-chatbot-kit-chat-header">
-                Conversation with Infinite Uploads
-              </div>
+          <div className="docsbot-chat-container">
+            <div className="docsbot-chat-inner-container">
               <div
-                className="react-chatbot-kit-chat-message-container"
-                ref={ref}
+                className="docsbot-chat-header"
+                style={{
+                  backgroundColor: color,
+                  color: decideTextColor(color || "#1292EE"),
+                }}
               >
+                <div className="docsbot-chat-header-content">
+                  <h1>{botName}</h1>
+                  <span>{description}</span>
+                </div>
+              </div>
+              <div className="docsbot-chat-message-container" ref={ref}>
                 {Object.keys(state.messages).map((key) => {
                   const message = state.messages[key];
-
+                  const isLast = key === Object.keys(state.messages).pop();
                   return message.variant === "chatbot" ? (
                     <>
-                      <BotChatMessage
-                        key={key}
-                        loading={message.loading}
-                        message={message.message}
-                      />
+                      <BotChatMessage key={key} payload={message} />
                       {message?.options ? (
                         <Options options={message.options} />
                       ) : null}
-                      {message?.sources?.map((source) => (
-                        <ul key={source.url}>
-                          <Source key={source.url} source={source} />
-                        </ul>
-                      ))}
-                      {message?.widget}
+                      {isLast && message.sources && (
+                        <div className="docsbot-chat-bot-message-support">
+                          <a
+                            href="https://docsbot.ai"
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            onClick={(e) => supportCallback(e, state.chatHistory || [])}
+                            style={{
+                              backgroundColor: getLighterColor(color || "#1292EE", 0.93),
+                              color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)),
+                            }}
+                          >
+                            Contact support
+                          </a>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <UserChatMessage
@@ -142,10 +208,22 @@ export const Chatbot = () => {
                     />
                   );
                 })}
+                {branding && (
+                  <div className="docsbot-chat-credits">
+                    <a
+                      href="https://docsbot.ai?utm_source=chatbot&utm_medium=chatbot&utm_campaign=chatbot"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      aria-label={labels.poweredBy + " DocsBot"}
+                    >
+                      {labels.poweredBy} <DocsBotLogo />
+                    </a>
+                  </div>
+                )}
               </div>
-              <div className="react-chatbot-kit-chat-input-container">
+              <div className="docsbot-chat-input-container">
                 <form
-                  className="react-chatbot-kit-chat-input-form"
+                  className="docsbot-chat-input-form"
                   onSubmit={(e) => {
                     e.preventDefault();
 
@@ -153,34 +231,31 @@ export const Chatbot = () => {
                       type: "add_message",
                       payload: {
                         variant: "user",
-                        message: state.chatInput,
+                        message: chatInput,
                         loading: false,
                       },
                     });
-
-                    dispatch({
-                      type: "clear_input",
-                      payload: { chatInput: e.target.value },
-                    });
-
-                    fetchDocsBot();
+                    setChatInput("");
+                    fetchAnswer();
+                    inputRef.current.focus();
                   }}
                 >
                   <input
-                    className="react-chatbot-kit-chat-input"
-                    placeholder="Write your message here"
-                    value={state.chatInput}
+                    className="docsbot-chat-input"
+                    placeholder={labels.inputPlaceholder}
+                    value={chatInput}
                     onChange={(e) => {
-                      dispatch({
-                        type: "update_input",
-                        payload: { chatInput: e.target.value },
-                      });
+                      setChatInput(e.target.value);
                     }}
+                    ref={inputRef}
                   />
                   <button
                     type="submit"
-                    className="react-chatbot-kit-chat-btn-send"
-                    style={{ backgroundColor: "rgb(8, 145, 178)" }}
+                    className="docsbot-chat-btn-send"
+                    style={{
+                      fill: color,
+                    }}
+                    disabled={chatInput.length < 10}
                   >
                     <SendIcon />
                   </button>

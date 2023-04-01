@@ -10,7 +10,7 @@ export const Loader = () => {
         xmlns="http://www.w3.org/2000/svg"
       >
         <g stroke="none" fill="none">
-          <g id="chatbot-loader" fill="#fff">
+          <g id="chatbot-loader" fill="currentColor">
             <circle id="chatbot-loader-dot1" cx="25" cy="30" r="13"></circle>
             <circle id="chatbot-loader-dot2" cx="65" cy="30" r="13"></circle>
             <circle id="chatbot-loader-dot3" cx="105" cy="30" r="13"></circle>

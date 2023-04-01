@@ -1,10 +1,17 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faComment, faComments, faRobot, faLifeRing, faQuestion, faBook } from "@fortawesome/free-solid-svg-icons";
-import { ThemeColors } from "../../constants/theme";
+import {
+  faComment,
+  faComments,
+  faRobot,
+  faLifeRing,
+  faQuestion,
+  faBook,
+} from "@fortawesome/free-solid-svg-icons";
 import { useConfig } from "../configContext/ConfigContext";
+import { decideTextColor } from "../../utils/colors";
 
 export const FloatingButton = ({ onClick }) => {
-  const { colors, icon } = useConfig();
+  const { color, icon } = useConfig();
 
   //icon can be default, robot, life-ring, or question-circle
   const iconMap = {
@@ -23,7 +30,10 @@ export const FloatingButton = ({ onClick }) => {
       href="#"
       className="floating-button"
       onClick={onClick}
-      style={{ backgroundColor: colors?.primary || ThemeColors.primaryColor }}
+      style={{
+        backgroundColor: color,
+        color: decideTextColor(color || "#1292EE"),
+      }}
     >
       <FontAwesomeIcon size="xl" icon={iconToUse} />
     </a>

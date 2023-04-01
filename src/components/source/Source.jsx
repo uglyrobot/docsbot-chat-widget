@@ -7,7 +7,7 @@ export const Source = ({ source }) => {
 
   return (
     <li>
-      <FontAwesomeIcon icon={icon} a />
+      <FontAwesomeIcon icon={icon} />
       {source.url ? (
         <a href={source.url} target="_blank" rel="noopener norefferer">
           {source.title}
