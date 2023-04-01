@@ -15,8 +15,8 @@ import { useChatbot } from "../chatbotContext/ChatbotContext";
 export const BotChatMessage = ({ payload }) => {
   const [showSources, setShowSources] = useState(false);
   const [rating, setRating] = useState(payload.rating || 0);
-  const { color, teamId, botId, labels } = useConfig();
-  const { dispatch } = useChatbot();
+  const { color, teamId, botId, labels, supportLink, supportCallback } = useConfig();
+  const { dispatch, state } = useChatbot();
 
   // make api call to rate
   const saveRating = async (newRating = 0) => {
@@ -49,7 +49,9 @@ export const BotChatMessage = ({ payload }) => {
         try {
           const data = await response.json();
           if (data.error) {
-            console.warn(data.error || "Something went wrong, please try again.");
+            console.warn(
+              data.error || "Something went wrong, please try again."
+            );
           }
         } catch (e) {
           console.warn(e);
@@ -61,69 +63,87 @@ export const BotChatMessage = ({ payload }) => {
     }
   };
 
-  const bgColor = getLighterColor(color || "#1292EE");
-  const fontColor = decideTextColor(bgColor);
+  const bgColor = payload.error
+    ? "#FEFCE8"
+    : getLighterColor(color || "#1292EE");
+  const fontColor = payload.error ? "#713F12" : decideTextColor(bgColor);
   return (
     <>
-    <div className="docsbot-chat-bot-message-container">
-      <BotAvatar />
-      <div
-        className="docsbot-chat-bot-message"
-        style={{
-          backgroundColor: bgColor,
-          color: fontColor,
-        }}
-      >
-        {(() => {
-          if (payload.loading) {
-            return <Loader />;
-          }
+      <div className="docsbot-chat-bot-message-container">
+        <BotAvatar />
+        <div
+          className="docsbot-chat-bot-message"
+          style={{
+            backgroundColor: bgColor,
+            color: fontColor,
+          }}
+        >
+          {(() => {
+            if (payload.loading) {
+              return <Loader />;
+            }
 
-          return (
-            <>
-              <span dangerouslySetInnerHTML={{ __html: payload.message }} />
-              {payload.sources && (
-                <>
-                  <div className="docsbot-chat-bot-message-meta">
-                    <button onClick={() => setShowSources(!showSources)}>
-                      {labels.sources}
-                      {showSources ? (
-                        <FontAwesomeIcon icon={faChevronUp} />
-                      ) : (
-                        <FontAwesomeIcon icon={faChevronDown} />
-                      )}
-                    </button>
-                    <div className="docbot-chat-bot-message-rate">
-                      <button
-                        onClick={(e) => saveRating(-1)}
-                        style={{ opacity: rating === -1 ? 1 : null }}
-                        title={labels.unhelpful}
-                      >
-                        <FontAwesomeIcon icon={faFaceFrownOpen} />
+            return (
+              <>
+                <span dangerouslySetInnerHTML={{ __html: payload.message }} />
+                {payload.sources && (
+                  <>
+                    <div className="docsbot-chat-bot-message-meta">
+                      <button onClick={() => setShowSources(!showSources)}>
+                        {labels.sources}
+                        {showSources ? (
+                          <FontAwesomeIcon icon={faChevronUp} />
+                        ) : (
+                          <FontAwesomeIcon icon={faChevronDown} />
+                        )}
                       </button>
-                      <button
-                        onClick={(e) => saveRating(1)}
-                        style={{ opacity: rating === 1 ? 1 : null }}
-                        title={labels.helpful}
-                      >
-                        <FontAwesomeIcon icon={faFaceGrin} />
-                      </button>
+                      <div className="docbot-chat-bot-message-rate">
+                        <button
+                          onClick={(e) => saveRating(-1)}
+                          style={{ opacity: rating === -1 ? 1 : null }}
+                          title={labels.unhelpful}
+                        >
+                          <FontAwesomeIcon icon={faFaceFrownOpen} />
+                        </button>
+                        <button
+                          onClick={(e) => saveRating(1)}
+                          style={{ opacity: rating === 1 ? 1 : null }}
+                          title={labels.helpful}
+                        >
+                          <FontAwesomeIcon icon={faFaceGrin} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  {showSources && (
-                    <ul className="docsbot-sources">
-                      {payload.sources?.map((source, index) => (
-                        <Source key={index} source={source} />
-                      ))}
-                    </ul>
-                  )}
-                </>
-              )}
-            </>
-          );
-        })()}
+                    {showSources && (
+                      <ul className="docsbot-sources">
+                        {payload.sources?.map((source, index) => (
+                          <Source key={index} source={source} />
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                )}
+              </>
+            );
+          })()}
+        </div>
       </div>
-    </div>
+      {payload.isLast && supportLink && ( payload.sources || payload.error ) && (
+        <div className="docsbot-chat-bot-message-support">
+          <a
+            href={supportLink}
+            target="_blank"
+            rel="noreferrer noopener"
+            onClick={(e) => supportCallback(e, state.chatHistory || [])}
+            style={{
+              backgroundColor: getLighterColor(color || "#1292EE", 0.93),
+              color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)),
+            }}
+          >
+            {labels.getSupport}
+          </a>
+        </div>
+      )}
     </>
   );
 };

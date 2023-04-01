@@ -22,7 +22,7 @@ export const Chatbot = () => {
 
   // Scroll to bottom each time a message is added
   useEffect(() => {
-    ref.current.scrollTop = ref.current.scrollHeight;
+    //ref.current.scrollTop = ref.current.scrollHeight;
   }, [state.messages]);
 
   useEffect(() => {
@@ -51,6 +51,7 @@ export const Chatbot = () => {
         loading: true,
       },
     });
+    ref.current.scrollTop = ref.current.scrollHeight;
 
     let answer = "";
     const history = state.chatHistory || [];
@@ -65,7 +66,7 @@ export const Chatbot = () => {
     };
 
     ws.onerror = function (event) {
-      console.log("error", event);
+      console.error("error", event);
       dispatch({
         type: "update_message",
         payload: {
@@ -73,6 +74,7 @@ export const Chatbot = () => {
           variant: "chatbot",
           message: "There was a connection error. Please try again.",
           loading: false,
+          error: true,
         },
       });
     };
@@ -85,6 +87,7 @@ export const Chatbot = () => {
             id,
             message: "There was a network error. Please try again.",
             loading: false,
+            error: true,
           },
         });
       }
@@ -95,6 +98,7 @@ export const Chatbot = () => {
       const data = JSON.parse(event.data);
       if (data.sender === "bot") {
         if (data.type === "start") {
+          ref.current.scrollTop = ref.current.scrollHeight;
         } else if (data.type === "stream") {
           //append to answer
           answer += data.message;
@@ -128,6 +132,7 @@ export const Chatbot = () => {
             type: "save_history",
             payload: { chatHistory: finalData.history },
           });
+          ref.current.scrollTop = ref.current.scrollHeight;
           ws.close();
         } else if (data.type === "error") {
           dispatch({
@@ -136,7 +141,8 @@ export const Chatbot = () => {
               id,
               variant: "chatbot",
               message: data.message,
-              loading: true,
+              loading: false,
+              error: true,
             },
           });
           ws.close();
@@ -176,29 +182,14 @@ export const Chatbot = () => {
               <div className="docsbot-chat-message-container" ref={ref}>
                 {Object.keys(state.messages).map((key) => {
                   const message = state.messages[key];
-                  const isLast = key === Object.keys(state.messages).pop();
+                  message.isLast = key === Object.keys(state.messages).pop();
+
                   return message.variant === "chatbot" ? (
                     <>
                       <BotChatMessage key={key} payload={message} />
                       {message?.options ? (
                         <Options options={message.options} />
                       ) : null}
-                      {isLast && message.sources && (
-                        <div className="docsbot-chat-bot-message-support">
-                          <a
-                            href="https://docsbot.ai"
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            onClick={(e) => supportCallback(e, state.chatHistory || [])}
-                            style={{
-                              backgroundColor: getLighterColor(color || "#1292EE", 0.93),
-                              color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)),
-                            }}
-                          >
-                            Contact support
-                          </a>
-                        </div>
-                      )}
                     </>
                   ) : (
                     <UserChatMessage
@@ -248,6 +239,8 @@ export const Chatbot = () => {
                       setChatInput(e.target.value);
                     }}
                     ref={inputRef}
+                    minLength={10}
+                    maxLength={200}
                   />
                   <button
                     type="submit"

@@ -23,7 +23,6 @@ export function ConfigProvider(props = {}) {
       })
         .then((response) => response.json())
         .then((data) => {
-          console.log(data);
           setConfig({ ...data, supportCallback });
         })
         .catch((e) => {
