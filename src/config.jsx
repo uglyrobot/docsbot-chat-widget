@@ -1,67 +1,72 @@
-import { createChatBotMessage } from "react-chatbot-kit";
-import { InitialOptions } from "./components/initialOptions/InitialOptions";
+import { v4 as uuidv4 } from "uuid";
 import { LinkList } from "./components/linkList/LinkList";
-import { BotMessage } from "./components/botMessage/BotMessage";
-import { BotAvatar } from "./components/botAvatar/BotAvatar"
-import { ThemeColors } from "./constants/theme";
 
-export const config = () => {
+export const chatbotConfig = ({ dispatch }) => {
   return {
-    botName: "DocsBot",
-    headerText: "DocsBot",
     initialMessages: [
-      createChatBotMessage(`What can I help you with?`, {
-        widget: "initialOptions",
-      }),
-    ],
-    customStyles: {
-      botMessageBox: {
-        backgroundColor: ThemeColors.primaryColor,
-      },
-      chatButton: {
-        backgroundColor: ThemeColors.primaryColor,
-      },
-    },
-    widgets: [
       {
-        widgetName: "initialOptions",
-        widgetFunc: (props) => <InitialOptions {...props} />,
-      },
-      {
-        widgetName: "javascriptLinks",
-        widgetFunc: (props) => <LinkList {...props} />,
-        props: {
-          options: [
-            {
-              text: "DocsBot AI Documentation",
-              url: "https://docsbot.ai/#features",
-              id: 1,
+        message: "What can I help you with?",
+        /*
+        options: [
+          {
+            id: uuidv4(),
+            text: "Need help using Docsbot",
+            handler: () => {
+              dispatch({
+                type: "add_message",
+                payload: {
+                  variant: "chatbot",
+                  message:
+                    "Fantastic, I've got the following resources for you for DocsBot AI:",
+                  widget: (
+                    <LinkList
+                      options={[
+                        {
+                          text: "DocsBot AI Documentation",
+                          url: "https://docsbot.ai/#features",
+                          id: 1,
+                        },
+                      ]}
+                    />
+                  ),
+                  loading: false,
+                },
+              });
             },
-          ],
-        },
-      },
-      {
-        widgetName: "messageWidget",
-        widgetFunc: (props) => <MessageWidget {...props} />,
+          },
+          {
+            id: uuidv4(),
+            text: "What is DocsBot AI?",
+            handler: () => {
+              dispatch({
+                type: "add_message",
+                payload: {
+                  variant: "user",
+                  message:
+                    "What is DocsBot AI?",
+                  loading: false,
+                },
+              });
+            },
+          },
+          {
+            id: uuidv4(),
+            text: "List your features.",
+            handler: () => {
+              dispatch({
+                type: "add_message",
+                payload: {
+                  variant: "user",
+                  message:
+                    "List your features.",
+                  loading: false,
+                },
+              });
+            },
+          },
+        ],
+        */
       },
     ],
-     customComponents: {
-    //   // Replaces the default header
-    //   header: () => (
-    //     <div
-    //       style={{ backgroundColor: "red", padding: "5px", borderRadius: "3px" }}
-    //     >
-    //       This is the header
-    //     </div>
-    //   ),
-    //   // Replaces the default bot avatar
-       botAvatar: (props) => <BotAvatar {...props} />,
-    //   // Replaces the default bot chat message container
-       botChatMessage: (props) => <BotMessage {...props} />,
-    //   // Replaces the default user icon
-    //   userAvatar: (props) => <MyCustomAvatar {...props} />,
-    //   // Replaces the default user chat message
-    //   userChatMessage: (props) => <MyCustomUserChatMessage {...props} />,
-     },
   };
 };

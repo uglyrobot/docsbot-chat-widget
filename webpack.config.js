@@ -10,7 +10,7 @@ module.exports = (_, { mode }) => {
       path: path.resolve(__dirname, "build"),
       publicPath: "/",
       filename: "docsbotai-widget.js",
-      library: "DocsbotAI",
+      library: "DocsBotAI",
       libraryExport: "default",
       libraryTarget: "window",
     },

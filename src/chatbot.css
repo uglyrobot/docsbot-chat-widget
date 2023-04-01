@@ -1,0 +1,304 @@
+.docsbot-user-chat-message-container {
+  display: flex;
+  margin-bottom: 15px;
+  justify-content: flex-end;
+}
+
+.docsbot-user-chat-message {
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 5px;
+  border-bottom-right-radius: 0;
+  border: 0.5px solid rgb(197, 206, 214);
+  font-size: 0.9rem;
+  color: #585858;
+  font-weight: medium;
+  position: relative;
+  text-align: left;
+}
+
+.docsbot-chat-bot-message-container {
+  display: flex;
+  margin: 15px 0;
+  justify-content: flex-start;
+}
+
+.docsbot-chat-bot-avatar-container {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  margin-right: 8px;
+  background-color: #d8d8d8;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.docsbot-chat-bot-avatar-icon {
+  fill: #494646;
+}
+
+.docsbot-chat-bot-message {
+  background-color: #f1f1f1;
+  padding: 10px;
+  border-radius: 5px;
+  border-top-left-radius: 0;
+  font-size: 0.9rem;
+  color: #494646;
+  font-weight: medium;
+  position: relative;
+  width: 184.5px;
+  margin-left: auto;
+  text-align: left;
+  border: 0.5px solid rgb(197, 206, 214);
+}
+
+.docsbot-chat-bot-message-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+}
+
+.docbot-chat-bot-message-rate {
+  display: flex;
+  align-items: center;
+}
+
+.docbot-chat-bot-message-rate button {
+  opacity: 0.6;
+}
+
+.docbot-chat-bot-message-rate button:hover {
+  opacity: 1;
+}
+
+.docbot-chat-bot-message-rate button:last-child {
+  margin-left: 5px;
+}
+
+.docsbot-chat-bot-loading-icon-container {
+  height: 17px;
+  width: 25px;
+}
+
+.chatbot-loader-container {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
+#chatbot-loader #chatbot-loader-dot1 {
+  animation: load 1s infinite;
+}
+
+#chatbot-loader #chatbot-loader-dot2 {
+  animation: load 1s infinite;
+  animation-delay: 0.2s;
+}
+
+#chatbot-loader #chatbot-loader-dot3 {
+  animation: load 1s infinite;
+  animation-delay: 0.4s;
+}
+
+@keyframes load {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.docsbot-chat-container {
+  position: relative;
+  width: 275px;
+}
+
+.docsbot-chat-inner-container {
+  height: 500px;
+  background-color: rgb(249, 250, 250);
+  border-radius: 3px;
+  border-radius: 5px;
+}
+
+.docsbot-chat-header {
+  border-top-right-radius: 5px;
+  border-top-left-radius: 5px;
+  background-color: #efefef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: #514f4f;
+  padding: 15px 0;
+  text-align: center;
+}
+
+.docsbot-chat-header h1 {
+  font-size: 0.9rem;
+  margin-top: 0;
+}
+
+.docsbot-chat-input-container {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+}
+
+.docsbot-chat-message-container {
+  padding: 0 10px 0 10px;
+  overflow: scroll;
+  height: 488px;
+  border-bottom-right-radius: 5px;
+  border-bottom-left-radius: 5px;
+}
+
+.docsbot-chat-credits {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 52px;
+  margin-top: 40px;
+  text-align: center;
+  width: 100%;
+}
+
+.docsbot-chat-credits a {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.6rem;
+  color: #a3a3a3;
+  text-decoration: none;
+}
+
+.docsbot-chat-credits a:hover {
+  color: #585858;
+}
+
+.docsbot-chat-credits a:hover img {
+  opacity: 1;
+}
+
+.docsbot-logo {
+  display: block;
+  margin-left: 2px;
+  opacity: 0.7;
+}
+
+.docsbot-chat-input-container {
+  border: none;
+  border-top: 1px solid #d8d8d8;
+}
+
+.docsbot-chat-input {
+  width: 100%;
+  padding: 12.5px 3px 12.5px 12.5px;
+  border: none;
+  font-size: 0.85rem;
+  border-bottom-left-radius: 5px;
+}
+
+.docsbot-chat-input:focus {
+  outline: none;
+}
+
+.docsbot-chat-input-form {
+  width: 100%;
+  display: flex;
+}
+
+.docsbot-chat-input::placeholder {
+  color: #6c6c6c;
+}
+
+.docsbot-chat-btn-send {
+  background-color: #fff;
+  padding-right: 12.5px;
+  border: none;
+  color: #fff;
+  border-bottom-right-radius: 5px;
+  cursor: pointer;
+}
+
+.docsbot-chat-btn-send:focus {
+  outline: none;
+}
+
+.docsbot-chat-btn-send:disabled {
+  opacity: 0.5;
+}
+
+.docsbot-chat-btn-send-icon {
+  width: 15px;
+  margin: 0 auto;
+}
+
+.docsbot-chat-bot-message p {
+  margin-top: 0;
+}
+
+.docsbot-chat-bot-message p:last-child {
+  margin-bottom: 0;
+}
+
+.docsbot-chat-bot-message button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: bold;
+  padding: 0;
+  margin-top: 0.5em;
+  cursor: pointer;
+}
+
+.docsbot-chat-bot-message .docsbot-sources button > *:first {
+  margin-right: 0.25em;
+}
+
+.docsbot-chat-bot-message .docsbot-sources {
+  list-style: none;
+  padding: 0;
+  font-size: 90%;
+}
+.docsbot-chat-bot-message .docsbot-sources li {
+  color: inherit;
+  display: flex-inline;
+  align-items: center;
+}
+.docsbot-chat-bot-message .docsbot-sources li > *:first {
+  margin-right: 0.25em;
+}
+.docsbot-chat-bot-message .docsbot-sources a {
+  text-decoration: none;
+  color: inherit;
+}
+.docsbot-chat-bot-message .docsbot-sources a:hover {
+  text-decoration: underline;
+}
+
+.docsbot-chat-bot-message-support {
+  display: flex;
+  justify-content: end;
+}
+
+.docsbot-chat-bot-message-support a {
+  color: #4b4b4b;
+  font-size: 0.8rem;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 25px;
+  background: #e8e8e8;
+  border: 0.5px solid rgb(145, 145, 145);
+  opacity: 0.8;
+}
+
+.docsbot-chat-bot-message-support a:hover {
+  opacity: 1;
+}

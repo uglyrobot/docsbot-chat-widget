@@ -38,7 +38,8 @@ export default class EmbeddableWidget {
 
   static unmount() {
     if (!EmbeddableWidget.el) {
-      throw new Error("EmbeddableWidget is not mounted, mount first");
+      console.info("EmbeddableWidget is not mounted, mount first");
+      return false
     }
     ReactDOM.unmountComponentAtNode(EmbeddableWidget.el);
     EmbeddableWidget.el.parentNode.removeChild(EmbeddableWidget.el);

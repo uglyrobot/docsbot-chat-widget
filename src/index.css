@@ -1,5 +1,5 @@
-@import "react-chatbot-kit/build/main.css";
+@import "docsbot/build/main.css";
 @import './components/app/App.css'
 @import './components/floatingButton/FloatingButton.css'
-@import './components/initialOptions/InitialOptions.css'
+@import './components/options/Options.css'
 @import './components/linkList/LinkList.css'
