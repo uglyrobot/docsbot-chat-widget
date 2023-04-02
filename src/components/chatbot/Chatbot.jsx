@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { remark } from "remark";
 import html from "remark-html";
@@ -10,20 +10,14 @@ import { UserChatMessage } from "../userChatMessage/UserChatMessage";
 import { SendIcon } from "../icons/SendIcon";
 import { Options } from "../options/Options";
 import { DocsBotLogo } from "../icons/DocsBotLogo";
-import { decideTextColor, getLighterColor } from "../../utils/colors";
+import { decideTextColor } from "../../utils/colors";
 
 export const Chatbot = () => {
   const [chatInput, setChatInput] = useState("");
   const { dispatch, state } = useChatbot();
-  const { color, teamId, botId, botName, description, branding, labels, supportCallback } =
-    useConfig();
+  const { color, teamId, botId, botName, description, branding, labels } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
-
-  // Scroll to bottom each time a message is added
-  useEffect(() => {
-    //ref.current.scrollTop = ref.current.scrollHeight;
-  }, [state.messages]);
 
   useEffect(() => {
     if (labels.firstMessage) {
@@ -188,7 +182,7 @@ export const Chatbot = () => {
                     <>
                       <BotChatMessage key={key} payload={message} />
                       {message?.options ? (
-                        <Options options={message.options} />
+                        <Options key={key+'opts'} options={message.options} />
                       ) : null}
                     </>
                   ) : (

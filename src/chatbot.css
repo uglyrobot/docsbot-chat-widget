@@ -1,6 +1,6 @@
 .docsbot-user-chat-message-container {
   display: flex;
-  margin-bottom: 15px;
+  margin-top: 15px;
   justify-content: flex-end;
 }
 
@@ -19,7 +19,7 @@
 
 .docsbot-chat-bot-message-container {
   display: flex;
-  margin: 15px 0;
+  margin-top: 15px;
   justify-content: flex-start;
 }
 
@@ -215,7 +215,8 @@
 }
 
 .docsbot-chat-input::placeholder {
-  color: #6c6c6c;
+  color: #b3b3b3;
+  opacity: 1;
 }
 
 .docsbot-chat-btn-send {
@@ -286,6 +287,7 @@
 .docsbot-chat-bot-message-support {
   display: flex;
   justify-content: end;
+  margin-top: 15px;
 }
 
 .docsbot-chat-bot-message-support a {

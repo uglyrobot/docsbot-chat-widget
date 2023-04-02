@@ -6,12 +6,13 @@ import {
   faLifeRing,
   faQuestion,
   faBook,
+  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { useConfig } from "../configContext/ConfigContext";
 import { decideTextColor } from "../../utils/colors";
 
-export const FloatingButton = ({ onClick }) => {
-  const { color, icon } = useConfig();
+export const FloatingButton = ({ isOpen, setIsOpen }) => {
+  const { color, icon, labels } = useConfig();
 
   //icon can be default, robot, life-ring, or question-circle
   const iconMap = {
@@ -23,19 +24,28 @@ export const FloatingButton = ({ onClick }) => {
     book: faBook,
   };
 
-  const iconToUse = iconMap[icon] || iconMap.default;
+  const iconToUse = isOpen ? faXmark : iconMap[icon] || iconMap.default;
 
   return (
     <a
-      href="#"
-      className="floating-button"
-      onClick={onClick}
+      href=""
+      className={
+        "floating-button" + (labels.showButtonLabel ? " has-label" : "")
+      }
+      onClick={(e) => {
+        e.preventDefault();
+        setIsOpen(!isOpen);
+      }}
       style={{
         backgroundColor: color,
         color: decideTextColor(color || "#1292EE"),
       }}
+      sr-label="Open/close chat"
     >
       <FontAwesomeIcon size="xl" icon={iconToUse} />
+      {labels.showButtonLabel ? (
+        <span className="floating-button-label">{labels.floatingButton}</span>
+      ) : null}
     </a>
   );
 };

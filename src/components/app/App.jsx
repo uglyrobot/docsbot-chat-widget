@@ -25,7 +25,7 @@ function App({} = {}) {
       <style type="text/css">{optionsStyles}</style>
       <style type="text/css">{linkListStyles}</style>
 
-      <FloatingButton onClick={() => setIsOpen(!isOpen)} />
+      <FloatingButton {...{isOpen, setIsOpen}} />
       {isOpen ? (
         <ChatbotProvider>
           <Chatbot />
