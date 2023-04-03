@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ReactShadowRoot from "react-shadow-root";
 import { FloatingButton } from "../floatingButton/FloatingButton";
 import { config as fontAwesomeConfig } from "@fortawesome/fontawesome-svg-core";
@@ -10,11 +10,26 @@ import optionsStyles from "!raw-loader!../options/Options.css";
 import linkListStyles from "!raw-loader!../linkList/LinkList.css";
 import { Chatbot } from "../chatbot/Chatbot";
 import { ChatbotProvider } from "../chatbotContext/ChatbotContext";
+import { Emitter } from "../../utils/event-emitter";
 
 fontAwesomeConfig.autoAddCss = false;
 
-function App({} = {}) {
+function App() {
   const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    Emitter.on("OPEN_CHATBOT", () => {
+      setIsOpen(true);
+    });
+
+    Emitter.on("CLOSE_CHATBOT", () => {
+      setIsOpen(false);
+    });
+
+    Emitter.on("TOGGLE_CHATBOT", ({ isChatbotOpen }) => {
+      setIsOpen(isChatbotOpen);
+    });
+  }, []);
 
   return (
     <ReactShadowRoot>
