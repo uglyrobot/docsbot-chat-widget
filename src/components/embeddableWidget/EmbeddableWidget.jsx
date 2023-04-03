@@ -5,9 +5,8 @@ import { ConfigProvider } from "../configContext/ConfigContext";
 import { Emitter } from "../../utils/event-emitter";
 
 export default class EmbeddableWidget {
-  static el;
   static _root;
-  static _component;
+  static el;
 
   static isChatbotOpen = false;
 
@@ -26,7 +25,8 @@ export default class EmbeddableWidget {
     Emitter.emit("TOGGLE_CHATBOT", { isChatbotOpen: this.isChatbotOpen });
   }
 
-  static init({ parentElement = null, ...props } = {}) {
+  static mount({ parentElement = null, ...props } = {}) {
+    console.log("%cprops", "color:cyan; ", props);
     const component = (
       <ConfigProvider {...props}>
         <App isChatbotOpen={this.isChatbotOpen} {...props} />

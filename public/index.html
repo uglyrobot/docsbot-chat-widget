@@ -17,24 +17,24 @@
       <button id="reinit-btn">Reinitialize</button>
     </div>
     <script>
-      // See minified script version at root of project
-      function loadDocsBotAI(opts) {
-        return new Promise((resolveScript, rejectScript) => {
-          const script = document.createElement("script");
-          script.src = "/docsbotai-widget.js";
-          script.async = true;
-          script.type = "text/javascript";
+      window.DocsBotAI = window.DocsBotAI || {};
 
+      DocsBotAI.init = function (opts) {
+        return new Promise((resolve, reject) => {
+          var script = document.createElement("script");
+          script.type = "text/javascript";
+          script.async = true;
+          script.src = "/docsbotai-widget.js";
           const el = document.getElementsByTagName("script")[0];
           el.parentNode.insertBefore(script, el);
 
           script.addEventListener("load", () => {
-            DocsBotAI.init({
+            window.DocsBotAI.mount({
               id: opts.id,
               supportCallback: opts.supportCallback,
             });
 
-            let waitForElm;
+            let waitForElem;
             waitForElem = function waitForElm(selector) {
               return new Promise((resolve) => {
                 if (document.querySelector(selector)) {
@@ -56,17 +56,17 @@
             };
 
             if (waitForElem) {
-              waitForElem("#docsbotai-root")
-                .then(() => {
-                  resolveScript();
-                })
-                .catch((_) => rejectScript());
+              waitForElem("#docsbotai-root").then(resolve).catch(reject);
             }
           });
-        });
-      }
 
-      loadDocsBotAI({
+          script.addEventListener("error", (error) => {
+            reject(esrror.message);
+          });
+        });
+      };
+
+      DocsBotAI.init({
         id: "ZrbLG98bbxZ9EFqiPvyl/SQMV36O8xi43xbZRzYLy",
         supportCallback: function (event, history) {
           event.preventDefault();
@@ -91,12 +91,13 @@
 
         const destroyBtn = document.getElementById("destroy-btn");
         destroyBtn.addEventListener("click", () => {
+          console.log("%cDocsBotAI", "color:cyan; ", DocsBotAI.unmount);
           DocsBotAI.unmount();
         });
 
         const reinitBtn = document.getElementById("reinit-btn");
         reinitBtn.addEventListener("click", () => {
-          loadDocsBotAI({
+          DocsBotAI.mount({
             id: "ZrbLG98bbxZ9EFqiPvyl/SQMV36O8xi43xbZRzYLy",
             supportCallback: function (event, history) {
               event.preventDefault();
