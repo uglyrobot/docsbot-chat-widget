@@ -15,7 +15,8 @@ import { decideTextColor } from "../../utils/colors";
 export const Chatbot = () => {
   const [chatInput, setChatInput] = useState("");
   const { dispatch, state } = useChatbot();
-  const { color, teamId, botId, botName, description, branding, labels } = useConfig();
+  const { color, teamId, botId, botName, description, branding, labels } =
+    useConfig();
   const ref = useRef();
   const inputRef = useRef();
 
@@ -182,7 +183,7 @@ export const Chatbot = () => {
                     <>
                       <BotChatMessage key={key} payload={message} />
                       {message?.options ? (
-                        <Options key={key+'opts'} options={message.options} />
+                        <Options key={key + "opts"} options={message.options} />
                       ) : null}
                     </>
                   ) : (

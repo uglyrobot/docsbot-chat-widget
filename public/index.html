@@ -9,16 +9,86 @@
 
   <body>
     <h1>Embeddable Widget Demo</h1>
-    <script src="./docsbotai-widget.js"></script>
+    <div>
+      <button id="open-btn">Open</button>
+      <button id="close-btn">Close</button>
+      <button id="toggle-btn">Toggle</button>
+      <button id="destroy-btn">Destroy</button>
+    </div>
     <script>
-      DocsBotAI.init({
-        id: "ZrbLG98bbxZ9EFqiPvyl/SQMV36O8xi43xbZRzYLy",
-        supportCallback: function (event, history) {
-          event.preventDefault();
-          console.log(history, DocsBotAI);
+      function loadDocsBotAI(opts) {
+        const script = document.createElement("script");
+        script.src = "/docsbotai-widget.js";
+        script.async = true;
+        script.type = "text/javascript";
+        document.body.append(script);
 
-        },
-      });
+        script.addEventListener("load", () => {
+          DocsBotAI.init({
+            id: "ZrbLG98bbxZ9EFqiPvyl/SQMV36O8xi43xbZRzYLy",
+            supportCallback: function (event, history) {
+              event.preventDefault();
+              console.log(history, DocsBotAI);
+            },
+          });
+
+          let waitForElm;
+          waitForElem = function waitForElm(selector) {
+            return new Promise((resolve) => {
+              if (document.querySelector(selector)) {
+                return resolve(document.querySelector(selector));
+              }
+
+              const observer = new MutationObserver((mutations) => {
+                if (document.querySelector(selector)) {
+                  resolve(document.querySelector(selector));
+                  observer.disconnect();
+                }
+              });
+
+              observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+              });
+            });
+          };
+
+          DocsBotAI.init({
+            id: "ZrbLG98bbxZ9EFqiPvyl/SQMV36O8xi43xbZRzYLy",
+            supportCallback: function (event, history) {
+              event.preventDefault();
+              console.log(history, DocsBotAI);
+            },
+          });
+
+          if (waitForElem) {
+            waitForElem("#docsbotai-root").then(() => {
+              console.log("mounted");
+              const openBtn = document.getElementById("open-btn");
+              openBtn.addEventListener("click", () => {
+                DocsBotAI.open();
+              });
+
+              const closeBtn = document.getElementById("close-btn");
+              closeBtn.addEventListener("click", () => {
+                DocsBotAI.close();
+              });
+
+              const toggleBtn = document.getElementById("toggle-btn");
+              toggleBtn.addEventListener("click", () => {
+                DocsBotAI.toggle();
+              });
+
+              const destroyBtn = document.getElementById("destroy-btn");
+              destroyBtn.addEventListener("click", () => {
+                DocsBotAI.unmount();
+              });
+            });
+          }
+        });
+      }
+
+      loadDocsBotAI();
     </script>
   </body>
 </html>

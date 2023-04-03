@@ -2,31 +2,60 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "../app/App";
 import { ConfigProvider } from "../configContext/ConfigContext";
+import { Emitter } from "../../utils/event-emitter";
 
 export default class EmbeddableWidget {
   static el;
+  static _root;
+  static _component;
+
+  static isChatbotOpen = false;
+
+  static open() {
+    this.isChatbotOpen = true;
+    Emitter.emit("OPEN_CHATBOT");
+  }
+
+  static close() {
+    this.isChatbotOpen = false;
+    Emitter.emit("CLOSE_CHATBOT");
+  }
+
+  static toggle() {
+    this.isChatbotOpen = !this.isChatbotOpen;
+    Emitter.emit("TOGGLE_CHATBOT", { isChatbotOpen: this.isChatbotOpen });
+  }
 
   static init({ parentElement = null, ...props } = {}) {
     const component = (
       <ConfigProvider {...props}>
-        <App {...props} />
+        <App isChatbotOpen={this.isChatbotOpen} {...props} />
       </ConfigProvider>
     );
 
-    function doRender() {
+    const doRender = () => {
       if (EmbeddableWidget.el) {
         throw new Error("EmbeddableWidget is already mounted, unmount first");
       }
       const el = document.createElement("div");
+      el.id = "docsbotai-root";
 
       if (parentElement) {
         document.querySelector(parentElement).appendChild(el);
       } else {
         document.body.appendChild(el);
       }
-      ReactDOM.createRoot(el).render(component);
-      EmbeddableWidget.el = el;
-    }
+
+      const root = ReactDOM.createRoot(el);
+      root.render(component);
+
+      this._root = root;
+
+      if (!EmbeddableWidget.el) {
+        EmbeddableWidget.el = el;
+      }
+    };
+
     if (document.readyState === "complete") {
       doRender();
     } else {
@@ -39,10 +68,11 @@ export default class EmbeddableWidget {
   static unmount() {
     if (!EmbeddableWidget.el) {
       console.info("EmbeddableWidget is not mounted, mount first");
-      return false
+      return false;
     }
-    ReactDOM.unmountComponentAtNode(EmbeddableWidget.el);
-    EmbeddableWidget.el.parentNode.removeChild(EmbeddableWidget.el);
+    const div_root = document.getElementById("docsbotai-root");
+    this._root.unmount();
+    div_root.remove();
     EmbeddableWidget.el = null;
   }
 }
