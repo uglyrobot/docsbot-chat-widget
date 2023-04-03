@@ -53,14 +53,6 @@
             });
           };
 
-          DocsBotAI.init({
-            id: "ZrbLG98bbxZ9EFqiPvyl/SQMV36O8xi43xbZRzYLy",
-            supportCallback: function (event, history) {
-              event.preventDefault();
-              console.log(history, DocsBotAI);
-            },
-          });
-
           if (waitForElem) {
             waitForElem("#docsbotai-root").then(() => {
               console.log("mounted");
