@@ -93,6 +93,17 @@
         destroyBtn.addEventListener("click", () => {
           DocsBotAI.unmount();
         });
+
+        const reinitBtn = document.getElementById("reinit-btn");
+        reinitBtn.addEventListener("click", () => {
+          loadDocsBotAI({
+            id: "ZrbLG98bbxZ9EFqiPvyl/SQMV36O8xi43xbZRzYLy",
+            supportCallback: function (event, history) {
+              event.preventDefault();
+              console.log(history, DocsBotAI);
+            },
+          });
+        });
       });
     </script>
   </body>
