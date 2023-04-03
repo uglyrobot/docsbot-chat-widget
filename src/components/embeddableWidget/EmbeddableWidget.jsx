@@ -26,7 +26,6 @@ export default class EmbeddableWidget {
   }
 
   static mount({ parentElement = null, ...props } = {}) {
-    console.log("%cprops", "color:cyan; ", props);
     const component = (
       <ConfigProvider {...props}>
         <App isChatbotOpen={this.isChatbotOpen} {...props} />
