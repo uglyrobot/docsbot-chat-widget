@@ -1,0 +1,3 @@
+function loadDocsBotAI(o){return new Promise((r,e)=>{const s=document.createElement("script");s.src="/docsbotai-widget.js",s.async=!0,s.type="text/javascript";const t=document.getElementsByTagName("script")[0];t.parentNode.insertBefore(s,t),s.addEventListener("load",()=>{DocsBotAI.init({id:o.id,supportCallback:o.supportCallback});let n;n=function n(o){return new Promise((r)=>{if(document.querySelector(o))return r(document.querySelector(o));const e=new MutationObserver((n)=>{document.querySelector(o)&& (r(document.querySelector(o)),e.disconnect())});e.observe(document.body,{childList:!0,subtree:!0})})},n&&n("#docsbotai-root").then(()=>{r()}).catch((o)=>e())})})}
+
+
