@@ -131,13 +131,14 @@
   justify-content: center;
   font-size: 0.7rem;
   color: #514f4f;
-  padding: 15px 0;
-  text-align: center;
+  padding: 15px 12.5px;
+  text-align: justify;
 }
 
 .docsbot-chat-header h1 {
   font-size: 0.9rem;
   margin-top: 0;
+  text-align: center;
 }
 
 .docsbot-chat-message-container {
