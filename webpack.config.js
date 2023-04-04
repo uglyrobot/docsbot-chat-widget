@@ -9,7 +9,7 @@ module.exports = (_, { mode }) => {
     output: {
       path: path.resolve(__dirname, "build"),
       publicPath: "/",
-      filename: "docsbotai-widget.js",
+      filename: "chat.js",
       library: "DocsBotAI",
       libraryExport: "default",
       libraryTarget: "window",
