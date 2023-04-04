@@ -28,7 +28,7 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
 
   return (
     <a
-      href=""
+      role="button"
       className={
         "floating-button" + (labels.showButtonLabel ? " has-label" : "")
       }
