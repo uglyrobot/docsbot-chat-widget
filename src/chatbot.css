@@ -114,13 +114,8 @@
   }
 }
 
-.docsbot-chat-container {
-  position: relative;
-  width: 275px;
-}
-
 .docsbot-chat-inner-container {
-  height: 500px;
+  height: 100%;
   background-color: rgb(249, 250, 250);
   border-radius: 3px;
   border-radius: 5px;
@@ -154,7 +149,7 @@
 .docsbot-chat-message-container {
   padding: 0 10px 0 10px;
   overflow: scroll;
-  height: 488px;
+  height: calc(100% - 112px);
   border-bottom-right-radius: 5px;
   border-bottom-left-radius: 5px;
 }

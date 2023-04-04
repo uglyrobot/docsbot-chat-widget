@@ -17,16 +17,23 @@
 .docsbot-wrapper {
   width: 400px;
   border-radius: 5px;
-  box-shadow: 5px 5px 13px rgb(91 81 81 / 40%);
   position: fixed;
   right: 20px;
   bottom: 100px;
+  min-height: 250px;
+  max-height: 650px;
+  border-radius: 4px;
+  opacity: 1;
+  box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 1px, rgba(0, 0, 0, 0.15) 0px 5px 30px 0px, rgba(0, 0, 0, 0.05) 0px 3px 3px 0px;
+  display: block;
+  z-index: 999999;
+  height: calc(100% - 120px);
 }
 
 .docsbot-chat-container {
   background-color: rgb(249, 250, 250);
   border-radius: 5px;
-  height: 600px;
+  height: 100%;
   animation: fadeIn 0.5s;
   width: 100%;
   font-family: Verdana, Geneva, Tahoma, sans-serif;
@@ -43,9 +50,15 @@
     width: 100%;
     right: 0;
     border-radius: 0;
+    height: calc(100% - 100px);
+    max-height: revert;
   }
   .docsbot-chat-inner-container {
     height: 100%;
+    border-radius: 0;
+  }
+
+  .docsbot-chat-header {
     border-radius: 0;
   }
 }

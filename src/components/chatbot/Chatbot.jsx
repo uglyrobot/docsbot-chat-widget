@@ -158,98 +158,94 @@ export const Chatbot = () => {
 
   return (
     <div className="docsbot-wrapper">
-      <div>
-        <div>
-          <div className="docsbot-chat-container">
-            <div className="docsbot-chat-inner-container">
-              <div
-                className="docsbot-chat-header"
-                style={{
-                  backgroundColor: color,
-                  color: decideTextColor(color || "#1292EE"),
-                }}
-              >
-                <div className="docsbot-chat-header-content">
-                  <h1>{botName}</h1>
-                  <span>{description}</span>
-                </div>
-              </div>
-              <div className="docsbot-chat-message-container" ref={ref}>
-                {Object.keys(state.messages).map((key) => {
-                  const message = state.messages[key];
-                  message.isLast = key === Object.keys(state.messages).pop();
-
-                  return message.variant === "chatbot" ? (
-                    <>
-                      <BotChatMessage key={key} payload={message} />
-                      {message?.options ? (
-                        <Options key={key + "opts"} options={message.options} />
-                      ) : null}
-                    </>
-                  ) : (
-                    <UserChatMessage
-                      key={key}
-                      loading={message.loading}
-                      message={message.message}
-                    />
-                  );
-                })}
-                {branding && (
-                  <div className="docsbot-chat-credits">
-                    <a
-                      href="https://docsbot.ai?utm_source=chatbot&utm_medium=chatbot&utm_campaign=chatbot"
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      aria-label={labels.poweredBy + " DocsBot"}
-                    >
-                      {labels.poweredBy} <DocsBotLogo />
-                    </a>
-                  </div>
-                )}
-              </div>
-              <div className="docsbot-chat-input-container">
-                <form
-                  className="docsbot-chat-input-form"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-
-                    dispatch({
-                      type: "add_message",
-                      payload: {
-                        variant: "user",
-                        message: chatInput,
-                        loading: false,
-                      },
-                    });
-                    setChatInput("");
-                    fetchAnswer();
-                    inputRef.current.focus();
-                  }}
-                >
-                  <input
-                    className="docsbot-chat-input"
-                    placeholder={labels.inputPlaceholder}
-                    value={chatInput}
-                    onChange={(e) => {
-                      setChatInput(e.target.value);
-                    }}
-                    ref={inputRef}
-                    minLength={10}
-                    maxLength={200}
-                  />
-                  <button
-                    type="submit"
-                    className="docsbot-chat-btn-send"
-                    style={{
-                      fill: color,
-                    }}
-                    disabled={chatInput.length < 10}
-                  >
-                    <SendIcon />
-                  </button>
-                </form>
-              </div>
+      <div className="docsbot-chat-container">
+        <div className="docsbot-chat-inner-container">
+          <div
+            className="docsbot-chat-header"
+            style={{
+              backgroundColor: color,
+              color: decideTextColor(color || "#1292EE"),
+            }}
+          >
+            <div className="docsbot-chat-header-content">
+              <h1>{botName}</h1>
+              <span>{description}</span>
             </div>
+          </div>
+          <div className="docsbot-chat-message-container" ref={ref}>
+            {Object.keys(state.messages).map((key) => {
+              const message = state.messages[key];
+              message.isLast = key === Object.keys(state.messages).pop();
+
+              return message.variant === "chatbot" ? (
+                <>
+                  <BotChatMessage key={key} payload={message} />
+                  {message?.options ? (
+                    <Options key={key + "opts"} options={message.options} />
+                  ) : null}
+                </>
+              ) : (
+                <UserChatMessage
+                  key={key}
+                  loading={message.loading}
+                  message={message.message}
+                />
+              );
+            })}
+            {branding && (
+              <div className="docsbot-chat-credits">
+                <a
+                  href="https://docsbot.ai?utm_source=chatbot&utm_medium=chatbot&utm_campaign=chatbot"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  aria-label={labels.poweredBy + " DocsBot"}
+                >
+                  {labels.poweredBy} <DocsBotLogo />
+                </a>
+              </div>
+            )}
+          </div>
+          <div className="docsbot-chat-input-container">
+            <form
+              className="docsbot-chat-input-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+
+                dispatch({
+                  type: "add_message",
+                  payload: {
+                    variant: "user",
+                    message: chatInput,
+                    loading: false,
+                  },
+                });
+                setChatInput("");
+                fetchAnswer();
+                inputRef.current.focus();
+              }}
+            >
+              <input
+                className="docsbot-chat-input"
+                placeholder={labels.inputPlaceholder}
+                value={chatInput}
+                onChange={(e) => {
+                  setChatInput(e.target.value);
+                }}
+                ref={inputRef}
+                minLength={10}
+                maxLength={200}
+              />
+              <button
+                type="submit"
+                className="docsbot-chat-btn-send"
+                style={{
+                  fill: color,
+                }}
+                disabled={chatInput.length < 10}
+              >
+                <SendIcon />
+              </button>
+            </form>
           </div>
         </div>
       </div>
