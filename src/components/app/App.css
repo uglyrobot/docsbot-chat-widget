@@ -28,6 +28,7 @@
   display: block;
   z-index: 999999;
   height: calc(100% - 120px);
+  line-height: 1em;
 }
 
 .docsbot-chat-container {
