@@ -234,6 +234,10 @@
   margin: 0 auto;
 }
 
+.docsbot-chat-bot-message pre {
+  overflow: scroll;
+}
+
 .docsbot-chat-bot-message p {
   margin-top: 0;
 }

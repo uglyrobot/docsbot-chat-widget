@@ -12,7 +12,7 @@ import { useConfig } from "../configContext/ConfigContext";
 import { decideTextColor } from "../../utils/colors";
 
 export const FloatingButton = ({ isOpen, setIsOpen }) => {
-  const { color, icon, labels } = useConfig();
+  const { color, icon, labels, showButtonLabel } = useConfig();
 
   //icon can be default, robot, life-ring, or question-circle
   const iconMap = {
@@ -30,7 +30,7 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
     <a
       role="button"
       className={
-        "floating-button" + (labels.showButtonLabel ? " has-label" : "")
+        "floating-button" + (showButtonLabel ? " has-label" : "")
       }
       onClick={(e) => {
         e.preventDefault();
@@ -43,7 +43,7 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
       sr-label="Open/close chat"
     >
       <FontAwesomeIcon size="xl" icon={iconToUse} />
-      {labels.showButtonLabel ? (
+      {showButtonLabel ? (
         <span className="floating-button-label">{labels.floatingButton}</span>
       ) : null}
     </a>
