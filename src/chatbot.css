@@ -15,6 +15,8 @@
   font-weight: medium;
   position: relative;
   text-align: left;
+  overflow-wrap: break-word;
+  overflow: hidden;
 }
 
 .docsbot-chat-bot-message-container {
@@ -51,6 +53,8 @@
   margin-left: auto;
   text-align: left;
   border: 0.5px solid rgb(197, 206, 214);
+  overflow-wrap: break-word;
+  overflow: hidden;
 }
 
 .docsbot-chat-bot-message-meta {
