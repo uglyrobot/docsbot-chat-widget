@@ -19,7 +19,7 @@ export function decideTextColor(color) {
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   
     // Return white for dark colors and a darker shade of the background color for light colors
-    if (luminance > 0.5) {
+    if (luminance > 0.6) {
       const darkerR = Math.floor(r * 0.4);
       const darkerG = Math.floor(g * 0.4);
       const darkerB = Math.floor(b * 0.4);
