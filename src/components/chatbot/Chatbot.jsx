@@ -11,11 +11,12 @@ import { SendIcon } from "../icons/SendIcon";
 import { Options } from "../options/Options";
 import { DocsBotLogo } from "../icons/DocsBotLogo";
 import { decideTextColor } from "../../utils/colors";
+import clsx from "clsx";
 
 export const Chatbot = () => {
   const [chatInput, setChatInput] = useState("");
   const { dispatch, state } = useChatbot();
-  const { color, teamId, botId, botName, description, branding, labels } =
+  const { color, teamId, botId, botName, description, branding, labels, alignment } =
     useConfig();
   const ref = useRef();
   const inputRef = useRef();
@@ -157,7 +158,12 @@ export const Chatbot = () => {
   }
 
   return (
-    <div className="docsbot-wrapper">
+    <div
+      className={clsx(
+        alignment === "left" ? "docsbot-left" : "",
+        "docsbot-wrapper"
+      )}
+    >
       <div className="docsbot-chat-container">
         <div className="docsbot-chat-inner-container">
           <div

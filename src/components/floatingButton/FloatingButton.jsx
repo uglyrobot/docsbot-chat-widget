@@ -10,9 +10,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useConfig } from "../configContext/ConfigContext";
 import { decideTextColor } from "../../utils/colors";
+import clsx from "clsx";
 
 export const FloatingButton = ({ isOpen, setIsOpen }) => {
-  const { color, icon, labels, showButtonLabel } = useConfig();
+  const { color, icon, labels, showButtonLabel, alignment } = useConfig();
 
   //icon can be default, robot, life-ring, or question-circle
   const iconMap = {
@@ -29,9 +30,11 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
   return (
     <a
       role="button"
-      className={
-        "floating-button" + (showButtonLabel ? " has-label" : "")
-      }
+      className={clsx(
+        showButtonLabel ? "has-label" : "",
+        alignment === "left" ? "docsbot-left" : "",
+        "floating-button"
+      )}
       onClick={(e) => {
         e.preventDefault();
         setIsOpen(!isOpen);
