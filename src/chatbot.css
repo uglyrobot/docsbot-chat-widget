@@ -87,14 +87,14 @@
 }
 
 .docsbot-chat-suggested-questions-container button {
-  background-color: #fff;
-  padding: 10px;
-  border-radius: 5px;
-  border-bottom-right-radius: 0;
-  border: 0.5px solid rgb(197, 206, 214);
-  font-size: 0.9rem;
-  color: #585858;
-  font-weight: medium;
+  color: #4b4b4b;
+  font-size: 0.8rem;
+  text-decoration: none;
+  padding: 0.25rem 0.75rem;
+  border-radius: 25px;
+  background: #e8e8e8;
+  border: 0.5px solid rgb(145, 145, 145);
+  opacity: 0.8;
   position: relative;
   text-align: left;
   overflow-wrap: break-word;

@@ -10,7 +10,7 @@ import { UserChatMessage } from "../userChatMessage/UserChatMessage";
 import { SendIcon } from "../icons/SendIcon";
 import { Options } from "../options/Options";
 import { DocsBotLogo } from "../icons/DocsBotLogo";
-import { decideTextColor } from "../../utils/colors";
+import { getLighterColor, decideTextColor } from "../../utils/colors";
 import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
@@ -237,7 +237,12 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
             {Object.keys(state.messages).length <= 1 && (
               <>
                 <div className='docsbot-chat-suggested-questions-container'>
-                  <span style={{'textAlign': 'left', 'fontSize': 'small', 'marginRight': '5px'}}>
+                  <span style={{
+                    'textAlign': 'left',
+                    'fontSize': 'small',
+                    'marginRight': '5px',
+                    'color': decideTextColor(getLighterColor(color || "#1292EE", 0.93))
+                  }}>
                     Not sure what to ask?
                   </span>
                 </div>
@@ -249,6 +254,10 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                       <button
                       type="button"
                       onClick={() => setChatInput(question)}
+                      style={{
+                        backgroundColor: getLighterColor(color || "#1292EE", 0.93),
+                        color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)),
+                      }}
                       >
                         <span>
                           {question}
