@@ -197,11 +197,22 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
               color: decideTextColor(color || "#1292EE"),
             }}
           >
+            <div>
             <div className="docsbot-chat-header-content">
               <h1>{botName}</h1>
               <span>{description}</span>
             </div>
+            <div className="docsbot-chat-header-background-wrapper">
+              <div
+                className="docsbot-chat-header-background"
+                style={{
+                  backgroundColor: color,
+                }}
+              ></div>
+            </div>
+            </div>
           </div>
+
           <div className="docsbot-chat-message-container" ref={ref}>
             {Object.keys(state.messages).map((key) => {
               const message = state.messages[key];
