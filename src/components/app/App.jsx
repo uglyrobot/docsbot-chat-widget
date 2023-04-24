@@ -43,7 +43,7 @@ function App() {
       <FloatingButton {...{isOpen, setIsOpen}} />
       {isOpen ? (
         <ChatbotProvider>
-          <Chatbot />
+          <Chatbot {...{isOpen, setIsOpen}} />
         </ChatbotProvider>
       ) : null}
     </ReactShadowRoot>

@@ -33,6 +33,7 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
       className={clsx(
         showButtonLabel ? "has-label" : "",
         alignment === "left" ? "docsbot-left" : "",
+        isOpen ? "is-open" : "",
         "floating-button"
       )}
       onClick={(e) => {
