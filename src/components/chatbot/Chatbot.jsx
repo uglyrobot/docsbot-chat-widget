@@ -234,7 +234,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                 />
               );
             })}
-            {Object.keys(state.messages).length <= 1 && (
+            {Object.keys(state.messages).length <= 1 && Object.keys(questions).length >= 1 && (
               <>
                 <div className='docsbot-chat-suggested-questions-container'>
                   <span style={{
