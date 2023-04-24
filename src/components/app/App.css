@@ -51,7 +51,7 @@
 }
 
 /* on mobile make the chat window full screen */
-@media (max-width: 768px) {
+@media (max-width: 480px) {
   .docsbot-wrapper {
     width: 100%;
     right: 0;
@@ -66,6 +66,9 @@
     left: 0;
     right: unset;
   }
+  .docsbot-chat-container {
+    border-radius: 0;
+  }
   .floating-button.is-open {
     display: none;
   }
@@ -74,10 +77,6 @@
   }
   .docsbot-chat-inner-container {
     height: 100%;
-    border-radius: 0;
-  }
-
-  .docsbot-chat-header {
     border-radius: 0;
   }
 }
