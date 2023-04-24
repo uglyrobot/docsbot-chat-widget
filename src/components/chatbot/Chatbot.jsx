@@ -243,7 +243,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                     'marginRight': '5px',
                     'color': decideTextColor(getLighterColor(color || "#1292EE", 0.93))
                   }}>
-                    Not sure what to ask?
+                    {labels.suggestions}
                   </span>
                 </div>
                 {Object.keys(questions).map((index) => {
