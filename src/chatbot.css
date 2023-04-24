@@ -57,6 +57,38 @@
   overflow: hidden;
 }
 
+.docsbot-chat-suggested-questions-container {
+  display: flex;
+  text-justify: right;
+  padding-bottom: 4px;
+  overflow: hidden;
+}
+
+.docsbot-chat-suggested-questions-container button {
+  background-color: #fff;
+  border: 1px solid #d8d8d8;
+  border-radius: 5px;
+  padding: 5px 10px;
+  margin-right: 5px;
+  font-size: 0.8rem;
+  color: #585858;
+  font-weight: medium;
+  position: relative;
+  text-align: left;
+  overflow-wrap: break-word;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.docsbot-chat-suggested-questions-container button p {
+  font-size: small;
+  justify-items: left;
+  height: 25px;
+  padding: 2px;
+  white-space: nowrap;
+  width: 100%;
+}
+
 .docsbot-chat-bot-message-meta {
   display: flex;
   justify-content: space-between;

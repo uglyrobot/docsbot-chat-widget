@@ -13,10 +13,11 @@ import { DocsBotLogo } from "../icons/DocsBotLogo";
 import { decideTextColor } from "../../utils/colors";
 import clsx from "clsx";
 
+
 export const Chatbot = () => {
   const [chatInput, setChatInput] = useState("");
   const { dispatch, state } = useChatbot();
-  const { color, teamId, botId, botName, description, branding, labels, alignment } =
+  const { color, teamId, botId, botName, description, branding, labels, alignment, questions } =
     useConfig();
   const ref = useRef();
   const inputRef = useRef();
@@ -53,7 +54,7 @@ export const Chatbot = () => {
     const history = state.chatHistory || [];
     const req = { question: chatInput, markdown: true, history };
 
-    const apiUrl = `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
+    const apiUrl = `ws://localhost:9000/teams/${teamId}/bots/${botId}/chat`;
     const ws = new WebSocket(apiUrl);
 
     // Send message to server when connection is established
@@ -209,6 +210,25 @@ export const Chatbot = () => {
                   {labels.poweredBy} <DocsBotLogo />
                 </a>
               </div>
+            )}
+          </div>
+          <div className='docsbot-chat-suggested-questions-container'>
+            {state.messages.length <= 1 && questions && questions.length > 0 && (
+              questions.map((recommendedQuestion, index) => {
+
+                console.log(recommendedQuestion, index)
+                return (
+                  <button
+                  type="button"
+                  onClick={() => setChatInput(recommendedQuestion)}
+                  key={index}
+                  >
+                    <p key={index}>
+                      {recommendedQuestion}
+                    </p>
+                  </button>
+                )
+              })
             )}
           </div>
           <div className="docsbot-chat-input-container">
