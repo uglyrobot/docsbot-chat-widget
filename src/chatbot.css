@@ -82,18 +82,17 @@
 
 .docsbot-chat-suggested-questions-container {
   display: flex;
-  text-justify: right;
-  padding-bottom: 4px;
-  overflow: hidden;
+  margin-top: 7px;
+  justify-content: flex-end;
 }
 
 .docsbot-chat-suggested-questions-container button {
   background-color: #fff;
-  border: 1px solid #d8d8d8;
+  padding: 10px;
   border-radius: 5px;
-  padding: 5px 10px;
-  margin-right: 5px;
-  font-size: 0.8rem;
+  border-bottom-right-radius: 0;
+  border: 0.5px solid rgb(197, 206, 214);
+  font-size: 0.9rem;
   color: #585858;
   font-weight: medium;
   position: relative;
@@ -103,11 +102,10 @@
   cursor: pointer;
 }
 
-.docsbot-chat-suggested-questions-container button p {
+.docsbot-chat-suggested-questions-container button span {
   font-size: small;
   justify-items: left;
-  height: 25px;
-  padding: 2px;
+  padding: 0;
   white-space: nowrap;
   width: 100%;
 }

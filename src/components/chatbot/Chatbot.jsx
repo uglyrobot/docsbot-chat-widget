@@ -234,6 +234,31 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                 />
               );
             })}
+            {Object.keys(state.messages).length <= 1 && (
+              <>
+                <div className='docsbot-chat-suggested-questions-container'>
+                  <span style={{'textAlign': 'left', 'fontSize': 'small', 'marginRight': '5px'}}>
+                    Not sure what to ask?
+                  </span>
+                </div>
+                {Object.keys(questions).map((index) => {
+                  const question = questions[index];
+                  console.log(question, index)
+                  return (
+                    <div className='docsbot-chat-suggested-questions-container' key={"question" + index}>
+                      <button
+                      type="button"
+                      onClick={() => setChatInput(question)}
+                      >
+                        <span>
+                          {question}
+                        </span>
+                      </button>
+                    </div>
+                  )
+                })}
+              </>
+            )}
             {branding && (
               <div className="docsbot-chat-credits">
                 <a
@@ -245,25 +270,6 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                   {labels.poweredBy} <DocsBotLogo />
                 </a>
               </div>
-            )}
-          </div>
-          <div className='docsbot-chat-suggested-questions-container'>
-            {state.messages.length <= 1 && questions && questions.length > 0 && (
-              questions.map((recommendedQuestion, index) => {
-
-                console.log(recommendedQuestion, index)
-                return (
-                  <button
-                  type="button"
-                  onClick={() => setChatInput(recommendedQuestion)}
-                  key={index}
-                  >
-                    <p key={index}>
-                      {recommendedQuestion}
-                    </p>
-                  </button>
-                )
-              })
             )}
           </div>
           <div className="docsbot-chat-input-container">
