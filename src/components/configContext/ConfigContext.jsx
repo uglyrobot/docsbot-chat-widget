@@ -41,7 +41,7 @@ export function ConfigProvider(props = {}) {
 
   useEffect(() => {
     if (id && !config) {
-      const apiUrl = `http://localhost:3000/api/widget/${id}`;
+      const apiUrl = `https://docsbot.ai/api/widget/${id}`;
 
       fetch(apiUrl, {
         method: "GET",

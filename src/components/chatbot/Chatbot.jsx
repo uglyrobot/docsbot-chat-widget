@@ -64,7 +64,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     const history = state.chatHistory || [];
     const req = { question: chatInput, markdown: true, history };
 
-    const apiUrl = `ws://localhost:9000/teams/${teamId}/bots/${botId}/chat`;
+    const apiUrl = `wss://api.docsbot.api/teams/${teamId}/bots/${botId}/chat`;
     const ws = new WebSocket(apiUrl);
 
     // Send message to server when connection is established
