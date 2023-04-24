@@ -12,12 +12,22 @@ import { Options } from "../options/Options";
 import { DocsBotLogo } from "../icons/DocsBotLogo";
 import { decideTextColor } from "../../utils/colors";
 import clsx from "clsx";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
 
-export const Chatbot = () => {
+export const Chatbot = ({ isOpen, setIsOpen }) => {
   const [chatInput, setChatInput] = useState("");
   const { dispatch, state } = useChatbot();
-  const { color, teamId, botId, botName, description, branding, labels, alignment } =
-    useConfig();
+  const {
+    color,
+    teamId,
+    botId,
+    botName,
+    description,
+    branding,
+    labels,
+    alignment,
+  } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
 
@@ -166,6 +176,20 @@ export const Chatbot = () => {
     >
       <div className="docsbot-chat-container">
         <div className="docsbot-chat-inner-container">
+          <a
+            role="button"
+            className={"mobile-close-button"}
+            onClick={(e) => {
+              e.preventDefault();
+              setIsOpen(false);
+            }}
+            sr-label="Close chat"
+          >
+            <FontAwesomeIcon size="lg" icon={faXmark} />
+            <span className="mobile-close-button-label">
+              {labels.close || "Close"}
+            </span>
+          </a>
           <div
             className="docsbot-chat-header"
             style={{
