@@ -1,7 +1,7 @@
 {
   "scripts": {
     "build": "webpack --mode production",
-    "start": "webpack serve --mode development --port 8080",
+    "start": "webpack serve --mode development --client-overlay --port=3005",
     "preview": "npm run build && serve build",
     "prepare": "npm run build && rm build/index.html"
   },

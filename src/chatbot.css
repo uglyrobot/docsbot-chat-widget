@@ -1,6 +1,5 @@
 .mobile-close-button {
   color: #fff;
-  width: 100%;
   text-align: center;
   display: none;
   -webkit-box-align: center;
@@ -11,8 +10,7 @@
   -webkit-box-pack: center;
   justify-content: center;
   padding: 6px;
-  width: 100%;
-  font-size: 12px;
+  font-size: 0.8em;
   z-index: 99999999;
 }
 
@@ -65,7 +63,7 @@
 }
 
 .docsbot-chat-bot-message {
-  background-color: #f1f1f1;
+  background-color: #dadada;
   padding: 10px;
   border-radius: 5px;
   border-top-left-radius: 0;
@@ -81,9 +79,14 @@
 }
 
 .docsbot-chat-suggested-questions-container {
-  display: flex;
   margin-top: 7px;
-  justify-content: flex-end;
+  display: grid;
+}
+
+.docsbot-chat-suggested-questions-container span {
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: right;
 }
 
 .docsbot-chat-suggested-questions-container button {
@@ -91,23 +94,14 @@
   font-size: 0.8rem;
   text-decoration: none;
   padding: 0.25rem 0.75rem;
-  border-radius: 25px;
-  background: #e8e8e8;
+  border-radius: 12.5px;
+  background: #ffffff;
   border: 0.5px solid rgb(145, 145, 145);
-  opacity: 0.8;
-  position: relative;
-  text-align: left;
+  text-align: justify;
   overflow-wrap: break-word;
-  overflow: hidden;
   cursor: pointer;
-}
-
-.docsbot-chat-suggested-questions-container button span {
-  font-size: small;
-  justify-items: left;
-  padding: 0;
-  white-space: nowrap;
-  width: 100%;
+  margin-top: 5px;
+  margin-left: auto;
 }
 
 .docsbot-chat-bot-message-meta {
@@ -187,7 +181,6 @@
   color: #514f4f;
   padding: 15px 12.5px;
   text-align: justify;
-  margin-bottom: 20px;
   background-color: #efefef;
 }
 
@@ -200,7 +193,9 @@
   justify-content: center;
   width: 100%;
   overflow: hidden;
+  z-index: 99999998;
 }
+
 .docsbot-chat-header-background {
   border-radius: 50%;
   bottom: 0px;
@@ -223,8 +218,8 @@
 }
 
 .docsbot-chat-message-container {
-  padding: 0 10px 0 10px;
-  overflow: scroll;
+  padding: 15px 10px 0 10px;
+  overflow-y: scroll;
   height: 100%;
 }
 
@@ -266,7 +261,6 @@
   display: flex;
   border: none;
   border-top: 1px solid #d8d8d8;
-  z-index: 99999999;
 }
 
 .docsbot-chat-input {
