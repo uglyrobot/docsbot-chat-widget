@@ -47,6 +47,7 @@ function chatbotReducer(state, action) {
 export function ChatbotProvider({ children }) {
   const [state, dispatch] = React.useReducer(chatbotReducer, {
     messages: [],
+    suggestions: [],
     chatInput: "",
   });
   const value = { state, dispatch };

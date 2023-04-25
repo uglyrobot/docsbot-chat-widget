@@ -10,7 +10,7 @@ import { UserChatMessage } from "../userChatMessage/UserChatMessage";
 import { SendIcon } from "../icons/SendIcon";
 import { Options } from "../options/Options";
 import { DocsBotLogo } from "../icons/DocsBotLogo";
-import { decideTextColor } from "../../utils/colors";
+import { getLighterColor, decideTextColor } from "../../utils/colors";
 import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
@@ -27,6 +27,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     branding,
     labels,
     alignment,
+    questions,
   } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
@@ -45,7 +46,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     inputRef.current.focus();
   }, [labels.firstMessage]);
 
-  function fetchAnswer() {
+  function fetchAnswer(question) {
     const id = uuidv4();
 
     dispatch({
@@ -61,7 +62,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
 
     let answer = "";
     const history = state.chatHistory || [];
-    const req = { question: chatInput, markdown: true, history };
+    const req = { question, markdown: true, history };
 
     const apiUrl = `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
     const ws = new WebSocket(apiUrl);
@@ -198,18 +199,18 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
             }}
           >
             <div>
-            <div className="docsbot-chat-header-content">
-              <h1>{botName}</h1>
-              <span>{description}</span>
-            </div>
-            <div className="docsbot-chat-header-background-wrapper">
-              <div
-                className="docsbot-chat-header-background"
-                style={{
-                  backgroundColor: color,
-                }}
-              ></div>
-            </div>
+              <div className="docsbot-chat-header-content">
+                <h1>{botName}</h1>
+                <span>{description}</span>
+              </div>
+              <div className="docsbot-chat-header-background-wrapper">
+                <div
+                  className="docsbot-chat-header-background"
+                  style={{
+                    backgroundColor: color,
+                  }}
+                ></div>
+              </div>
             </div>
           </div>
 
@@ -233,6 +234,50 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                 />
               );
             })}
+            {Object.keys(state.messages).length <= 1 &&
+              Object.keys(questions).length >= 1 && (
+                <div className="docsbot-chat-suggested-questions-container">
+                  <span
+                    style={{
+                      color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)),
+                    }}
+                  >
+                    {labels.suggestions}
+                  </span>
+                  {Object.keys(questions).map((index) => {
+                    const question = questions[index];
+                    return (
+                      <button
+                        key={"question" + index}
+                        type="button"
+                        onClick={() => {
+                          dispatch({
+                            type: "add_message",
+                            payload: {
+                              variant: "user",
+                              message: question,
+                              loading: false,
+                            },
+                          });
+                          fetchAnswer(question);
+                          setChatInput("");
+                        }}
+                        style={{
+                          backgroundColor: getLighterColor(
+                            color || "#1292EE",
+                            0.95
+                          ),
+                          color: decideTextColor(
+                            getLighterColor(color || "#1292EE", 0.95)
+                          ),
+                        }}
+                      >
+                        {question}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             {branding && (
               <div className="docsbot-chat-credits">
                 <a
@@ -260,8 +305,8 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                     loading: false,
                   },
                 });
+                fetchAnswer(chatInput);
                 setChatInput("");
-                fetchAnswer();
                 inputRef.current.focus();
               }}
             >

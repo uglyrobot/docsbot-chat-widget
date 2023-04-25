@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import random from "random";
 
 const ConfigContext = createContext();
 
@@ -8,6 +9,30 @@ export function useConfig() {
     throw new Error(`useConfig must be used within a ConfigProvider`);
   }
   return context;
+}
+
+const grabQuestions = (questions) => {
+  // grab at most 3 unique questions from the bot
+  if (questions) {
+    const randomQuestions = []
+    const questionsLimit = questions.length > 3 ? 3 : questions.length
+
+    for (let i = 0; i < questionsLimit; i++) {
+      const randomIndex = random.int(0, questions.length - 1)
+
+      // check if question is already included
+      if (randomQuestions.includes(questions[randomIndex])) {
+        i--
+        continue
+      }
+
+      randomQuestions.push(questions[randomIndex])
+    }
+
+    return randomQuestions
+  }
+
+  return []
 }
 
 export function ConfigProvider(props = {}) {
@@ -23,6 +48,13 @@ export function ConfigProvider(props = {}) {
       })
         .then((response) => response.json())
         .then((data) => {
+          if (data.questions) {
+            data.questions = grabQuestions(data.questions) // limit the number of questions
+          } else {
+            data.questions = []
+          }
+
+          console.log(data)
           setConfig({ ...data, supportCallback });
         })
         .catch((e) => {

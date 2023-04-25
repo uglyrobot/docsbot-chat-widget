@@ -1,7 +1,7 @@
 {
   "scripts": {
     "build": "webpack --mode production",
-    "start": "webpack serve --mode development",
+    "start": "webpack serve --mode development --client-overlay --port=3005",
     "preview": "npm run build && serve build",
     "prepare": "npm run build && rm build/index.html"
   },
@@ -29,6 +29,7 @@
     "@fortawesome/react-fontawesome": "^0.2.0",
     "clsx": "^1.2.1",
     "eventemitter3": "^5.0.0",
+    "random": "^4.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-shadow-root": "^6.2.0",

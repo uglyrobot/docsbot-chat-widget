@@ -103,14 +103,14 @@ export const BotChatMessage = ({ payload }) => {
                           style={{ opacity: rating === -1 ? 1 : null }}
                           title={labels.unhelpful}
                         >
-                          <FontAwesomeIcon icon={faFaceFrownOpen} />
+                          <FontAwesomeIcon icon={faFaceFrownOpen} size="lg" />
                         </button>
                         <button
                           onClick={(e) => saveRating(1)}
                           style={{ opacity: rating === 1 ? 1 : null }}
                           title={labels.helpful}
                         >
-                          <FontAwesomeIcon icon={faFaceGrin} />
+                          <FontAwesomeIcon icon={faFaceGrin} size="lg" />
                         </button>
                       </div>
                     </div>
