@@ -32,6 +32,7 @@
   border-bottom-right-radius: 0;
   border: 0.5px solid rgb(197, 206, 214);
   font-size: 0.9rem;
+  line-height: 1.4;
   color: #585858;
   font-weight: medium;
   position: relative;
@@ -68,6 +69,7 @@
   border-radius: 5px;
   border-top-left-radius: 0;
   font-size: 0.9rem;
+  line-height: 1.4;
   color: #494646;
   font-weight: medium;
   position: relative;
