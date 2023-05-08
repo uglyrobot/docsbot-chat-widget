@@ -18,6 +18,22 @@ export const BotChatMessage = ({ payload }) => {
   const { color, teamId, botId, labels, supportLink, supportCallback } = useConfig();
   const { dispatch, state } = useChatbot();
 
+  const runSupportCallback = (e, history) => {
+    // post to api endpoint
+    const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/support/${payload.answerId}`;
+
+    fetch(apiUrl, {
+      method: "PUT",
+    }).then((response) => {
+      const data = response.json()
+    }).catch((e) => {
+      console.warn(e);
+    });
+
+    // pass event
+    supportCallback(e, history)
+  }
+
   // make api call to rate
   const saveRating = async (newRating = 0) => {
     setRating(newRating);
@@ -131,8 +147,7 @@ export const BotChatMessage = ({ payload }) => {
       {payload.isLast && supportLink && ( payload.sources || payload.error ) && (
         <div className="docsbot-chat-bot-message-support">
           <a
-            href={supportLink}
-            onClick={(e) => supportCallback(e, state.chatHistory || [])}
+            onClick={(e) => runSupportCallback(e, state.chatHistory || [])}
             style={{
               backgroundColor: getLighterColor(color || "#1292EE", 0.93),
               color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)),
