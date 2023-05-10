@@ -54,7 +54,6 @@ export function ConfigProvider(props = {}) {
             data.questions = []
           }
 
-          console.log(data)
           setConfig({ ...data, supportCallback });
         })
         .catch((e) => {

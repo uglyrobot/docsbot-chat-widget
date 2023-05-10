@@ -120,7 +120,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
             },
           });
         } else if (data.type === "info") {
-          console.log(data.message);
+          // console.log(data.message);
         } else if (data.type === "end") {
           const finalData = JSON.parse(data.message);
           dispatch({
