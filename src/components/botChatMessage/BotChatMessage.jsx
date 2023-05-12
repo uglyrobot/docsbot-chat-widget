@@ -26,6 +26,10 @@ export const BotChatMessage = ({ payload }) => {
       method: "PUT",
     }).then((response) => {
       const data = response.json()
+      // navigate to support link ('#' is a reserved value for no link but still show the support button)
+      if (supportLink && supportLink !== "#") {
+        window.location = supportLink
+      }
     }).catch((e) => {
       console.warn(e);
     });
