@@ -10,7 +10,7 @@
   -webkit-box-pack: center;
   justify-content: center;
   padding: 6px;
-  font-size: 0.8em;
+  font-size: 12.8px;
   z-index: 99999999;
 }
 
@@ -31,7 +31,7 @@
   border-radius: 5px;
   border-bottom-right-radius: 0;
   border: 0.5px solid rgb(197, 206, 214);
-  font-size: 0.9rem;
+  font-size: 14.4px;
   line-height: 1.4;
   color: #585858;
   font-weight: medium;
@@ -51,7 +51,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  font-size: 1.2rem;
+  font-size: 19.2px;
   margin-right: 8px;
   background-color: #d8d8d8;
   display: flex;
@@ -68,7 +68,7 @@
   padding: 10px;
   border-radius: 5px;
   border-top-left-radius: 0;
-  font-size: 0.9rem;
+  font-size: 14.4px;
   line-height: 1.4;
   color: #494646;
   font-weight: medium;
@@ -86,16 +86,16 @@
 }
 
 .docsbot-chat-suggested-questions-container span {
-  font-size: 0.9rem;
+  font-size: 14.4px;
   font-weight: 500;
   text-align: right;
 }
 
 .docsbot-chat-suggested-questions-container button {
   color: #4b4b4b;
-  font-size: 0.8rem;
+  font-size: 12.8px;
   text-decoration: none;
-  padding: 0.25rem 0.75rem;
+  padding: 4px 12px;
   border-radius: 12.5px;
   background: #ffffff;
   border: 0.5px solid rgb(145, 145, 145);
@@ -109,7 +109,7 @@
 .docsbot-chat-bot-message-meta {
   display: flex;
   justify-content: space-between;
-  font-size: 0.7rem;
+  font-size: 11.2px;
 }
 
 .docbot-chat-bot-message-rate {
@@ -179,7 +179,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 11.2px;
   color: #514f4f;
   padding: 15px 12.5px;
   text-align: justify;
@@ -214,7 +214,7 @@
 }
 
 .docsbot-chat-header h1 {
-  font-size: 0.9rem;
+  font-size: 14.4px;
   margin-top: 0;
   text-align: center;
 }
@@ -239,7 +239,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 0.6rem;
+  font-size: 9.6px;
   color: #a3a3a3;
   text-decoration: none;
 }
@@ -269,7 +269,7 @@
   width: 100%;
   padding: 12.5px 3px 12.5px 12.5px;
   border: none;
-  font-size: 0.85rem;
+  font-size: 13.6px;
 }
 
 .docsbot-chat-input:focus {
@@ -326,12 +326,12 @@
   color: inherit;
   font-weight: bold;
   padding: 0;
-  margin-top: 0.5em;
+  margin-top: 8px;
   cursor: pointer;
 }
 
 .docsbot-chat-bot-message .docsbot-sources svg {
-  margin-right: 0.25em;
+  margin-right: 4px;
 }
 
 .docsbot-chat-bot-message .docsbot-sources {
@@ -360,9 +360,9 @@
 
 .docsbot-chat-bot-message-support a {
   color: #4b4b4b;
-  font-size: 0.8rem;
+  font-size: 12.8px;
   text-decoration: none;
-  padding: 0.25rem 0.75rem;
+  padding: 4px 12px;
   border-radius: 25px;
   background: #e8e8e8;
   border: 0.5px solid rgb(145, 145, 145);
