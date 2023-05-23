@@ -20,55 +20,9 @@
       <button id="reinit-btn">Reinitialize</button>
     </div>
     <script>
-      window.DocsBotAI = window.DocsBotAI || {};
-
-      DocsBotAI.init = function (opts) {
-        return new Promise((resolve, reject) => {
-          var script = document.createElement("script");
-          script.type = "text/javascript";
-          script.async = true;
-          script.src = "/chat.js";
-          const el = document.getElementsByTagName("script")[0];
-          el.parentNode.insertBefore(script, el);
-
-          script.addEventListener("load", () => {
-            window.DocsBotAI.mount({
-              id: opts.id,
-              supportCallback: opts.supportCallback,
-            });
-
-            let waitForElem;
-            waitForElem = function waitForElm(selector) {
-              return new Promise((resolve) => {
-                if (document.querySelector(selector)) {
-                  return resolve(document.querySelector(selector));
-                }
-
-                const observer = new MutationObserver((mutations) => {
-                  if (document.querySelector(selector)) {
-                    resolve(document.querySelector(selector));
-                    observer.disconnect();
-                  }
-                });
-
-                observer.observe(document.body, {
-                  childList: true,
-                  subtree: true,
-                });
-              });
-            };
-
-            if (waitForElem) {
-              waitForElem("#docsbotai-root").then(resolve).catch(reject);
-            }
-          });
-
-          script.addEventListener("error", (error) => {
-            reject(esrror.message);
-          });
-        });
-      };
-
+      window.DocsBotAI=window.DocsBotAI||{},DocsBotAI.init=function(c){return new Promise(function(e,o){var t=document.createElement("script");t.type="text/javascript",t.async=!0,t.src="/chat.js";const n=document.getElementsByTagName("script")[0];n.parentNode.insertBefore(t,n),t.addEventListener("load",function(){window.DocsBotAI.mount({id:c.id,supportCallback:c.supportCallback});let t;t=function(n){return new Promise(function(e){if(document.querySelector(n))return e(document.querySelector(n));const o=new MutationObserver(function(t){document.querySelector(n)&&(e(document.querySelector(n)),o.disconnect())});o.observe(document.body,{childList:!0,subtree:!0})})},t&&t("#docsbotai-root").then(e).catch(o)}),t.addEventListener("error",function(t){o(t.message)})})};
+      </script>
+    <script>
       DocsBotAI.init({
         id: "ZrbLG98bbxZ9EFqiPvyl/SQMV36O8xi43xbZRzYLy",
         supportCallback: function (event, history) {
