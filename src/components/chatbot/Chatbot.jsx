@@ -28,6 +28,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     labels,
     alignment,
     questions,
+    identify,
   } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
@@ -61,8 +62,9 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     ref.current.scrollTop = ref.current.scrollHeight;
 
     let answer = "";
+    identify.referrer = window.location.href;
     const history = state.chatHistory || [];
-    const req = { question, markdown: true, history };
+    const req = { question, markdown: true, history, identify };
 
     const apiUrl = `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
     const ws = new WebSocket(apiUrl);

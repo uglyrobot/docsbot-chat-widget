@@ -24,18 +24,14 @@ export const BotChatMessage = ({ payload }) => {
 
     fetch(apiUrl, {
       method: "PUT",
-    }).then((response) => {
-      const data = response.json()
-      // navigate to support link ('#' is a reserved value for no link but still show the support button)
-      if (supportLink && supportLink !== "#") {
-        window.location = supportLink
-      }
     }).catch((e) => {
       console.warn(`DOCSBOT: Error recording support click: ${e}`);
     });
 
-    // pass event
-    supportCallback(e, history)
+    // run callback if provided
+    if (supportCallback && typeof supportCallback === "function") {
+      supportCallback(e, history)
+    }
   }
 
   // make api call to rate
@@ -151,6 +147,7 @@ export const BotChatMessage = ({ payload }) => {
       {payload.isLast && supportLink && ( payload.sources || payload.error ) && (
         <div className="docsbot-chat-bot-message-support">
           <a
+            href={supportLink}
             onClick={(e) => runSupportCallback(e, state.chatHistory || [])}
             style={{
               backgroundColor: getLighterColor(color || "#1292EE", 0.93),
