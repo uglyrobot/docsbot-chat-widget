@@ -66,7 +66,7 @@ export default class EmbeddableWidget {
 
   static unmount() {
     if (!EmbeddableWidget.el) {
-      console.info("EmbeddableWidget is not mounted, mount first");
+      console.warn("DOCSBOT: EmbeddableWidget is not mounted, mount first");
       return false;
     }
     const div_root = document.getElementById("docsbotai-root");

@@ -54,10 +54,21 @@ export function ConfigProvider(props = {}) {
             data.questions = []
           }
 
+          //check that current domain is in the list of allowed domains
+          if (data.allowedDomains && data.allowedDomains.length > 0) {
+            const currentDomain = window.location.hostname
+            const allowedDomains = data.allowedDomains.map(domain => domain.toLowerCase())
+
+            if (!allowedDomains.includes(currentDomain.toLowerCase())) {
+              console.warn(`DOCSBOT: Current domain (${currentDomain}) is not in the list of allowed domains (${allowedDomains.join(', ')})`)
+              return
+            }
+          }
+
           setConfig({ ...data, supportCallback });
         })
         .catch((e) => {
-          console.warn(e);
+          console.warn(`DOCSBOT: Error fetching config: ${e}`);
         });
     }
   }, [id, config]);

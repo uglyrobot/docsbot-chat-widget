@@ -73,7 +73,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     };
 
     ws.onerror = function (event) {
-      console.error("error", event);
+      console.error("DOCSBOT: WebSocket error", event);
       dispatch({
         type: "update_message",
         payload: {

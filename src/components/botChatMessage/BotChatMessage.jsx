@@ -31,7 +31,7 @@ export const BotChatMessage = ({ payload }) => {
         window.location = supportLink
       }
     }).catch((e) => {
-      console.warn(e);
+      console.warn(`DOCSBOT: Error recording support click: ${e}`);
     });
 
     // pass event
