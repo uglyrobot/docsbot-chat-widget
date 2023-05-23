@@ -1,7 +1,7 @@
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 32px;
   text-align: center;
 }
 
@@ -28,7 +28,7 @@
   display: block;
   z-index: 999999;
   height: calc(100% - 120px);
-  line-height: 1em;
+  line-height: 16px;
 }
 
 .docsbot-wrapper.docsbot-left {
