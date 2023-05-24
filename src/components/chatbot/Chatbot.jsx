@@ -320,7 +320,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                   setChatInput(e.target.value);
                 }}
                 ref={inputRef}
-                minLength={10}
+                minLength={5}
                 maxLength={200}
               />
               <button
@@ -329,7 +329,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                 style={{
                   fill: color,
                 }}
-                disabled={chatInput.length < 10}
+                disabled={chatInput.length < 5}
               >
                 <SendIcon />
               </button>
