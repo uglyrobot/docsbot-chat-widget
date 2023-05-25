@@ -18,6 +18,13 @@ export const BotChatMessage = ({ payload }) => {
   const { color, teamId, botId, labels, supportLink, supportCallback } = useConfig();
   const { dispatch, state } = useChatbot();
 
+  const navigateToLink = () => {
+    // navigate to support link ('#' is a reserved value for no link but still show the support button)
+    if (supportLink && supportLink !== "#") {
+      window.location.href = supportLink
+    }
+  }
+
   const runSupportCallback = (e, history) => {
     // post to api endpoint
     const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/support/${payload.answerId}`;
@@ -32,6 +39,7 @@ export const BotChatMessage = ({ payload }) => {
     if (supportCallback && typeof supportCallback === "function") {
       supportCallback(e, history)
     }
+    setTimeout(navigateToLink, 1000) // ensure link is opened
   }
 
   // make api call to rate
