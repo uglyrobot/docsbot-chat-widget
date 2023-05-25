@@ -62,11 +62,13 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     ref.current.scrollTop = ref.current.scrollHeight;
 
     let answer = "";
-    identify.referrer = window.location.href;
+    let metadata = identify;
+    metadata.referrer = window.location.href;
     const history = state.chatHistory || [];
-    const req = { question, markdown: true, history, identify };
+    const req = { question, markdown: true, history, metadata };
 
     const apiUrl = `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
+    //const apiUrl = `ws://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat`;
     const ws = new WebSocket(apiUrl);
 
     // Send message to server when connection is established
