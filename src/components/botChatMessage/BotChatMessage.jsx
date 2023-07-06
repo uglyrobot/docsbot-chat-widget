@@ -150,6 +150,7 @@ export const BotChatMessage = ({ payload }) => {
         <div className="docsbot-chat-bot-message-support">
           <a
             href={supportLink}
+            target="_blank"
             onClick={(e) => runSupportCallback(e, state.chatHistory || [])}
             style={{
               backgroundColor: getLighterColor(color || "#1292EE", 0.93),
