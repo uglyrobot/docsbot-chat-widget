@@ -44,7 +44,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
         },
       });
     }
-    inputRef.current.focus();
+    //inputRef.current.focus(); 
   }, [labels.firstMessage]);
 
   function fetchAnswer(question) {
@@ -178,6 +178,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
         alignment === "left" ? "docsbot-left" : "",
         "docsbot-wrapper"
       )}
+      part="wrapper"
     >
       <div className="docsbot-chat-container">
         <div className="docsbot-chat-inner-container">
@@ -322,7 +323,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                   setChatInput(e.target.value);
                 }}
                 ref={inputRef}
-                minLength={5}
+                minLength={2}
                 maxLength={200}
               />
               <button
@@ -331,7 +332,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                 style={{
                   fill: color,
                 }}
-                disabled={chatInput.length < 5}
+                disabled={chatInput.length < 2}
               >
                 <SendIcon />
               </button>

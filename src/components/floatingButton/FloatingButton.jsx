@@ -36,6 +36,7 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
         isOpen ? "is-open" : "",
         "floating-button"
       )}
+      part="button"
       onClick={(e) => {
         e.preventDefault();
         setIsOpen(!isOpen);
