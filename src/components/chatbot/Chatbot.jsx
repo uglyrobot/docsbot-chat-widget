@@ -29,9 +29,12 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     alignment,
     questions,
     identify,
+    horizontalMargin,
+    verticalMargin,
   } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
+  const mediaMatch = window.matchMedia('(min-width: 480px)');
 
   useEffect(() => {
     if (labels.firstMessage) {
@@ -44,7 +47,10 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
         },
       });
     }
-    //inputRef.current.focus(); 
+    //only focus on input if not mobile
+    if (mediaMatch.matches) {
+      inputRef.current.focus();
+    }
   }, [labels.firstMessage]);
 
   function fetchAnswer(question) {
@@ -178,6 +184,11 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
         alignment === "left" ? "docsbot-left" : "",
         "docsbot-wrapper"
       )}
+      style={mediaMatch.matches ? {
+        left: alignment === "left" ? horizontalMargin || 20 : "auto",
+        right: alignment === "right" ? horizontalMargin || 20 : "auto",
+        bottom: verticalMargin ? verticalMargin + 80 : 100,
+      } : {}}
       part="wrapper"
     >
       <div className="docsbot-chat-container">
@@ -225,12 +236,12 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
               message.isLast = key === Object.keys(state.messages).pop();
 
               return message.variant === "chatbot" ? (
-                <>
-                  <BotChatMessage key={key} payload={message} />
+                <div key={key}>
+                  <BotChatMessage payload={message} />
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
                   ) : null}
-                </>
+                </div>
               ) : (
                 <UserChatMessage
                   key={key}
@@ -244,7 +255,9 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                 <div className="docsbot-chat-suggested-questions-container">
                   <span
                     style={{
-                      color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)),
+                      color: decideTextColor(
+                        getLighterColor(color || "#1292EE", 0.93)
+                      ),
                     }}
                   >
                     {labels.suggestions}

@@ -13,7 +13,7 @@ import { decideTextColor } from "../../utils/colors";
 import clsx from "clsx";
 
 export const FloatingButton = ({ isOpen, setIsOpen }) => {
-  const { color, icon, labels, showButtonLabel, alignment } = useConfig();
+  const { color, icon, labels, showButtonLabel, alignment, horizontalMargin, verticalMargin } = useConfig();
 
   //icon can be default, robot, life-ring, or question-circle
   const iconMap = {
@@ -44,6 +44,9 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
       style={{
         backgroundColor: color,
         color: decideTextColor(color || "#1292EE"),
+        left: alignment === "left" ? horizontalMargin || 20 : "auto",
+        right: alignment === "right" ? horizontalMargin || 20 : "auto",
+        bottom: verticalMargin || 20,
       }}
       sr-label="Open/close chat"
     >
