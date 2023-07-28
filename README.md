@@ -6,11 +6,12 @@ Full documentation can be found at https://docsbot.ai/docs/embeddable-chat-widge
 
 ## Development
 
-`npm install`
+- `npm install` to install dependencies.
+- `npm run start` to spin up a local server with hot reloading that can be accessed at http://localhost:3005/. The html for this page is found in `public/index.html`, and is used to test the embeddable chat widget on a local server. The embed code is using a test bot from the DocsBot.ai staff account.
 
-`npm run start` to spin up a local server with hot reloading.
+## Production Deployment
 
-`npm run prepare` to build the project before commiting to main. It's very important to run this before pushing to main, as it builds the `build/chat.js` file that is referenced by our CDN and used by the embeddable chat widget.
+Run `npm run prepare` to build the project before commiting to main. It's very important to run this before pushing to main, as it builds the `build/chat.js` file that is referenced by our CDN and used by the embeddable chat widget.
 
 ## CDN
 
