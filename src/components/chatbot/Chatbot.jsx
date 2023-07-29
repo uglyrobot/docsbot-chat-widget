@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { remark } from "remark";
 import html from "remark-html";
 import remarkGfm from "remark-gfm";
+import externalLinks from 'remark-external-links';
 import { useChatbot } from "../chatbotContext/ChatbotContext";
 import { useConfig } from "../configContext/ConfigContext";
 import { BotChatMessage } from "../botChatMessage/BotChatMessage";
@@ -172,6 +173,10 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     return await remark()
       .use(html)
       .use(remarkGfm)
+      .use(externalLinks, {
+        target: '_blank',
+        rel: ['noopener', 'noreferrer']
+      })
       .process(text)
       .then((html) => {
         return html.toString();
