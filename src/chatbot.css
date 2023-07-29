@@ -158,9 +158,11 @@
   0% {
     opacity: 0;
   }
+
   50% {
     opacity: 1;
   }
+
   100% {
     opacity: 0;
   }
@@ -270,6 +272,8 @@
   padding: 12.5px 3px 12.5px 12.5px;
   border: none;
   font-size: 13.6px;
+  resize: none;
+  overflow-y: hidden;
 }
 
 .docsbot-chat-input:focus {
@@ -339,15 +343,18 @@
   padding: 0;
   font-size: 90%;
 }
+
 .docsbot-chat-bot-message .docsbot-sources li {
   color: inherit;
   display: flex-inline;
   align-items: center;
 }
+
 .docsbot-chat-bot-message .docsbot-sources a {
   text-decoration: none;
   color: inherit;
 }
+
 .docsbot-chat-bot-message .docsbot-sources a:hover {
   text-decoration: underline;
 }

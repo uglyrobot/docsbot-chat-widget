@@ -183,6 +183,22 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
       });
   }
 
+  function handleSubmit(event) {
+    event.preventDefault()
+
+    dispatch({
+      type: "add_message",
+      payload: {
+        variant: "user",
+        message: chatInput,
+        loading: false,
+      },
+    });
+    fetchAnswer(chatInput);
+    setChatInput("");
+    inputRef.current.focus();
+  }
+
   return (
     <div
       className={clsx(
@@ -317,32 +333,27 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
           <div className="docsbot-chat-input-container">
             <form
               className="docsbot-chat-input-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-
-                dispatch({
-                  type: "add_message",
-                  payload: {
-                    variant: "user",
-                    message: chatInput,
-                    loading: false,
-                  },
-                });
-                fetchAnswer(chatInput);
-                setChatInput("");
-                inputRef.current.focus();
-              }}
+              onSubmit={handleSubmit}
             >
-              <input
+              <textarea
                 className="docsbot-chat-input"
                 placeholder={labels.inputPlaceholder}
                 value={chatInput}
                 onChange={(e) => {
                   setChatInput(e.target.value);
+
+                  e.target.style.height = "auto";
+                  e.target.style.height = (e.target.scrollHeight - 25) + "px"; // Adjust the textarea's height to wrap the input text
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    handleSubmit(e)
+                    e.target.style.height = "auto";
+                  }
                 }}
                 ref={inputRef}
-                minLength={2}
                 maxLength={200}
+                rows={1}
               />
               <button
                 type="submit"
