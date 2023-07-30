@@ -1,11 +1,8 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Loader } from "../loader/Loader";
-import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
-import {
-  faFaceGrin,
-  faFaceFrownOpen,
-} from "@fortawesome/free-regular-svg-icons";
+import { faChevronDown, faChevronUp, faFlag as solidFlag } from "@fortawesome/free-solid-svg-icons";
+import { faFlag as regularFlag, } from "@fortawesome/free-regular-svg-icons";
 import { useConfig } from "../configContext/ConfigContext";
 import { BotAvatar } from "../botAvatar/BotAvatar";
 import { Source } from "../source/Source";
@@ -14,7 +11,9 @@ import { useChatbot } from "../chatbotContext/ChatbotContext";
 
 export const BotChatMessage = ({ payload }) => {
   const [showSources, setShowSources] = useState(false);
+  const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
+  const [tooltipText, setTooltipText] = useState("Report answer as inaccurate");
   const { color, teamId, botId, labels, supportLink, supportCallback } = useConfig();
   const { dispatch, state } = useChatbot();
 
@@ -38,6 +37,7 @@ export const BotChatMessage = ({ payload }) => {
 
   // make api call to rate
   const saveRating = async (newRating = 0) => {
+    console.log(labels)
     setRating(newRating);
 
     const data = { rating: newRating };
@@ -117,18 +117,25 @@ export const BotChatMessage = ({ payload }) => {
                       </button>
                       <div className="docbot-chat-bot-message-rate">
                         <button
-                          onClick={(e) => saveRating(-1)}
+                          onClick={(e) => {
+                            if (isFlagged)
+                              saveRating(0)
+                            else
+                              saveRating(-1)
+
+                            setIsFlagged(!isFlagged)
+                          }}
                           style={{ opacity: rating === -1 ? 1 : null }}
-                          title={labels.unhelpful}
+                          title={tooltipText}
                         >
-                          <FontAwesomeIcon icon={faFaceFrownOpen} size="lg" />
-                        </button>
-                        <button
-                          onClick={(e) => saveRating(1)}
-                          style={{ opacity: rating === 1 ? 1 : null }}
-                          title={labels.helpful}
-                        >
-                          <FontAwesomeIcon icon={faFaceGrin} size="lg" />
+                          {
+                            isFlagged ? (
+                              <FontAwesomeIcon icon={solidFlag} size="lg" style={{ color: 'red' }} />
+                            ) : (
+                              <FontAwesomeIcon icon={regularFlag} size="lg" />
+                            )
+                          }
+
                         </button>
                       </div>
                     </div>
@@ -146,7 +153,7 @@ export const BotChatMessage = ({ payload }) => {
           })()}
         </div>
       </div>
-      {payload.isLast && supportLink && ( payload.sources || payload.error ) && (
+      {payload.isLast && supportLink && (payload.sources || payload.error) && (
         <div className="docsbot-chat-bot-message-support">
           <a
             href={supportLink}
