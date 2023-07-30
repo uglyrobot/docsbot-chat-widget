@@ -173,10 +173,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     return await remark()
       .use(html)
       .use(remarkGfm)
-      .use(externalLinks, {
-        target: '_blank',
-        rel: ['noopener', 'noreferrer']
-      })
+      .use(externalLinks, { target: '_blank' })
       .process(text)
       .then((html) => {
         return html.toString();
