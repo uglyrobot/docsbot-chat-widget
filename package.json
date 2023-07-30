@@ -32,6 +32,7 @@
     "random": "^4.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-markdown": "^8.0.7",
     "react-shadow-root": "^6.2.0",
     "remark": "^14.0.2",
     "remark-external-links": "^9.0.1",
