@@ -37,6 +37,10 @@ function chatbotReducer(state, action) {
           },
         },
       };
+    case "clear_messages":
+      return {
+        messages: []
+      }
 
     default: {
       throw new Error(`Unhandled action type: ${action.type}`);
@@ -49,6 +53,7 @@ export function ChatbotProvider({ children }) {
     messages: [],
     suggestions: [],
     chatInput: "",
+    chatHistory: []
   });
   const value = { state, dispatch };
   return (

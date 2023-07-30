@@ -14,10 +14,11 @@ import { DocsBotLogo } from "../icons/DocsBotLogo";
 import { getLighterColor, decideTextColor } from "../../utils/colors";
 import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
 
 export const Chatbot = ({ isOpen, setIsOpen }) => {
   const [chatInput, setChatInput] = useState("");
+  const [refreshChat, setRefreshChat] = useState(false);
   const { dispatch, state } = useChatbot();
   const {
     color,
@@ -38,6 +39,28 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
   const mediaMatch = window.matchMedia('(min-width: 480px)');
 
   useEffect(() => {
+    if (refreshChat) {
+      dispatch({ type: "clear_messages" })
+      localStorage.removeItem('chat_history')
+      setRefreshChat(prevState => !prevState)
+
+      dispatch({
+        type: "add_message",
+        payload: {
+          id: uuidv4(),
+          variant: "chatbot",
+          message: labels.firstMessage,
+        },
+      });
+    }
+    else {
+      const savedChatHistory = JSON.parse(localStorage.getItem("chat_history")) || [];
+      dispatch({ type: "save_history", payload: { chatHistory: savedChatHistory } });
+    }
+  }, [refreshChat]);
+
+  useEffect(() => {
+
     if (labels.firstMessage) {
       dispatch({
         type: "add_message",
@@ -150,6 +173,9 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
             type: "save_history",
             payload: { chatHistory: finalData.history },
           });
+
+          localStorage.setItem("chat_history", JSON.stringify(finalData.history));
+
           ref.current.scrollTop = ref.current.scrollHeight;
           ws.close();
         } else if (data.type === "error") {
@@ -180,17 +206,18 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
       });
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
 
     dispatch({
       type: "add_message",
       payload: {
         variant: "user",
-        message: chatInput,
+        message: await parseMarkdown(chatInput),
         loading: false,
       },
     });
+
     fetchAnswer(chatInput);
     setChatInput("");
     inputRef.current.focus();
@@ -232,10 +259,16 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
               color: decideTextColor(color || "#1292EE"),
             }}
           >
-            <div>
+            <div style={{ width: '100%' }}>
               <div className="docsbot-chat-header-content">
                 <h1>{botName}</h1>
                 <span>{description}</span>
+                <button onClick={() => {
+                  // if (state.messages.length > 0)
+                  setRefreshChat(!refreshChat)
+                }}>
+                  <FontAwesomeIcon icon={faRefresh} />
+                </button>
               </div>
               <div className="docsbot-chat-header-background-wrapper">
                 <div

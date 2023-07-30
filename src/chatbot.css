@@ -212,12 +212,28 @@
 }
 
 .docsbot-chat-header-content {
+  display: flex;
+  justify-content: center;
+  position: relative;
   z-index: 99999999;
+}
+
+.docsbot-chat-header-content button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 14.4px;
+  font-weight: bold;
+  margin: 5px 0;
+  padding: 0;
+  position: absolute;
+  right: 5px;
+  cursor: pointer;
 }
 
 .docsbot-chat-header h1 {
   font-size: 14.4px;
-  margin-top: 0;
+  margin: 5px 0;
   text-align: center;
 }
 
