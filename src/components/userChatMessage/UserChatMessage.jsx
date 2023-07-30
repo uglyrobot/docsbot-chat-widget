@@ -1,6 +1,4 @@
 import { Loader } from "../loader/Loader";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
 export const UserChatMessage = ({ loading, message }) => {
 
@@ -12,7 +10,7 @@ export const UserChatMessage = ({ loading, message }) => {
             return <Loader />;
           }
 
-          return <ReactMarkdown children={message} remarkPlugins={[remarkGfm]} />;
+          return <span dangerouslySetInnerHTML={{ __html: message }} />;
         })()}
       </div>
     </div>
