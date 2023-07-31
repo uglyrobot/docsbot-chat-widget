@@ -19,6 +19,7 @@ import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
 export const Chatbot = ({ isOpen, setIsOpen }) => {
   const [chatInput, setChatInput] = useState("");
   const [refreshChat, setRefreshChat] = useState(false);
+  const [showSources, setShowSources] = useState(true);
   const { dispatch, state } = useChatbot();
   const {
     color,
@@ -173,6 +174,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
             type: "save_history",
             payload: { chatHistory: finalData.history },
           });
+          console.log("Final Data:", finalData)
 
           localStorage.setItem("chat_history", JSON.stringify(finalData.history));
 
@@ -263,10 +265,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
               <div className="docsbot-chat-header-content">
                 <h1>{botName}</h1>
                 <span>{description}</span>
-                <button onClick={() => {
-                  // if (state.messages.length > 0)
-                  setRefreshChat(!refreshChat)
-                }}>
+                <button onClick={() => setRefreshChat(!refreshChat)}>
                   <FontAwesomeIcon icon={faRefresh} />
                 </button>
               </div>
@@ -282,13 +281,18 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
           </div>
 
           <div className="docsbot-chat-message-container" ref={ref}>
+            <div className="docsbot-chat-message-container-toggle">
+              Show Sources
+              <input type="checkbox" id="switch" onClick={() => setShowSources(!showSources)} />
+              <label for="switch">Toggle</label>
+            </div>
             {Object.keys(state.messages).map((key) => {
               const message = state.messages[key];
               message.isLast = key === Object.keys(state.messages).pop();
 
               return message.variant === "chatbot" ? (
                 <div key={key}>
-                  <BotChatMessage payload={message} />
+                  <BotChatMessage payload={message} toggleSources={showSources} />
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
                   ) : null}
