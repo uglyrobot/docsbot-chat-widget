@@ -115,6 +115,8 @@
 .docbot-chat-bot-message-rate {
   display: flex;
   align-items: center;
+  flex: 1;
+  justify-content: end;
 }
 
 .docbot-chat-bot-message-rate button {
@@ -241,6 +243,58 @@
   padding: 15px 10px 0 10px;
   overflow-y: scroll;
   height: 100%;
+  position: relative;
+}
+
+.docsbot-chat-message-container-toggle {
+  color: rgb(97, 96, 99);
+  display: flex;
+  font-size: 13px;
+  font-weight: 500;
+  justify-content: end;
+  margin-top: 10px;
+}
+
+.docsbot-chat-message-container-toggle input[type=checkbox] {
+  height: 0;
+  width: 0;
+  visibility: hidden;
+}
+
+.docsbot-chat-message-container-toggle label {
+  cursor: pointer;
+  text-indent: -9999px;
+  width: 35px;
+  height: 20px;
+  background: #c2b0e2;
+  display: block;
+  border-radius: 100px;
+  position: relative;
+}
+
+.docsbot-chat-message-container-toggle label:after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 90px;
+  transition: 0.3s;
+}
+
+.docsbot-chat-message-container-toggle input:checked+label {
+  background: grey;
+}
+
+.docsbot-chat-message-container-toggle input:checked+label:after {
+  right: calc(100% - 2px);
+  transform: translateX(100%);
+}
+
+.docsbot-chat-message-container-toggle label:active:after {
+  width: 20px;
 }
 
 .docsbot-chat-credits {
