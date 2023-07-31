@@ -284,7 +284,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
             <div className="docsbot-chat-message-container-toggle">
               Show Sources
               <input type="checkbox" id="switch" onClick={() => setShowSources(!showSources)} />
-              <label for="switch">Toggle</label>
+              <label htmlFor="switch">Toggle</label>
             </div>
             {Object.keys(state.messages).map((key) => {
               const message = state.messages[key];

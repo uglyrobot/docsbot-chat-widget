@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Loader } from "../loader/Loader";
-import { faChevronDown, faChevronUp, faFlag as solidFlag } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronUp, faFlag as solidFlag, faBullhorn } from "@fortawesome/free-solid-svg-icons";
 import { faFlag as regularFlag, } from "@fortawesome/free-regular-svg-icons";
 import { useConfig } from "../configContext/ConfigContext";
 import { BotAvatar } from "../botAvatar/BotAvatar";
@@ -167,6 +167,7 @@ export const BotChatMessage = ({ payload, toggleSources }) => {
             }}
           >
             {labels.getSupport}
+            <FontAwesomeIcon icon={faBullhorn} style={{ color: '#673AB7', marginLeft: 5 }} />
           </a>
         </div>
       )}
