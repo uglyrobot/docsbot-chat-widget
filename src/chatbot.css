@@ -86,8 +86,9 @@
 }
 
 .docsbot-chat-suggested-questions-container {
-  margin-top: 7px;
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: right;
   position: absolute;
   padding: 20px;
   padding-right: 10px;
@@ -98,6 +99,7 @@
 .docsbot-chat-suggested-questions-container span {
   font-size: 13px;
   font-weight: 500;
+  flex: 0 0 100%;
   text-align: right;
 }
 
@@ -113,7 +115,7 @@
   overflow-wrap: break-word;
   cursor: pointer;
   margin-top: 5px;
-  margin-left: auto;
+  margin-left: 10px;
 }
 
 .docsbot-chat-bot-message-meta {
@@ -134,6 +136,7 @@
 
 .docbot-chat-bot-message-rate button:hover {
   opacity: 1;
+  color: #cc0000;
 }
 
 .docbot-chat-bot-message-rate button:last-child {

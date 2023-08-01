@@ -130,9 +130,9 @@ export const BotChatMessage = ({ payload }) => {
                         >
                           {
                             isFlagged ? (
-                              <FontAwesomeIcon icon={solidFlag} size="lg" style={{ color: 'red' }} />
+                              <FontAwesomeIcon icon={solidFlag} size="sm" style={{ color: 'red' }} />
                             ) : (
-                              <FontAwesomeIcon icon={regularFlag} size="lg" />
+                              <FontAwesomeIcon icon={regularFlag} size="sm" className="docbot-chat-bot-message-rate-flag" />
                             )
                           }
 
