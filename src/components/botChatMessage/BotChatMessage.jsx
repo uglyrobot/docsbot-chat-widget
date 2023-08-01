@@ -9,7 +9,7 @@ import { Source } from "../source/Source";
 import { getLighterColor, decideTextColor } from "../../utils/colors";
 import { useChatbot } from "../chatbotContext/ChatbotContext";
 
-export const BotChatMessage = ({ payload, toggleSources }) => {
+export const BotChatMessage = ({ payload }) => {
   const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
@@ -107,16 +107,14 @@ export const BotChatMessage = ({ payload, toggleSources }) => {
                 {payload.sources && (
                   <>
                     <div className="docsbot-chat-bot-message-meta">
-                      {toggleSources && (
-                        <button onClick={() => setShowSources(!showSources)}>
-                          {labels.sources}
-                          {showSources ? (
-                            <FontAwesomeIcon icon={faChevronUp} />
-                          ) : (
-                            <FontAwesomeIcon icon={faChevronDown} />
-                          )}
-                        </button>
-                      )}
+                      <button onClick={() => setShowSources(!showSources)}>
+                        {labels.sources}
+                        {showSources ? (
+                          <FontAwesomeIcon icon={faChevronUp} />
+                        ) : (
+                          <FontAwesomeIcon icon={faChevronDown} />
+                        )}
+                      </button>
                       <div className="docbot-chat-bot-message-rate">
                         <button
                           onClick={(e) => {

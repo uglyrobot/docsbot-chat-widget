@@ -125,7 +125,6 @@
 .docbot-chat-bot-message-rate {
   display: flex;
   align-items: center;
-  flex: 1;
   justify-content: end;
 }
 
@@ -353,7 +352,8 @@
   width: 100%;
   padding: 12.5px 3px 12.5px 12.5px;
   border: none;
-  font-size: 13.6px;
+  font-size: 13.6px !important;
+  font: inherit;
   resize: none;
   overflow-y: hidden;
 }

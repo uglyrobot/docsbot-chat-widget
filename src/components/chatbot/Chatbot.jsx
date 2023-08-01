@@ -19,7 +19,6 @@ import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
 export const Chatbot = ({ isOpen, setIsOpen }) => {
   const [chatInput, setChatInput] = useState("");
   const [refreshChat, setRefreshChat] = useState(false);
-  const [showSources, setShowSources] = useState(true);
   const { dispatch, state } = useChatbot();
   const {
     color,
@@ -281,18 +280,13 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
           </div>
 
           <div className="docsbot-chat-message-container" ref={ref}>
-            <div className="docsbot-chat-message-container-toggle">
-              Show Sources
-              <input type="checkbox" id="switch" onClick={() => setShowSources(!showSources)} />
-              <label htmlFor="switch">Toggle</label>
-            </div>
             {Object.keys(state.messages).map((key) => {
               const message = state.messages[key];
               message.isLast = key === Object.keys(state.messages).pop();
 
               return message.variant === "chatbot" ? (
                 <div key={key}>
-                  <BotChatMessage payload={message} toggleSources={showSources} />
+                  <BotChatMessage payload={message} />
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
                   ) : null}
