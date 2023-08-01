@@ -107,15 +107,19 @@
   color: #4b4b4b;
   font-size: 12.8px;
   text-decoration: none;
-  padding: 4px 12px;
-  border-radius: 12.5px;
+  padding: 10px;
+  border-radius: 15px;
   background: #ffffff;
   border: 0.5px solid rgb(145, 145, 145);
   text-align: justify;
   overflow-wrap: break-word;
   cursor: pointer;
-  margin-top: 5px;
+  margin-top: 10px;
   margin-left: 10px;
+}
+
+.docsbot-chat-suggested-questions-container button:hover {
+  border: 0;
 }
 
 .docsbot-chat-bot-message-meta {

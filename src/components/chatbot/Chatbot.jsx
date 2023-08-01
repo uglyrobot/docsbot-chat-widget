@@ -338,6 +338,14 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                             getLighterColor(color || "#1292EE", 0.95)
                           ),
                         }}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = getLighterColor(color || "#1292EE")
+                          e.target.style.border = `0.5px solid ${getLighterColor(color || "#1292EE")}`
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = getLighterColor(color || "#1292EE", 0.95)
+                          e.target.style.border = "0.5px solid rgb(145, 145, 145)"
+                        }}
                       >
                         {question}
                       </button>
