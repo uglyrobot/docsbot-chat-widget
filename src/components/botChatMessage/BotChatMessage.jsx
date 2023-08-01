@@ -13,9 +13,9 @@ export const BotChatMessage = ({ payload }) => {
   const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
-  const { color, teamId, botId, labels, supportLink, supportCallback } = useConfig();
+  const { color, teamId, botId, hideSources, labels, supportLink, supportCallback } = useConfig();
   const { dispatch, state } = useChatbot();
-
+  console.log("Payload: ",payload)
   const runSupportCallback = (e, history) => {
     // post to api endpoint
     const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/support/${payload.answerId}`;
@@ -100,20 +100,23 @@ export const BotChatMessage = ({ payload }) => {
               return <Loader />;
             }
 
-            return (
+            return ( 
               <>
                 <span dangerouslySetInnerHTML={{ __html: payload.message }} />
                 {payload.sources && (
                   <>
                     <div className="docsbot-chat-bot-message-meta">
-                      <button onClick={() => setShowSources(!showSources)}>
-                        {labels.sources}
-                        {showSources ? (
-                          <FontAwesomeIcon icon={faChevronUp} />
-                        ) : (
-                          <FontAwesomeIcon icon={faChevronDown} />
-                        )}
-                      </button>
+                      {payload.options.hideSources}
+                      {!hideSources && (
+                        <button onClick={() => setShowSources(!showSources)}>
+                          {labels.sources}
+                          {showSources ? (
+                            <FontAwesomeIcon icon={faChevronUp} />
+                          ) : (
+                            <FontAwesomeIcon icon={faChevronDown} />
+                          )}
+                        </button>
+                      )}
                       <div className="docbot-chat-bot-message-rate">
                         <button
                           onClick={(e) => {
