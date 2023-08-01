@@ -13,7 +13,6 @@ export const BotChatMessage = ({ payload }) => {
   const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
-  const [tooltipText, setTooltipText] = useState("Report answer as inaccurate");
   const { color, teamId, botId, labels, supportLink, supportCallback } = useConfig();
   const { dispatch, state } = useChatbot();
 
@@ -126,13 +125,13 @@ export const BotChatMessage = ({ payload }) => {
                             setIsFlagged(!isFlagged)
                           }}
                           style={{ opacity: rating === -1 ? 1 : null }}
-                          title={tooltipText}
+                          title={labels.unhelpful}
                         >
                           {
                             isFlagged ? (
-                              <FontAwesomeIcon icon={solidFlag} size="sm" style={{ color: 'red' }} />
+                              <FontAwesomeIcon icon={solidFlag} size="sm" style={{ color: '#ff0000' }} />
                             ) : (
-                              <FontAwesomeIcon icon={regularFlag} size="sm" className="docbot-chat-bot-message-rate-flag" />
+                              <FontAwesomeIcon icon={regularFlag} size="sm" />
                             )
                           }
 

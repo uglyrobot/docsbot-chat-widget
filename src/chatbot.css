@@ -118,10 +118,6 @@
   margin-left: 10px;
 }
 
-.docsbot-chat-suggested-questions-container button:hover {
-  border: 0;
-}
-
 .docsbot-chat-bot-message-meta {
   display: flex;
   justify-content: space-between;
