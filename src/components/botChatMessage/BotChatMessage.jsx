@@ -15,7 +15,6 @@ export const BotChatMessage = ({ payload }) => {
   const [rating, setRating] = useState(payload.rating || 0);
   const { color, teamId, botId, hideSources, labels, supportLink, supportCallback } = useConfig();
   const { dispatch, state } = useChatbot();
-  console.log("Payload: ",payload)
   const runSupportCallback = (e, history) => {
     // post to api endpoint
     const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/support/${payload.answerId}`;
@@ -36,7 +35,6 @@ export const BotChatMessage = ({ payload }) => {
 
   // make api call to rate
   const saveRating = async (newRating = 0) => {
-    console.log(labels)
     setRating(newRating);
 
     const data = { rating: newRating };
