@@ -65,6 +65,13 @@
 
 .docsbot-chat-bot-avatar-icon {
   fill: #494646;
+  display: flex;
+  justify-content: center;
+}
+
+.docsbot-chat-bot-avatar-icon img {
+  width: 50%;
+  height: auto;
 }
 
 .docsbot-chat-bot-message {
@@ -485,4 +492,9 @@
 .docsbot-chat-bot-message-support a:hover::after {
   transform: scale(1, 1);
   border-radius: 0;
+}
+
+.floating-button img {
+  width: 25px;
+  height: auto;
 }
