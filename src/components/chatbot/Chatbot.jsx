@@ -43,7 +43,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
   useEffect(() => {
     if (refreshChat) {
       dispatch({ type: "clear_messages" })
-      localStorage.removeItem("chat_history")
+      localStorage.removeItem("docsbot_chat_history")
       setRefreshChat((prevState) => !prevState)
 
       dispatch({
@@ -58,7 +58,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
   }, [refreshChat])
 
   useEffect(() => {
-    const savedConversation = JSON.parse(localStorage.getItem("chat_history"))
+    const savedConversation = JSON.parse(localStorage.getItem("docsbot_chat_history"))
     dispatch({
       type: "load_conversation",
       payload: { savedConversation: savedConversation },
@@ -88,7 +88,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
   }, [labels.firstMessage])
 
   useEffect(() => {
-    localStorage.setItem("chat_history", JSON.stringify(state.messages))
+    localStorage.setItem("docsbot_chat_history", JSON.stringify(state.messages))
 
     if (state.lastMessage && Date.now() - state.lastMessage > 12 * 60 * 60 * 1000)
       setRefreshChat(true)
@@ -230,7 +230,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
       type: "add_message",
       payload: {
         variant: "user",
-        message: await parseMarkdown(chatInput),
+        message: chatInput,
         loading: false,
         timestamp: Date.now(),
       },

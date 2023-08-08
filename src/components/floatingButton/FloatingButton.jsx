@@ -27,7 +27,7 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
   }
 
   const iconToUse = isOpen ? faXmark : iconMap[icon] || iconMap.default
-  const isIconInList = iconMap.hasOwnProperty(icon)
+  const isIconInList = iconMap.hasOwnProperty(icon) || !icon // if empty string, use default icon
 
   return (
     <a

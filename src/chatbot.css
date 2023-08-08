@@ -28,13 +28,13 @@
   background-color: #fff;
   padding: 10px;
   border-radius: 15px;
+  margin-left: 15px;
   border-bottom-right-radius: 0;
   border: 0.5px solid rgb(197, 206, 214);
   font-size: 14.4px;
   line-height: 1.4;
   color: #585858;
   font-weight: medium;
-  max-width: 280px;
   position: relative;
   text-align: left;
   overflow-wrap: break-word;
@@ -70,7 +70,7 @@
 }
 
 .docsbot-chat-bot-avatar-icon img {
-  width: 50%;
+  width: 60%;
   height: auto;
 }
 
@@ -85,7 +85,6 @@
   font-weight: medium;
   position: relative;
   margin-left: auto;
-  max-width: 250px;
   text-align: left;
   border: 0.5px solid rgb(197, 206, 214);
   overflow-wrap: break-word;
@@ -114,7 +113,7 @@
   color: #4b4b4b;
   font-size: 12.8px;
   text-decoration: none;
-  padding: 10px;
+  padding: 6px 10px;
   border-radius: 15px;
   background: #ffffff;
   border: 0.5px solid rgb(145, 145, 145);

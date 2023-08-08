@@ -1,7 +1,6 @@
 import { Loader } from "../loader/Loader";
 
 export const UserChatMessage = ({ loading, message }) => {
-
   return (
     <div className="docsbot-user-chat-message-container">
       <div className="docsbot-user-chat-message">
@@ -10,7 +9,7 @@ export const UserChatMessage = ({ loading, message }) => {
             return <Loader />;
           }
 
-          return <span dangerouslySetInnerHTML={{ __html: message }} />;
+          return <span>{message}</span>;
         })()}
       </div>
     </div>

@@ -22,6 +22,11 @@ export const BotAvatar = () => {
   const iconToUse = iconMap[botIcon] || false
   const isIconInList = iconMap.hasOwnProperty(botIcon)
 
+  // if there is no url string, and the icon is not in the list of icons, don't show an avatar
+  if (iconToUse === false && !botIcon) {
+    return null;
+  }
+
   return (
     <div className="docsbot-chat-bot-avatar">
       <div
@@ -34,7 +39,7 @@ export const BotAvatar = () => {
           style={{
             color: fontColor,
           }}>
-          {!botIcon || isIconInList ? (
+          {isIconInList ? (
             <FontAwesomeIcon icon={iconToUse} size="xs" />
           ) : (
             <img src={botIcon} alt="Bot Avatar" />
