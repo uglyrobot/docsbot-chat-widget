@@ -426,6 +426,10 @@
   cursor: pointer;
 }
 
+.docsbot-chat-bot-message img {
+  max-width: 100%;
+}
+
 .docsbot-chat-bot-message .docsbot-sources svg {
   margin-right: 4px;
 }
