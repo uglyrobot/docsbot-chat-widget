@@ -34,6 +34,7 @@
     "react-dom": "^18.2.0",
     "react-shadow-root": "^6.2.0",
     "remark": "^14.0.2",
+    "remark-external-links": "^9.0.1",
     "remark-gfm": "^3.0.1",
     "remark-html": "^15.0.2",
     "uuid": "^9.0.0"
