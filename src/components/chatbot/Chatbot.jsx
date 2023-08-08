@@ -276,8 +276,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
             <div style={{ width: "100%" }}>
               <div className="docsbot-chat-header-content">
                 <h1>{botName}</h1>
-                <span>{description}</span>
-                <button onClick={() => setRefreshChat(!refreshChat)}>
+                <button onClick={() => setRefreshChat(!refreshChat)} title="Reset conversation">
                   <FontAwesomeIcon icon={faRefresh} />
                 </button>
               </div>

@@ -465,8 +465,7 @@
   color: #4b4b4b;
   font-size: 12.8px;
   text-decoration: none;
-  padding: 4px;
-  border-radius: 5px;
+  padding: 4px 0px;
   background: #F9FAFA;
   border: 0.5px solid #F9FAFA;
   opacity: 0.8;
@@ -484,7 +483,7 @@
   content: '';
   position: absolute;
   width: 100%;
-  background-color: #c2b0e2;
+  background-color: #4b4b4b;
   height: 2px;
   left: 0;
   bottom: 0;

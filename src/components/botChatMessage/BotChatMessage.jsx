@@ -160,12 +160,11 @@ export const BotChatMessage = ({ payload }) => {
             target="_blank"
             onClick={(e) => runSupportCallback(e, state.chatHistory || [])}
             style={{
-              backgroundColor: getLighterColor(color || "#1292EE", 0.93),
               color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)),
             }}
           >
             {labels.getSupport}
-            <FontAwesomeIcon icon={faBullhorn} style={{ color: '#673AB7', marginLeft: 5 }} />
+            <FontAwesomeIcon icon={faBullhorn} style={{ color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)), marginLeft: 5 }} />
           </a>
         </div>
       )}
