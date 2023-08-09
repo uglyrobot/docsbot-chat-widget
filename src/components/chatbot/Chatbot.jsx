@@ -274,11 +274,12 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
               color: decideTextColor(color || "#1292EE"),
             }}>
             <div style={{ width: "100%" }}>
+              <button onClick={() => setRefreshChat(!refreshChat)} title="Reset conversation">
+                <FontAwesomeIcon icon={faRefresh} />
+              </button>
               <div className="docsbot-chat-header-content">
                 <h1>{botName}</h1>
-                <button onClick={() => setRefreshChat(!refreshChat)} title="Reset conversation">
-                  <FontAwesomeIcon icon={faRefresh} />
-                </button>
+                <span>{description}</span>
               </div>
               <div className="docsbot-chat-header-background-wrapper">
                 <div
