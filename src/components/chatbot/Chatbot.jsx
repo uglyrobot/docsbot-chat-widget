@@ -41,50 +41,56 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
   const mediaMatch = window.matchMedia("(min-width: 480px)")
 
   useEffect(() => {
-    if (refreshChat) {
-      dispatch({ type: "clear_messages" })
-      localStorage.removeItem("docsbot_chat_history")
-      setRefreshChat((prevState) => !prevState)
+    const fetchData = async () => {
+      if (refreshChat) {
+        dispatch({ type: "clear_messages" })
+        localStorage.removeItem("docsbot_chat_history")
+        setRefreshChat((prevState) => !prevState)
 
-      dispatch({
-        type: "add_message",
-        payload: {
-          id: uuidv4(),
-          variant: "chatbot",
-          message: labels.firstMessage,
-        },
-      })
+        const parsedMessage = await parseMarkdown(labels.firstMessage)
+
+        dispatch({
+          type: "add_message",
+          payload: {
+            id: uuidv4(),
+            variant: "chatbot",
+            message: parsedMessage,
+          },
+        })
+      }
     }
+
+    fetchData()
   }, [refreshChat])
 
   useEffect(() => {
-    const savedConversation = JSON.parse(localStorage.getItem("docsbot_chat_history"))
-    dispatch({
-      type: "load_conversation",
-      payload: { savedConversation: savedConversation },
-    })
-
-    // console.log("Time: ", savedConversation)
-    // if (savedConversation) {
-    //   const lastMessageTimestamp = savedConversation[savedConversation.length - 1]?.timestamp
-    //   if (lastMessageTimestamp && Date.now() - lastMessageTimestamp > 12 * 60 * 60 * 1000)
-    //     setRefreshChat(true)
-    // }
-
-    if (savedConversation == null && labels.firstMessage) {
+    const fetchData = async () => {
+      const savedConversation = JSON.parse(localStorage.getItem("docsbot_chat_history"))
       dispatch({
-        type: "add_message",
-        payload: {
-          id: uuidv4(),
-          variant: "chatbot",
-          message: labels.firstMessage,
-        },
+        type: "load_conversation",
+        payload: { savedConversation: savedConversation },
       })
+
+      if (savedConversation == null && labels.firstMessage) {
+        const parsedMessage = await parseMarkdown(labels.firstMessage)
+
+        dispatch({
+          type: "add_message",
+          payload: {
+            id: uuidv4(),
+            variant: "chatbot",
+            message: parsedMessage,
+          },
+        })
+      }
+
+      //only focus on input if not mobile
+      if (mediaMatch.matches) {
+        inputRef.current.focus()
+      }
     }
-    //only focus on input if not mobile
-    if (mediaMatch.matches) {
-      inputRef.current.focus()
-    }
+
+    fetchData()
   }, [labels.firstMessage])
 
   useEffect(() => {
