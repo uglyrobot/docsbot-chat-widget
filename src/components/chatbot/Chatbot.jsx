@@ -40,7 +40,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
   const inputRef = useRef()
   const mediaMatch = window.matchMedia("(min-width: 480px)")
 
-  useEffect(() => {
+  useEffect(async () => {
     if (refreshChat) {
       dispatch({ type: "clear_messages" })
       localStorage.removeItem("docsbot_chat_history")
@@ -51,13 +51,13 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
         payload: {
           id: uuidv4(),
           variant: "chatbot",
-          message: labels.firstMessage,
+          message: await parseMarkdown(labels.firstMessage),
         },
       })
     }
   }, [refreshChat])
 
-  useEffect(() => {
+  useEffect(async () => {
     const savedConversation = JSON.parse(localStorage.getItem("docsbot_chat_history"))
     dispatch({
       type: "load_conversation",
@@ -77,7 +77,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
         payload: {
           id: uuidv4(),
           variant: "chatbot",
-          message: labels.firstMessage,
+          message: await parseMarkdown(labels.firstMessage),
         },
       })
     }
