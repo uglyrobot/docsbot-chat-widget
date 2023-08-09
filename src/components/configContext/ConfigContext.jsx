@@ -36,7 +36,7 @@ const grabQuestions = (questions) => {
 }
 
 export function ConfigProvider(props = {}) {
-  const { id, supportCallback, identify, options, children } = props;
+  const { id, supportCallback, identify, options, signature, children } = props;
   const [config, setConfig] = useState(null);
 
   useEffect(() => {
@@ -65,7 +65,7 @@ export function ConfigProvider(props = {}) {
             }
           }
 
-          setConfig({ ...data, supportCallback, identify: identify || {}, ...options });
+          setConfig({ ...data, supportCallback, identify: identify || {}, signature, ...options });
         })
         .catch((e) => {
           console.warn(`DOCSBOT: Error fetching config: ${e}`);

@@ -13,14 +13,23 @@ export const BotChatMessage = ({ payload }) => {
   const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
-  const { color, teamId, botId, hideSources, labels, supportLink, supportCallback } = useConfig();
+  const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback } = useConfig();
   const { dispatch, state } = useChatbot();
+  const headers = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  };
+  if (signature) {
+    headers.Authorization = `Bearer ${signature}`;
+  }
+
   const runSupportCallback = (e, history) => {
     // post to api endpoint
     const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/support/${payload.answerId}`;
 
     fetch(apiUrl, {
       method: "PUT",
+      headers,
     }).catch((e) => {
       console.warn(`DOCSBOT: Error recording support click: ${e}`);
     });
@@ -38,11 +47,6 @@ export const BotChatMessage = ({ payload }) => {
     setRating(newRating);
 
     const data = { rating: newRating };
-
-    const headers = {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    };
 
     const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/rate/${payload.answerId}`;
     try {

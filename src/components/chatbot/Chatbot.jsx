@@ -26,6 +26,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     color,
     teamId,
     botId,
+    signature,
     botName,
     description,
     branding,
@@ -119,6 +120,9 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     metadata.referrer = window.location.href
     const history = state.chatHistory || []
     const req = { question, markdown: true, history, metadata }
+    if (signature) {
+      req.auth = signature
+    }
 
     const apiUrl = `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`
     //const apiUrl = `ws://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat`;
