@@ -28,6 +28,8 @@ jobs:
       with:
         token: ${{ secrets.TOKEN }}
         tag: latest
+        name: Latest Release
         allowUpdates: true
         makeLatest: true
         artifacts: build/chat.js
+        artifactContentType: text/javascript
