@@ -23,6 +23,18 @@ jobs:
         npm install
         npm run build
         
+    - name: Deploy to BunnyCDN
+      uses: ayeressian/bunnycdn-storage-deploy@v2.1.0
+      with:
+        source: "dist"
+        storageZoneName: "${{ secrets.STORAGE_NAME }}"
+        storagePassword: "${{ secrets.STORAGE_PASSWORD }}"
+        accessKey: "${{ secrets.STORAGE_KEY }}"
+        pullZoneId: "${{ secrets.ZONE_ID }}"
+        upload: "true"
+        remove: "true"
+        purgePullZone: "false"
+    
     - name: Release
       uses: ncipollo/release-action@v1
       with:
