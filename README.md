@@ -11,8 +11,8 @@ Full documentation can be found at https://docsbot.ai/docs/embeddable-chat-widge
 
 ## Production Deployment
 
-Run `npm run prepare` to build the project before commiting to main. It's very important to run this before pushing to main, as it builds the `build/chat.js` file that is referenced by our CDN and used by the embeddable chat widget.
+A Github action is configured that on pushes to main builds the `build/chat.js` file, uploades it to BunnyCDN storage, and purges the CDN zone that is used by the embeddable chat widget.
 
 ## CDN
 
-The embeddable chat widget is hosted on our CDN at https://widget.docsbot.ai/chat.js. The CDN caches this file for 12hrs, and instructs browsers to cache it for 1hr as well. This means that if you update the embeddable chat widget, it may take up to 12hrs for the changes to be reflected on customer sites unless we manually purge the CDN cache.
+The embeddable chat widget is hosted on our CDN at https://widget.docsbot.ai/chat.js. The CDN caches this file for 1 day, and instructs browsers to cache it for 1hr as well. This means that if you update the embeddable chat widget, it may take up to 1hr for the changes to be reflected on customer sites after we automatically purge the CDN cache.

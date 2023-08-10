@@ -33,7 +33,7 @@ jobs:
         pullZoneId: "${{ secrets.ZONE_ID }}"
         upload: "true"
         remove: "true"
-        purgePullZone: "false"
+        purgePullZone: "true"
     
     - name: Release
       uses: ncipollo/release-action@v1
