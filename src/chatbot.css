@@ -279,7 +279,7 @@
   margin-top: 10px;
 }
 
-.docsbot-chat-message-container-toggle input[type=checkbox] {
+.docsbot-chat-message-container-toggle input[type="checkbox"] {
   height: 0;
   width: 0;
   visibility: hidden;
@@ -297,7 +297,7 @@
 }
 
 .docsbot-chat-message-container-toggle label:after {
-  content: '';
+  content: "";
   position: absolute;
   top: 2px;
   right: 2px;
@@ -308,11 +308,11 @@
   transition: 0.3s;
 }
 
-.docsbot-chat-message-container-toggle input:checked+label {
+.docsbot-chat-message-container-toggle input:checked + label {
   background: grey;
 }
 
-.docsbot-chat-message-container-toggle input:checked+label:after {
+.docsbot-chat-message-container-toggle input:checked + label:after {
   right: calc(100% - 2px);
   transform: translateX(100%);
 }
@@ -419,7 +419,8 @@
   margin-bottom: 0;
 }
 
-.docsbot-chat-bot-message ol, .docsbot-chat-bot-message ul {
+.docsbot-chat-bot-message ol,
+.docsbot-chat-bot-message ul {
   padding-left: 25px;
 }
 
@@ -436,6 +437,59 @@
 .docsbot-chat-bot-message img {
   max-width: 100%;
 }
+
+/* Default table styles */
+.docsbot-chat-bot-message table {
+  font-size: 0.85714em;
+  line-height: 1.5;
+  width: 100%;
+  table-layout: auto;
+  text-align: left;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  border-collapse: collapse;
+}
+
+.docsbot-chat-bot-message thead {
+  border-bottom: 1px #a3a3a3 solid;
+}
+
+.docsbot-chat-bot-message thead th {
+  font-weight: 600;
+  vertical-align: bottom;
+  padding: 0 3px 4px 3px;
+}
+
+.docsbot-chat-bot-message tbody tr {
+  border-bottom: 1px #a3a3a3 solid;
+}
+
+.docsbot-chat-bot-message tbody tr:last-child {
+  border-bottom-width: 0;
+}
+
+.docsbot-chat-bot-message tbody td {
+  vertical-align: baseline;
+  padding: 4px 3px;
+}
+
+.docsbot-chat-bot-message tfoot {
+  border-top: 1px #a3a3a3 solid;
+}
+
+.docsbot-chat-bot-message tfoot td {
+  vertical-align: top;
+  padding: 4px 3px;
+}
+
+.docsbot-chat-bot-message thead th:first-child, .docsbot-chat-bot-message tbody td:first-child, .docsbot-chat-bot-message tfoot td:first-child {
+  padding-left: 0;
+}
+
+.docsbot-chat-bot-message thead th:last-child, .docsbot-chat-bot-message tbody td:last-child, .docsbot-chat-bot-message tfoot td:last-child {
+  padding-right: 0;
+}
+
 
 .docsbot-chat-bot-message .docsbot-sources svg {
   margin-right: 4px;
@@ -473,8 +527,8 @@
   font-size: 12.8px;
   text-decoration: none;
   padding: 4px 0px;
-  background: #F9FAFA;
-  border: 0.5px solid #F9FAFA;
+  background: #f9fafa;
+  border: 0.5px solid #f9fafa;
   opacity: 0.8;
   position: relative;
 }
@@ -482,12 +536,12 @@
 .docsbot-chat-bot-message-support a:hover {
   opacity: 1;
   border-radius: 0;
-  border: 0.5px solid #F9FAFA;
-  background-color: #F9FAFA !important;
+  border: 0.5px solid #f9fafa;
+  background-color: #f9fafa !important;
 }
 
 .docsbot-chat-bot-message-support a::after {
-  content: '';
+  content: "";
   position: absolute;
   width: 100%;
   background-color: #4b4b4b;
