@@ -23,11 +23,8 @@ jobs:
         npm install
         npm run build
         
-    - uses: "marvinpinto/action-automatic-releases@latest"
+    - name: Release
+      uses: softprops/action-gh-release@v1
       with:
-        repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        prerelease: false
-        title: Latest Release
-        automatic_release_tag: latest
-        files: |
-          build/chat.js
+        tag_name: latest
+        files: build/chat.js
