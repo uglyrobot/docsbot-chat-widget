@@ -26,6 +26,7 @@ jobs:
     - name: Release
       uses: ncipollo/release-action@v1
       with:
+        token: ${{ secrets.TOKEN }}
         tag: latest
         allowUpdates: true
         makeLatest: true
