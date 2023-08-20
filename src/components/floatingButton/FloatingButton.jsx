@@ -54,7 +54,7 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
       {isIconInList || isOpen ? (
         <FontAwesomeIcon size="xl" icon={iconToUse} />
       ) : (
-        <img src={icon} alt="Bot Avatar" />
+        <img src={icon} alt="Icon" />
       )}
       {showButtonLabel ? (
         <span className="floating-button-label">{labels.floatingButton}</span>

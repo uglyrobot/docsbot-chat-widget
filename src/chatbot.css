@@ -210,7 +210,7 @@
 }
 
 .docsbot-chat-header-background-wrapper {
-  height: 30px;
+  height: 22px;
   position: absolute;
   left: 0px;
   display: flex;
@@ -224,16 +224,30 @@
 .docsbot-chat-header-background {
   border-radius: 50%;
   bottom: 0px;
-  height: 3000px;
+  height: 6000px;
   left: 50%;
   position: absolute;
-  transform: translateX(-1500px);
-  width: 3000px;
+  transform: translateX(-3000px);
+  width: 6000px;
   background-color: #efefef;
 }
 
 .docsbot-chat-header-content {
   z-index: 99999998;
+  text-align: center;
+}
+
+.docsbot-chat-header-branded {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.docsbot-chat-header-branded img {
+  max-width: 50%;
+  height: auto;
+  max-height: 36px;
+  margin-right: 10px;
 }
 
 .docsbot-chat-header button {
@@ -258,7 +272,6 @@
 .docsbot-chat-header h1 {
   font-size: 14.4px;
   margin: 5px 0;
-  text-align: center;
 }
 
 .docsbot-chat-message-container {
