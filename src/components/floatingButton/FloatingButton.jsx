@@ -51,7 +51,7 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
         bottom: verticalMargin || 20,
       }}
       sr-label="Open/close chat">
-      {isIconInList ? (
+      {isIconInList || isOpen ? (
         <FontAwesomeIcon size="xl" icon={iconToUse} />
       ) : (
         <img src={icon} alt="Bot Avatar" />
