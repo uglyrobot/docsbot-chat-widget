@@ -37,7 +37,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     horizontalMargin,
     verticalMargin,
     logo,
-    logoAlignment,
+    headerAlignment,
   } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
@@ -308,11 +308,15 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
               >
                 <FontAwesomeIcon icon={faRefresh} />
               </button>
-              <div className="docsbot-chat-header-content">
+              <div className="docsbot-chat-header-content"
+              style={{
+                textAlign: headerAlignment === "left" ? "left" : "center",
+              }}
+              >
                 {logo ? (
                   <div className="docsbot-chat-header-branded"
                   style={{
-                    justifyContent: logoAlignment === "left" ? "start" : "center",
+                    justifyContent: headerAlignment === "left" ? "start" : "center",
                   }}
                   >
                     <img src={logo} alt={botName} />
