@@ -447,6 +447,10 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                   e.target.style.height = e.target.scrollHeight - 25 + "px"; // Adjust the textarea's height to wrap the input text
                 }}
                 onKeyDown={(e) => {
+                  //this detects if the user is typing in a IME session (ie Kanji autocomplete) to avoid premature submission
+                  if (e.isComposing || e.keyCode === 229) {
+                    return;
+                  }
                   if (e.key === "Enter" && !e.shiftKey) {
                     handleSubmit(e);
                     e.target.style.height = "auto";
