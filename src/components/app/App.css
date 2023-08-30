@@ -41,7 +41,7 @@
   height: 100%;
   animation: fadeIn 0.5s;
   width: 100%;
-  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
 .docsbot-chat-bot-message {
