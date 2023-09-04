@@ -58,6 +58,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
             id: uuidv4(),
             variant: "chatbot",
             message: parsedMessage,
+            timestamp: Date.now()
           },
         });
       }
@@ -65,16 +66,30 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
 
     fetchData();
   }, [refreshChat]);
-
   useEffect(() => {
     const fetchData = async () => {
       const savedConversation = JSON.parse(
         localStorage.getItem("docsbot_chat_history")
       );
-      dispatch({
-        type: "load_conversation",
-        payload: { savedConversation: savedConversation },
-      });
+      const currentTime = Date.now()
+      let lastMsgTimeStamp = 0
+      if(savedConversation){
+        Object.values(savedConversation)?.map(message=>{
+          if(message?.timestamp > lastMsgTimeStamp){
+             lastMsgTimeStamp = message?.timestamp
+          }
+        })
+        if(currentTime - lastMsgTimeStamp >  12 * 60 * 60 * 1000){
+          setRefreshChat(true)
+        }
+        else
+        {
+          dispatch({
+            type: "load_conversation",
+            payload: { savedConversation: savedConversation },
+          });
+        }
+      }
 
       if (savedConversation == null && labels.firstMessage) {
         const parsedMessage = await parseMarkdown(labels.firstMessage);
@@ -85,6 +100,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
             id: uuidv4(),
             variant: "chatbot",
             message: parsedMessage,
+            timestamp: Date.now(),
           },
         });
       }
@@ -98,17 +114,19 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     fetchData();
   }, [labels.firstMessage]);
 
+
+
   useEffect(() => {
     localStorage.setItem(
       "docsbot_chat_history",
       JSON.stringify(state.messages)
     );
 
-    if (
-      state.lastMessage &&
-      Date.now() - state.lastMessage > 12 * 60 * 60 * 1000
-    )
-      setRefreshChat(true);
+    // if (
+    //   state.lastMessage &&
+    //   Date.now() - state.lastMessage > 12 * 60 * 60 * 1000
+    // )
+    //   setRefreshChat(true);
   }, [state.messages]);
 
   function fetchAnswer(question) {
@@ -121,6 +139,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
         variant: "chatbot",
         message: null,
         loading: true,
+        timestamp: Date.now()
       },
     });
     ref.current.scrollTop = ref.current.scrollHeight;
