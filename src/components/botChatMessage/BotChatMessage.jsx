@@ -145,9 +145,11 @@ export const BotChatMessage = ({ payload }) => {
                     </div>
                     {showSources && (
                       <ul className="docsbot-sources">
-                        {payload.sources?.map((source, index) => (
-                          <Source key={index} source={source} />
-                        ))}
+                        {payload.sources?.map((source, index) => {
+                           if(source?.type?.toLowerCase() !=='qa'){
+                             return <Source key={index} source={source} />
+                           }
+                        })}
                       </ul>
                     )}
                   </>
