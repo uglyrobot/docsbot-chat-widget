@@ -122,11 +122,6 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
       JSON.stringify(state.messages)
     );
 
-    // if (
-    //   state.lastMessage &&
-    //   Date.now() - state.lastMessage > 12 * 60 * 60 * 1000
-    // )
-    //   setRefreshChat(true);
   }, [state.messages]);
 
   function fetchAnswer(question) {
