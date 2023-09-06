@@ -108,7 +108,7 @@ export const BotChatMessage = ({ payload }) => {
                 {payload.sources && (
                   <>
                     <div className="docsbot-chat-bot-message-meta">
-                      {payload.options.hideSources}
+                      {payload.options?.hideSources}
                       {!hideSources && (
                         <button onClick={() => setShowSources(!showSources)}>
                           {labels.sources}

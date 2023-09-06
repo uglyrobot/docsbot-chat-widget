@@ -18,7 +18,7 @@ import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
 
-export const Chatbot = ({ isOpen, setIsOpen }) => {
+export const Chatbot = ({ isOpen, setIsOpen , isIframeBox }) => {
   const [chatInput, setChatInput] = useState("");
   const [refreshChat, setRefreshChat] = useState(false);
   const { dispatch, state } = useChatbot();
@@ -293,7 +293,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
       part="wrapper"
     >
       <div className="docsbot-chat-container">
-        <div className="docsbot-chat-inner-container">
+        <div className={`docsbot-chat-inner-container ${isIframeBox? "docsbot-chat-inner-container-radius": ""}`}>
           <a
             role="button"
             className={"mobile-close-button"}

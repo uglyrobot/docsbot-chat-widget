@@ -5,11 +5,14 @@ const TerserPlugin = require("terser-webpack-plugin");
 
 module.exports = (_, { mode }) => {
   return {
-    entry: "./src/components/embeddableWidget/EmbeddableWidget.jsx",
+    entry: {
+      chat: "./src/components/embeddableWidget/EmbeddableWidget.jsx",
+      main: "./src/components/iframeChat/index.js"
+    },
     output: {
       path: path.resolve(__dirname, "build"),
       publicPath: "/",
-      filename: "chat.js",
+      filename: "[name].js",
       library: "DocsBotAI",
       libraryExport: "default",
       libraryTarget: "window",
