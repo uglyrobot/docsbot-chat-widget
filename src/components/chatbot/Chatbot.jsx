@@ -106,7 +106,7 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
       }
 
       //only focus on input if not mobile
-      if (mediaMatch.matches) {
+      if (mediaMatch.matches && !isEmbeddedBox) {
         inputRef.current.focus();
       }
     };
