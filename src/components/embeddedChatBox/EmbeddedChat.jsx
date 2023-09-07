@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Chatbot } from '../chatbot/Chatbot';
 import { ChatbotProvider } from '../chatbotContext/ChatbotContext';
 import { ConfigProvider } from '../configContext/ConfigContext';
@@ -19,10 +19,17 @@ const EmbeddedChat = () => {
   const handleOpenEmbeddedBox = () => {
     const floatChatBox = document.getElementById('docsbotai-root')
     if (floatChatBox) {
-      // window?.DocsBotAI.unmount()
+      window?.DocsBotAI.unmount()
     }
     setIsOpen(true)
   }
+
+  useEffect(() => {
+    const reinitBtn = document.getElementById("reinit-btn");
+    reinitBtn.addEventListener("click", () => {
+      setIsOpen(false)
+    })
+  }, [])
 
   return (
     <div>

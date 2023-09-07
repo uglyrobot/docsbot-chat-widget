@@ -6,8 +6,8 @@ const TerserPlugin = require("terser-webpack-plugin");
 module.exports = (_, { mode }) => {
   return {
     entry: {
+      main: "./src/main.js",
       chat: "./src/components/embeddableWidget/EmbeddableWidget.jsx",
-      embeddedChat: "./src/components/embeddedChatBox/index.js"
     },
     output: {
       path: path.resolve(__dirname, "build"),
