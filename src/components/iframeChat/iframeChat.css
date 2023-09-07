@@ -6,6 +6,10 @@
 
 .iframe-box{
     border: 1px solid rgb(221 213 213);
+    position: relative;
+    width: 800px;
+    height: 500px;
+    box-sizing: border-box;
 }
 
 #root {

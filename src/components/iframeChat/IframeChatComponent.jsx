@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { Resizable } from 're-resizable';
 import { Chatbot } from '../chatbot/Chatbot';
 import { ChatbotProvider } from '../chatbotContext/ChatbotContext';
 import { ConfigProvider } from '../configContext/ConfigContext';
@@ -13,11 +12,17 @@ import iframeChatStyles from "!raw-loader!./iframeChat.css"
 
 const IframeChatComponent = () => {
   const [isOpen, setIsOpen] = useState(false)
-  const [height, setHeight] = useState(500)
-  const [width, setWidth] = useState(1000)
-  const [config] = useState( {
+  const [config] = useState({
     id: "ZrbLG98bbxZ9EFqiPvyl/UaRQtd7AOTaMXeRQGQRl",
   })
+
+  const handleOpenEmbeddedBox = () => {
+    const floatChatBox = document.getElementById('docsbotai-root')
+    if (floatChatBox) {
+      // window?.DocsBotAI.unmount()
+    }
+    setIsOpen(true)
+  }
 
   return (
     <div>
@@ -29,27 +34,17 @@ const IframeChatComponent = () => {
       <style type="text/css">{iframeChatStyles}</style>
 
       <div className="button-container">
-        <button onClick={() => setIsOpen(true)}>Open iframe chat</button>
+        <button onClick={handleOpenEmbeddedBox}>Open iframe chat</button>
         <button onClick={() => setIsOpen(false)}>Close iframe chat</button>
       </div>
       {
-        isOpen ? <Resizable
-          size={{ width: width, height: height }}
-          className="iframe-box"
-          onResizeStop={(e, direction, ref, d) => {
-            setWidth(width + d.width)
-            setHeight(height + d.height)
-          }}
-          minHeight={400}
-          minWidth={400}
-          maxWidth={"100%"}
-        >
+        isOpen ? <div className="iframe-box">
           <ConfigProvider {...config}>
-          <ChatbotProvider>
-            <Chatbot {...{ isOpen, setIsOpen }} isIframeBox={true}/>
-          </ChatbotProvider>
+            <ChatbotProvider>
+              <Chatbot {...{ isOpen, setIsOpen }} isIframeBox={true} />
+            </ChatbotProvider>
           </ConfigProvider>
-        </Resizable> : null
+        </div> : null
       }
     </div>
   )
