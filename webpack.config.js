@@ -7,7 +7,7 @@ module.exports = (_, { mode }) => {
   return {
     entry: {
       chat: "./src/components/embeddableWidget/EmbeddableWidget.jsx",
-      main: "./src/components/iframeChat/index.js"
+      embeddedChat: "./src/components/embeddedChatBox/index.js"
     },
     output: {
       path: path.resolve(__dirname, "build"),

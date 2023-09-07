@@ -8,9 +8,9 @@ import reactChatbotStyles from "!raw-loader!../../chatbot.css";
 import floatingButtonStyles from "!raw-loader!../floatingButton/FloatingButton.css";
 import optionsStyles from "!raw-loader!../options/Options.css";
 import linkListStyles from "!raw-loader!../linkList/LinkList.css";
-import iframeChatStyles from "!raw-loader!./iframeChat.css"
+import embeddedChatStyles from "!raw-loader!./embeddedChat.css"
 
-const IframeChatComponent = () => {
+const EmbeddedChat = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [config] = useState({
     id: "ZrbLG98bbxZ9EFqiPvyl/UaRQtd7AOTaMXeRQGQRl",
@@ -31,7 +31,7 @@ const IframeChatComponent = () => {
       <style type="text/css">{floatingButtonStyles}</style>
       <style type="text/css">{optionsStyles}</style>
       <style type="text/css">{linkListStyles}</style>
-      <style type="text/css">{iframeChatStyles}</style>
+      <style type="text/css">{embeddedChatStyles}</style>
 
       <div className="button-container">
         <button onClick={handleOpenEmbeddedBox}>Open iframe chat</button>
@@ -50,4 +50,4 @@ const IframeChatComponent = () => {
   )
 }
 
-export default IframeChatComponent
+export default EmbeddedChat
