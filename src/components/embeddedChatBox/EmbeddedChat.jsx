@@ -41,7 +41,7 @@ const EmbeddedChat = () => {
         isOpen ? <div className="iframe-box">
           <ConfigProvider {...config}>
             <ChatbotProvider>
-              <Chatbot {...{ isOpen, setIsOpen }} isIframeBox={true} />
+              <Chatbot {...{ isOpen, setIsOpen }} isEmbeddedBox={true} />
             </ChatbotProvider>
           </ConfigProvider>
         </div> : null

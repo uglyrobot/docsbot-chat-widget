@@ -18,7 +18,7 @@ import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
 
-export const Chatbot = ({ isOpen, setIsOpen , isIframeBox }) => {
+export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
   const [chatInput, setChatInput] = useState("");
   const [refreshChat, setRefreshChat] = useState(false);
   const { dispatch, state } = useChatbot();
@@ -293,8 +293,9 @@ export const Chatbot = ({ isOpen, setIsOpen , isIframeBox }) => {
       part="wrapper"
     >
       <div className="docsbot-chat-container">
-        <div className={`docsbot-chat-inner-container ${isIframeBox? "docsbot-chat-inner-container-radius": ""}`}>
-          <a
+        <div className='docsbot-chat-inner-container'>
+          {
+            !isEmbeddedBox && <a
             role="button"
             className={"mobile-close-button"}
             onClick={(e) => {
@@ -308,9 +309,14 @@ export const Chatbot = ({ isOpen, setIsOpen , isIframeBox }) => {
               {labels.close || "Close"}
             </span>
           </a>
+          }
           <div
             className="docsbot-chat-header"
-            style={{
+            style={ isEmbeddedBox? {
+             backgroundColor: 'transparent',
+             color: 'rgb(103, 58, 183)'
+            }:
+            {
               backgroundColor: color,
               color: decideTextColor(color || "#1292EE"),
             }}
@@ -319,6 +325,7 @@ export const Chatbot = ({ isOpen, setIsOpen , isIframeBox }) => {
               <button
                 onClick={() => setRefreshChat(!refreshChat)}
                 title="Reset conversation"
+                style= {isEmbeddedBox ? {top: '2px'}: null}
               >
                 <FontAwesomeIcon icon={faRefresh} />
               </button>
@@ -327,7 +334,8 @@ export const Chatbot = ({ isOpen, setIsOpen , isIframeBox }) => {
                 textAlign: headerAlignment === "left" ? "left" : "center",
               }}
               >
-                {logo ? (
+                {isEmbeddedBox? null : 
+                logo ? (
                   <div className="docsbot-chat-header-branded"
                   style={{
                     justifyContent: headerAlignment === "left" ? "start" : "center",
@@ -337,16 +345,16 @@ export const Chatbot = ({ isOpen, setIsOpen , isIframeBox }) => {
                   </div>
                 ) : (
                   <>
-                    <h1>{botName}</h1>
-                    <span>{description}</span>
-                  </>
+                  <h1>{botName}</h1>
+                  <span>{description}</span>
+                </>
                 )}
               </div>
               <div className="docsbot-chat-header-background-wrapper">
                 <div
                   className="docsbot-chat-header-background"
                   style={{
-                    backgroundColor: color,
+                    backgroundColor: isEmbeddedBox ? 'transparent' : color,
                   }}
                 ></div>
               </div>

@@ -198,10 +198,6 @@
   overflow: hidden;
 }
 
-.docsbot-chat-inner-container-radius{
-  border-radius: 0 !important;
-}
-
 .docsbot-chat-header {
   display: flex;
   align-items: center;
