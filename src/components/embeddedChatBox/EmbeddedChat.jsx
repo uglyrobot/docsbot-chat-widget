@@ -26,9 +26,13 @@ const EmbeddedChat = () => {
 
   useEffect(() => {
     const reinitBtn = document.getElementById("reinit-btn");
-    reinitBtn.addEventListener("click", () => {
+    const reinitBtnEventListener = reinitBtn.addEventListener("click", () => {
       setIsOpen(false)
     })
+
+    return ()=>{
+      removeEventListener(reinitBtnEventListener)
+    }
   }, [])
 
   return (
@@ -41,8 +45,8 @@ const EmbeddedChat = () => {
       <style type="text/css">{embeddedChatStyles}</style>
 
       <div className="button-container">
-        <button onClick={handleOpenEmbeddedBox}>Open iframe chat</button>
-        <button onClick={() => setIsOpen(false)}>Close iframe chat</button>
+        <button onClick={handleOpenEmbeddedBox}>Open Embedded Chat</button>
+        <button onClick={() => setIsOpen(false)}>Close Embedded Chat</button>
       </div>
       {
         isOpen ? <div className="iframe-box">
