@@ -6,10 +6,12 @@
 
 .iframe-box{
     position: relative;
-    width: 80%;
-    height: 500px;
+    width: 600px;
+    height: 450px;
     box-sizing: border-box;
     margin: auto;
+    border-radius: 10px;
+    border: 2px solid #ded4d4;
 }
 
 #root {
@@ -55,8 +57,19 @@
     margin-left: 0;
   }
   
+  @media (max-width: 650px){
+    .iframe-box{
+      width: 450px;
+      height: 350px;
+    }
+  }
+
   /* on mobile make the chat window full screen */
   @media (max-width: 480px) {
+    .iframe-box{
+      width: 100%;
+      height: 300px;
+    }
     .docsbot-wrapper {
       width: 100%;
       right: 0;
@@ -71,9 +84,6 @@
       left: 0;
       right: unset;
     }
-    .docsbot-chat-container {
-      border-radius: 0;
-    }
     .floating-button.is-open {
       display: none;
     }
@@ -82,7 +92,7 @@
     }
     .docsbot-chat-inner-container {
       height: 100%;
-      border-radius: 0;
+      /* border-radius: 0; */
     }
   }
   
