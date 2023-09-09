@@ -38,13 +38,11 @@ export default class EmbeddableWidget {
       }
       const el = document.createElement("div");
       el.id = "docsbotai-root";
-      const parentRootElement = document.getElementById('parent-root')
       if (parentElement) {
         document.querySelector(parentElement).appendChild(el);
       } else {
-        parentRootElement.appendChild(el)
+        document.body.appendChild(el);
       }
-
       const root = ReactDOM.createRoot(el);
       root.render(component);
 
