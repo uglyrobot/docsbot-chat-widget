@@ -49,7 +49,7 @@ const EmbeddedChat = () => {
         <button onClick={() => setIsOpen(false)}>Close Embedded Chat</button>
       </div>
       {
-        isOpen ? <div className="iframe-box">
+        isOpen ? <div className="docsbot-iframe-box">
           <ConfigProvider {...config}>
             <ChatbotProvider>
               <Chatbot {...{ isOpen, setIsOpen }} isEmbeddedBox={true} />
