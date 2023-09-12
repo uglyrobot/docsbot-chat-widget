@@ -21,6 +21,7 @@ import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
 export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
   const [chatInput, setChatInput] = useState("");
   const [refreshChat, setRefreshChat] = useState(false);
+  const [showSupportMessage, setShowSupportMessage] = useState(false)
   const { dispatch, state } = useChatbot();
   const {
     color,
@@ -58,7 +59,8 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
             id: uuidv4(),
             variant: "chatbot",
             message: parsedMessage,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            isFirstMessage: true
           },
         });
       }
@@ -74,6 +76,11 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
       const currentTime = Date.now()
       let lastMsgTimeStamp = 0
       if(savedConversation){
+        const hideSupportMessage = localStorage.getItem('hideSupportMessage')
+        const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
+        if (!isUserDetailsAvailable && !hideSupportMessage) {
+          setShowSupportMessage(true)
+        }
         Object.values(savedConversation)?.map(message=>{
           if(message?.timestamp > lastMsgTimeStamp){
              lastMsgTimeStamp = message?.timestamp
@@ -101,6 +108,7 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
             variant: "chatbot",
             message: parsedMessage,
             timestamp: Date.now(),
+            isFirstMessage: true
           },
         });
       }
@@ -229,6 +237,11 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
 
           ref.current.scrollTop = ref.current.scrollHeight;
           ws.close();
+          const hideSupportMessage = localStorage.getItem('hideSupportMessage')
+          const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
+          if(!isUserDetailsAvailable && !hideSupportMessage){
+            setShowSupportMessage(true)
+          }
         } else if (data.type === "error") {
           dispatch({
             type: "update_message",
@@ -259,7 +272,7 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
 
   async function handleSubmit(event) {
     event.preventDefault();
-
+    setShowSupportMessage(false)
     dispatch({
       type: "add_message",
       payload: {
@@ -367,7 +380,7 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
               message.isLast = key === Object.keys(state.messages).pop();
               return message.variant === "chatbot" ? (
                 <div key={key}>
-                  <BotChatMessage payload={message} />
+                  <BotChatMessage payload={message} showSupportMessage={showSupportMessage} setShowSupportMessage={setShowSupportMessage} />
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
                   ) : null}
@@ -399,6 +412,7 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
                         key={"question" + index}
                         type="button"
                         onClick={() => {
+                          setShowSupportMessage(false)
                           dispatch({
                             type: "add_message",
                             payload: {

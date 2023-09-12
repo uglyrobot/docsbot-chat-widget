@@ -1,18 +1,22 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Loader } from "../loader/Loader";
-import { faChevronDown, faChevronUp, faFlag as solidFlag, faBullhorn } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronUp, faFlag as solidFlag, faBullhorn, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { faFlag as regularFlag, } from "@fortawesome/free-regular-svg-icons";
 import { useConfig } from "../configContext/ConfigContext";
 import { BotAvatar } from "../botAvatar/BotAvatar";
 import { Source } from "../source/Source";
 import { getLighterColor, decideTextColor } from "../../utils/colors";
 import { useChatbot } from "../chatbotContext/ChatbotContext";
+import botMessageStyles from "!raw-loader!./botMessage.css";
 
-export const BotChatMessage = ({ payload }) => {
+export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMessage }) => {
   const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [isShowSaved, setIsShowSaved] = useState(false)
   const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback } = useConfig();
   const { dispatch, state } = useChatbot();
   const headers = {
@@ -82,12 +86,24 @@ export const BotChatMessage = ({ payload }) => {
     }
   };
 
+  const handleContact = (e) => {
+    e.preventDefault()
+    const userData = {
+      name: name,
+      email: email
+    }
+    localStorage.setItem('userContactDetails', JSON.stringify(userData))
+    setShowSupportMessage(false)
+    setIsShowSaved(true)
+  }
+
   const bgColor = payload.error
     ? "#FEFCE8"
     : getLighterColor(color || "#1292EE");
   const fontColor = payload.error ? "#713F12" : decideTextColor(bgColor);
   return (
     <>
+      <style type="text/css">{botMessageStyles}</style>
       <div className="docsbot-chat-bot-message-container">
         <BotAvatar />
         <div
@@ -102,7 +118,7 @@ export const BotChatMessage = ({ payload }) => {
               return <Loader />;
             }
 
-            return ( 
+            return (
               <>
                 <span dangerouslySetInnerHTML={{ __html: payload.message }} />
                 {payload.sources && (
@@ -146,9 +162,9 @@ export const BotChatMessage = ({ payload }) => {
                     {showSources && (
                       <ul className="docsbot-sources">
                         {payload.sources?.map((source, index) => {
-                           if(source?.type?.toLowerCase() !=='qa'){
-                             return <Source key={index} source={source} />
-                           }
+                          if (source?.type?.toLowerCase() !== 'qa') {
+                            return <Source key={index} source={source} />
+                          }
                         })}
                       </ul>
                     )}
@@ -159,6 +175,47 @@ export const BotChatMessage = ({ payload }) => {
           })()}
         </div>
       </div>
+      {
+        showSupportMessage && payload?.isLast && !payload?.isFirstMessage ? <div className="docsbot-chat-bot-message-container support-box-container">
+          <div className="docsbot-chat-bot-message"
+            style={{
+              backgroundColor: bgColor,
+              color: fontColor,
+              width: '100%'
+            }}>
+            <div className="contact-header-container">
+              <p>Let us know how to contact you?</p>
+              <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => {
+                setShowSupportMessage(false)
+                localStorage.setItem('hideSupportMessage', 'true')
+              }} /></button>
+            </div>
+            <form onSubmit={handleContact} className="support-box-form-container">
+              <input type="text" placeholder="Enter you name" value={name} onChange={(e) => setName(e.target.value)} />
+              <input type="email" required placeholder="Enter you email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <button type="submit">Send</button>
+            </form>
+          </div>
+        </div>
+          : null
+      }
+      {
+        isShowSaved ?
+          <div className="docsbot-chat-bot-message-container support-box-container">
+            <div className="docsbot-chat-bot-message"
+              style={{
+                backgroundColor: bgColor,
+                color: fontColor,
+                width: '100%'
+              }}>
+              <div className="contact-header-container">
+                <p>Your details has been saved successfully!</p>
+                <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => setIsShowSaved(false)} /></button>
+              </div>
+            </div>
+          </div>
+          : null
+      }
       {payload.isLast && supportLink && (payload.sources || payload.error) && (
         <div className="docsbot-chat-bot-message-support">
           <a
