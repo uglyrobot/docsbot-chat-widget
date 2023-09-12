@@ -30,33 +30,26 @@ const EmbeddedChat = () => {
       setIsOpen(false)
     })
 
-    return ()=>{
+    return () => {
       removeEventListener(reinitBtnEventListener)
     }
   }, [])
 
   return (
-    <div>
+    <div style={{ height: '100%' }}>
       <style type="text/css">{fontAwesomeStyles}</style>
       <style type="text/css">{reactChatbotStyles}</style>
       <style type="text/css">{floatingButtonStyles}</style>
       <style type="text/css">{optionsStyles}</style>
       <style type="text/css">{linkListStyles}</style>
       <style type="text/css">{embeddedChatStyles}</style>
-
-      <div className="button-container">
-        <button onClick={handleOpenEmbeddedBox}>Open Embedded Chat</button>
-        <button onClick={() => setIsOpen(false)}>Close Embedded Chat</button>
-      </div>
-      {
-        isOpen ? <div className="docsbot-iframe-box">
+      <div className="docsbot-iframe-box">
           <ConfigProvider {...config}>
             <ChatbotProvider>
               <Chatbot {...{ isOpen, setIsOpen }} isEmbeddedBox={true} />
             </ChatbotProvider>
           </ConfigProvider>
-        </div> : null
-      }
+        </div>
     </div>
   )
 }
