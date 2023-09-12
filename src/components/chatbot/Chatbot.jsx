@@ -149,6 +149,13 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
 
     let answer = "";
     let metadata = identify;
+    const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+    if(userDetails){
+      metadata = {
+        ...metadata,
+        ...userDetails
+      }
+    }
     metadata.referrer = window.location.href;
     const history = state.chatHistory || [];
     const req = { question, markdown: true, history, metadata };

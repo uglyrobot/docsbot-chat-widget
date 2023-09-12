@@ -15,20 +15,37 @@
     gap: 6px;
 }
 
+.form-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.form-input-container label {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+}
+
 .support-box-form-container input {
     padding: 4px 12px;
     height: 1.8rem;
     font-size: 13px;
-    border: 1px solid #ececec;
     font-family: Verdana, Geneva, Tahoma, sans-serif;
     border-radius: 5px;
+    background: #fff;
+    color: #a3a3a3;
+    box-shadow: 0 6px 10px 0 rgba(0, 0, 0, 0.1);
+    border: 0;
+    outline: 0;
 }
 
 .support-box-form-container button {
     padding: 10px;
     width: 75px;
     background-color: rgb(103, 58, 183);
-    color: rgb(255, 255, 255);
-    border-radius: 10px;
     font-family: Verdana, Geneva, Tahoma, sans-serif;
+    color: #fff;
+    box-shadow: 0 0 10px 2px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
 }

@@ -191,8 +191,14 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
               }} /></button>
             </div>
             <form onSubmit={handleContact} className="support-box-form-container">
-              <input type="text" placeholder="Enter you name" value={name} onChange={(e) => setName(e.target.value)} />
-              <input type="email" required placeholder="Enter you email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <div className="form-input-container">
+                <label>Name</label>
+                <input type="text" placeholder="Enter you name" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div className="form-input-container">
+                <label>Email</label>
+                <input type="email" required placeholder="Enter you email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
               <button type="submit">Send</button>
             </form>
           </div>
