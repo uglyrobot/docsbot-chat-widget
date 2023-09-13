@@ -5,7 +5,7 @@ const TerserPlugin = require("terser-webpack-plugin");
 
 module.exports = (_, { mode }) => {
   return {
-    entry: ["./src/index.js", "./src/components/embeddableWidget/EmbeddableWidget.jsx"],
+    entry: "./src/components/embeddableWidget/EmbeddableWidget.jsx",
     output: {
       path: path.resolve(__dirname, "build"),
       publicPath: "/",
