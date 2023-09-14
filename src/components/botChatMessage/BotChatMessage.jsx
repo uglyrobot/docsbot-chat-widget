@@ -10,7 +10,7 @@ import { getLighterColor, decideTextColor } from "../../utils/colors";
 import { useChatbot } from "../chatbotContext/ChatbotContext";
 import botMessageStyles from "!raw-loader!./botMessage.css";
 
-export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMessage }) => {
+export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMessage, fetchAnswer, showFeedbackButton, setShowFeedbackButton }) => {
   const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
@@ -95,6 +95,21 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
     localStorage.setItem('userContactDetails', JSON.stringify(userData))
     setShowSupportMessage(false)
     setIsShowSaved(true)
+  }
+
+  const handleFeedbackButton = (message, isFeedback) => {
+    setShowSupportMessage(false)
+    dispatch({
+      type: "add_message",
+      payload: {
+        variant: "user",
+        message: message,
+        loading: false,
+        timestamp: Date.now(),
+      },
+    });
+    fetchAnswer(message, isFeedback);
+    setShowFeedbackButton(false)
   }
 
   const bgColor = payload.error
@@ -217,6 +232,24 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
               <div className="contact-header-container">
                 <p>Your details has been saved successfully!</p>
                 <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => setIsShowSaved(false)} /></button>
+              </div>
+            </div>
+          </div>
+          : null
+      }
+      {
+        showFeedbackButton && !payload?.isFeedback && payload?.isLast && !payload?.isFirstMessage ?
+          <div className="docsbot-chat-bot-message-container support-box-container">
+            <div className="docsbot-chat-bot-message"
+              style={{
+                backgroundColor: 'transparent',
+                color: fontColor,
+                width: '100%',
+                border: 'none'
+              }}>
+              <div className="feedback-button-container">
+                <button className="feedback-button" onClick={() => handleFeedbackButton("Thanks, that's helped me", true)}>That's Helped</button>
+                <button className="feedback-button" onClick={() => handleFeedbackButton("Need More Information", false)}>Need More Information</button>
               </div>
             </div>
           </div>

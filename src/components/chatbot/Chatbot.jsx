@@ -22,6 +22,7 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
   const [chatInput, setChatInput] = useState("");
   const [refreshChat, setRefreshChat] = useState(false);
   const [showSupportMessage, setShowSupportMessage] = useState(false)
+  const [showFeedbackButton, setShowFeedbackButton] = useState(false)
   const { dispatch, state } = useChatbot();
   const {
     color,
@@ -81,7 +82,14 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
         if (!isUserDetailsAvailable && !hideSupportMessage) {
           setShowSupportMessage(true)
         }
-        Object.values(savedConversation)?.map(message=>{
+        const savedConversationArray = Object.values(savedConversation)
+        if(savedConversationArray){
+          const lastConversation = savedConversationArray[savedConversationArray.length -1]
+          if(!lastConversation?.isFeedback && !lastConversation?.isFirstMessage){
+            setShowFeedbackButton(true)
+          }
+        }
+        savedConversationArray?.map(message=>{
           if(message?.timestamp > lastMsgTimeStamp){
              lastMsgTimeStamp = message?.timestamp
           }
@@ -132,7 +140,7 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
 
   }, [state.messages]);
 
-  function fetchAnswer(question) {
+  function fetchAnswer(question, isFeedback) {
     const id = uuidv4();
 
     dispatch({
@@ -233,6 +241,7 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
               answerId: finalData.id,
               rating: finalData.rating,
               loading: false,
+              isFeedback: isFeedback ? isFeedback : false
             },
           });
           dispatch({
@@ -248,6 +257,9 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
           const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
           if(!isUserDetailsAvailable && !hideSupportMessage){
             setShowSupportMessage(true)
+          }
+          if(!isFeedback){
+            setShowFeedbackButton(true)
           }
         } else if (data.type === "error") {
           dispatch({
@@ -387,7 +399,7 @@ export const Chatbot = ({ isOpen, setIsOpen , isEmbeddedBox }) => {
               message.isLast = key === Object.keys(state.messages).pop();
               return message.variant === "chatbot" ? (
                 <div key={key}>
-                  <BotChatMessage payload={message} showSupportMessage={showSupportMessage} setShowSupportMessage={setShowSupportMessage} />
+                  <BotChatMessage payload={message} showSupportMessage={showSupportMessage} setShowSupportMessage={setShowSupportMessage} fetchAnswer= {fetchAnswer} showFeedbackButton= {showFeedbackButton} setShowFeedbackButton= {setShowFeedbackButton}/>
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
                   ) : null}
