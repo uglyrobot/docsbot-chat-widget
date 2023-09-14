@@ -18,7 +18,7 @@ import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
 
-export const Chatbot = ({ isOpen, setIsOpen }) => {
+export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const [chatInput, setChatInput] = useState("");
   const [refreshChat, setRefreshChat] = useState(false);
   const { dispatch, state } = useChatbot();
@@ -38,6 +38,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     verticalMargin,
     logo,
     headerAlignment,
+    hideHeader,
   } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
@@ -58,7 +59,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
             id: uuidv4(),
             variant: "chatbot",
             message: parsedMessage,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           },
         });
       }
@@ -71,19 +72,17 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
       const savedConversation = JSON.parse(
         localStorage.getItem("docsbot_chat_history")
       );
-      const currentTime = Date.now()
-      let lastMsgTimeStamp = 0
-      if(savedConversation){
-        Object.values(savedConversation)?.map(message=>{
-          if(message?.timestamp > lastMsgTimeStamp){
-             lastMsgTimeStamp = message?.timestamp
+      const currentTime = Date.now();
+      let lastMsgTimeStamp = 0;
+      if (savedConversation) {
+        Object.values(savedConversation)?.map((message) => {
+          if (message?.timestamp > lastMsgTimeStamp) {
+            lastMsgTimeStamp = message?.timestamp;
           }
-        })
-        if(currentTime - lastMsgTimeStamp >  12 * 60 * 60 * 1000){
-          setRefreshChat(true)
-        }
-        else
-        {
+        });
+        if (currentTime - lastMsgTimeStamp > 12 * 60 * 60 * 1000) {
+          setRefreshChat(true);
+        } else {
           dispatch({
             type: "load_conversation",
             payload: { savedConversation: savedConversation },
@@ -106,7 +105,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
       }
 
       //only focus on input if not mobile
-      if (mediaMatch.matches) {
+      if (mediaMatch.matches && !isEmbeddedBox) {
         inputRef.current.focus();
       }
     };
@@ -114,14 +113,11 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     fetchData();
   }, [labels.firstMessage]);
 
-
-
   useEffect(() => {
     localStorage.setItem(
       "docsbot_chat_history",
       JSON.stringify(state.messages)
     );
-
   }, [state.messages]);
 
   function fetchAnswer(question) {
@@ -134,7 +130,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
         variant: "chatbot",
         message: null,
         loading: true,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       },
     });
     ref.current.scrollTop = ref.current.scrollHeight;
@@ -294,44 +290,57 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
     >
       <div className="docsbot-chat-container">
         <div className="docsbot-chat-inner-container">
-          <a
-            role="button"
-            className={"mobile-close-button"}
-            onClick={(e) => {
-              e.preventDefault();
-              setIsOpen(false);
-            }}
-            sr-label="Close chat"
-          >
-            <FontAwesomeIcon size="lg" icon={faXmark} />
-            <span className="mobile-close-button-label">
-              {labels.close || "Close"}
-            </span>
-          </a>
+          {!isEmbeddedBox && (
+            <a
+              role="button"
+              className={"mobile-close-button"}
+              onClick={(e) => {
+                e.preventDefault();
+                setIsOpen(false);
+              }}
+              sr-label="Close chat"
+            >
+              <FontAwesomeIcon size="lg" icon={faXmark} />
+              <span className="mobile-close-button-label">
+                {labels.close || "Close"}
+              </span>
+            </a>
+          )}
           <div
             className="docsbot-chat-header"
-            style={{
-              backgroundColor: color,
-              color: decideTextColor(color || "#1292EE"),
-            }}
+            style={
+              (isEmbeddedBox && hideHeader)
+                ? {
+                    backgroundColor: "transparent",
+                    color: "rgb(103, 58, 183)",
+                  }
+                : {
+                    backgroundColor: color,
+                    color: decideTextColor(color || "#1292EE"),
+                  }
+            }
           >
             <div style={{ width: "100%" }}>
               <button
                 onClick={() => setRefreshChat(!refreshChat)}
                 title="Reset conversation"
+                style={(isEmbeddedBox && hideHeader) ? { top: "2px" } : { top: "5px" }}
               >
                 <FontAwesomeIcon icon={faRefresh} />
               </button>
-              <div className="docsbot-chat-header-content"
-              style={{
-                textAlign: headerAlignment === "left" ? "left" : "center",
-              }}
+              <div
+                className="docsbot-chat-header-content"
+                style={{
+                  textAlign: headerAlignment === "left" ? "left" : "center",
+                }}
               >
-                {logo ? (
-                  <div className="docsbot-chat-header-branded"
-                  style={{
-                    justifyContent: headerAlignment === "left" ? "start" : "center",
-                  }}
+                {(isEmbeddedBox && hideHeader) ? null : logo ? (
+                  <div
+                    className="docsbot-chat-header-branded"
+                    style={{
+                      justifyContent:
+                        headerAlignment === "left" ? "start" : "center",
+                    }}
                   >
                     <img src={logo} alt={botName} />
                   </div>
@@ -346,7 +355,7 @@ export const Chatbot = ({ isOpen, setIsOpen }) => {
                 <div
                   className="docsbot-chat-header-background"
                   style={{
-                    backgroundColor: color,
+                    backgroundColor: isEmbeddedBox ? "transparent" : color,
                   }}
                 ></div>
               </div>

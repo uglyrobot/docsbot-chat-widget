@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "../app/App";
 import { ConfigProvider } from "../configContext/ConfigContext";
 import { Emitter } from "../../utils/event-emitter";
-
+import EmbeddedChat from '../embeddedChatBox/EmbeddedChat'
 export default class EmbeddableWidget {
   static _root;
   static el;
@@ -26,26 +26,35 @@ export default class EmbeddableWidget {
   }
 
   static mount({ parentElement = null, ...props } = {}) {
+    const embeddedChatElement = document.getElementById('docsbot-widget-embed')
     const component = (
       <ConfigProvider {...props}>
-        <App isChatbotOpen={this.isChatbotOpen} {...props} />
+        {
+          embeddedChatElement ? <EmbeddedChat /> : <App isChatbotOpen={this.isChatbotOpen} {...props} />
+        }
       </ConfigProvider>
     );
 
     const doRender = () => {
       if (EmbeddableWidget.el) {
-        throw new Error("EmbeddableWidget is already mounted, unmount first");
+        console.warn("EmbeddableWidget is already mounted, unmount first");
+        return false
       }
-      const el = document.createElement("div");
-      el.id = "docsbotai-root";
-
-      if (parentElement) {
-        document.querySelector(parentElement).appendChild(el);
-      } else {
-        document.body.appendChild(el);
+      let el = null
+      let root = null
+      if (embeddedChatElement) {
+        el = embeddedChatElement
       }
-
-      const root = ReactDOM.createRoot(el);
+      else {
+        el = document.createElement("div");
+        el.id = "docsbotai-root";
+        if (parentElement) {
+          document.querySelector(parentElement).appendChild(el);
+        } else {
+          document.body.appendChild(el);
+        }
+      }
+      root = ReactDOM.createRoot(el);
       root.render(component);
 
       this._root = root;
