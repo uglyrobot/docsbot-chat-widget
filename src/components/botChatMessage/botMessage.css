@@ -2,6 +2,14 @@
     margin: 10px 0px 0px 40px !important;
 }
 
+.chat-support-message-box {
+    width: 100%;
+    background-color: rgb(255, 255, 255);
+    border-radius: 5px;
+    color: rgb(0, 0, 0);
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 15px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px 0px, rgb(243 239 239 / 50%) 0px 2px 0px 0px inset;
+}
+
 .contact-header-container {
     display: flex;
     justify-content: space-between;
@@ -10,21 +18,8 @@
 
 .support-box-form-container {
     display: flex;
-    flex-direction: column;
-    width: 75%;
     gap: 6px;
-}
-
-.form-input-container {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.form-input-container label {
-    font-family: Verdana, Geneva, Tahoma, sans-serif;
-    font-size: 13px;
-    font-weight: 600;
+    position: relative;
 }
 
 .support-box-form-container input {
@@ -40,17 +35,20 @@
     border-radius: 4px;
     background: rgb(250, 250, 250);
     appearance: none;
-    outline: n;
+    outline: none;
 }
 
 .support-box-form-container button {
-    padding: 10px;
-    width: 75px;
+    width: 2.5rem;
     background-color: rgb(103, 58, 183);
     font-family: Verdana, Geneva, Tahoma, sans-serif;
     color: #fff;
     box-shadow: 0 0 10px 2px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
+    position: absolute;
+    right: 3rem;
+    height: 40px;
+    bottom: 0;
 }
 
 .feedback-button-container {

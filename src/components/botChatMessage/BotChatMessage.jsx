@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Loader } from "../loader/Loader";
-import { faChevronDown, faChevronUp, faFlag as solidFlag, faBullhorn, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronUp, faFlag as solidFlag, faBullhorn, faXmark, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { faFlag as regularFlag, } from "@fortawesome/free-regular-svg-icons";
 import { useConfig } from "../configContext/ConfigContext";
 import { BotAvatar } from "../botAvatar/BotAvatar";
@@ -17,6 +17,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [isShowSaved, setIsShowSaved] = useState(false)
+  const [isShowEmail, setIsShowEmail] = useState(false)
   const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback } = useConfig();
   const { dispatch, state } = useChatbot();
   const headers = {
@@ -192,12 +193,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
       </div>
       {
         showSupportMessage && payload?.isLast && !payload?.isFirstMessage ? <div className="docsbot-chat-bot-message-container support-box-container">
-          <div className="docsbot-chat-bot-message"
-            style={{
-              backgroundColor: bgColor,
-              color: fontColor,
-              width: '100%'
-            }}>
+          <div className="docsbot-chat-bot-message chat-support-message-box">
             <div className="contact-header-container">
               <p>Let us know how to contact you?</p>
               <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => {
@@ -205,16 +201,27 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                 localStorage.setItem('hideSupportMessage', 'true')
               }} /></button>
             </div>
-            <form onSubmit={handleContact} className="support-box-form-container">
-              <div className="form-input-container">
-                <label>Name</label>
-                <input type="text" placeholder="Enter you name" value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-              <div className="form-input-container">
-                <label>Email</label>
-                <input type="email" required placeholder="Enter you email" value={email} onChange={(e) => setEmail(e.target.value)} />
-              </div>
-              <button type="submit">Send</button>
+            <form onSubmit={isShowEmail ? handleContact : (e) => e.preventDefault()} className="support-box-form-container">
+              {
+                !isShowEmail ?
+                  <div>
+                    <input type="text" placeholder="Enter you name" value={name} onChange={(e) => setName(e.target.value)} />
+                  </div>
+                  : null
+              }
+              {
+                isShowEmail ?
+                  <div>
+                    <input type="email" required placeholder="Enter you email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </div>
+                  : null
+              }
+              <button type={isShowEmail ? "submit" : ""}><FontAwesomeIcon icon={faChevronRight} size='lg' onClick={() => {
+                console.log('called..');
+                if (!isShowEmail) {
+                  setIsShowEmail(true)
+                }
+              }} /></button>
             </form>
           </div>
         </div>
