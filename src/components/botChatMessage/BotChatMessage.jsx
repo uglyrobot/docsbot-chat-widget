@@ -1,18 +1,24 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Loader } from "../loader/Loader";
-import { faChevronDown, faChevronUp, faFlag as solidFlag, faBullhorn } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronUp, faFlag as solidFlag, faBullhorn, faXmark, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { faFlag as regularFlag, } from "@fortawesome/free-regular-svg-icons";
 import { useConfig } from "../configContext/ConfigContext";
 import { BotAvatar } from "../botAvatar/BotAvatar";
 import { Source } from "../source/Source";
 import { getLighterColor, decideTextColor } from "../../utils/colors";
 import { useChatbot } from "../chatbotContext/ChatbotContext";
+import botMessageStyles from "!raw-loader!./botMessage.css";
 
-export const BotChatMessage = ({ payload }) => {
+export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMessage, fetchAnswer, showFeedbackButton, setShowFeedbackButton }) => {
   const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [isShowSaved, setIsShowSaved] = useState(false)
+  const [isShowEmail, setIsShowEmail] = useState(false)
+  const [isShowEmailError, setIsShowEmailError] = useState(false)
   const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback } = useConfig();
   const { dispatch, state } = useChatbot();
   const headers = {
@@ -82,12 +88,45 @@ export const BotChatMessage = ({ payload }) => {
     }
   };
 
+  const handleContact = () => {
+    const isValidEmail = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(email);
+    if (email.trim().length > 0 && isValidEmail) {
+      setIsShowEmailError(false)
+      const userData = {
+        name: name,
+        email: email
+      }
+      localStorage.setItem('userContactDetails', JSON.stringify(userData))
+      setShowSupportMessage(false)
+      setIsShowSaved(true)
+    }
+    else {
+      setIsShowEmailError(true)
+    }
+  }
+
+  const handleFeedbackButton = (message, isFeedback) => {
+    setShowSupportMessage(false)
+    dispatch({
+      type: "add_message",
+      payload: {
+        variant: "user",
+        message: message,
+        loading: false,
+        timestamp: Date.now(),
+      },
+    });
+    fetchAnswer(message, isFeedback);
+    setShowFeedbackButton(false)
+  }
+
   const bgColor = payload.error
     ? "#FEFCE8"
     : getLighterColor(color || "#1292EE");
   const fontColor = payload.error ? "#713F12" : decideTextColor(bgColor);
   return (
     <>
+      <style type="text/css">{botMessageStyles}</style>
       <div className="docsbot-chat-bot-message-container">
         <BotAvatar />
         <div
@@ -102,7 +141,7 @@ export const BotChatMessage = ({ payload }) => {
               return <Loader />;
             }
 
-            return ( 
+            return (
               <>
                 <span dangerouslySetInnerHTML={{ __html: payload.message }} />
                 {payload.sources && (
@@ -146,9 +185,9 @@ export const BotChatMessage = ({ payload }) => {
                     {showSources && (
                       <ul className="docsbot-sources">
                         {payload.sources?.map((source, index) => {
-                           if(source?.type?.toLowerCase() !=='qa'){
-                             return <Source key={index} source={source} />
-                           }
+                          if (source?.type?.toLowerCase() !== 'qa') {
+                            return <Source key={index} source={source} />
+                          }
                         })}
                       </ul>
                     )}
@@ -159,6 +198,80 @@ export const BotChatMessage = ({ payload }) => {
           })()}
         </div>
       </div>
+      {
+        showSupportMessage && payload?.isLast && !payload?.isFirstMessage ? <div className="docsbot-chat-bot-message-container support-box-container">
+          <div className="docsbot-chat-bot-message chat-support-message-box">
+            <div className="contact-header-container">
+              <p>Let us know how to contact you?</p>
+              <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => {
+                setShowSupportMessage(false)
+                localStorage.setItem('hideSupportMessage', 'true')
+              }} /></button>
+            </div>
+            <div className="support-box-form-container">
+              {
+                !isShowEmail ?
+                  <>
+                    <div>
+                      <input type="text" placeholder="Enter you name" value={name} onChange={(e) => setName(e.target.value)} />
+                    </div>
+                    <button onClick={() => setIsShowEmail(true)} ><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
+                  </>
+                  : null
+              }
+              {
+                isShowEmail ?
+                  <>
+                    <div>
+                      <input type="email" required placeholder="Enter you email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                    </div>
+                    <button onClick={handleContact}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
+                  </>
+                  : null
+              }
+            </div>
+            {
+              isShowEmailError ? <p className="errorText">Please enter a valid email address</p> : null
+            }
+          </div>
+        </div>
+          : null
+      }
+      {
+        isShowSaved ?
+          <div className="docsbot-chat-bot-message-container support-box-container">
+            <div className="docsbot-chat-bot-message"
+              style={{
+                backgroundColor: bgColor,
+                color: fontColor,
+                width: '100%'
+              }}>
+              <div className="contact-header-container">
+                <p>Your details has been saved successfully!</p>
+                <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => setIsShowSaved(false)} /></button>
+              </div>
+            </div>
+          </div>
+          : null
+      }
+      {
+        showFeedbackButton && !payload?.isFeedback && payload?.isLast && !payload?.isFirstMessage ?
+          <div className="docsbot-chat-bot-message-container support-box-container">
+            <div className="docsbot-chat-bot-message"
+              style={{
+                backgroundColor: 'transparent',
+                color: fontColor,
+                width: '100%',
+                border: 'none'
+              }}>
+              <div className="feedback-button-container">
+                <button className="feedback-button" onClick={() => handleFeedbackButton("Thanks, that's helped me", true)}>That's Helped</button>
+                <button className="feedback-button" onClick={() => handleFeedbackButton("Need More Information", false)}>Need More Information</button>
+              </div>
+            </div>
+          </div>
+          : null
+      }
       {payload.isLast && supportLink && (payload.sources || payload.error) && (
         <div className="docsbot-chat-bot-message-support">
           <a

@@ -1,0 +1,78 @@
+.support-box-container {
+    margin: 10px 0px 0px 40px !important;
+}
+
+.chat-support-message-box {
+    width: 100%;
+    background-color: rgb(255, 255, 255);
+    border-radius: 5px;
+    color: rgb(0, 0, 0);
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 15px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px 0px, rgb(243 239 239 / 50%) 0px 2px 0px 0px inset;
+}
+
+.contact-header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.support-box-form-container {
+    display: block;
+    position: relative;
+}
+
+.support-box-form-container input {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    width: 100%;
+    height: 40px;
+    padding: 11px 40px 11px 16px;
+    box-sizing: border-box;
+    font-size: 14px;
+    box-shadow: rgba(0, 0, 0, 0.07) 0px 1px 3px 0px inset;
+    border: 1px solid rgb(225, 225, 225);
+    color: rgb(0, 0, 0);
+    border-radius: 4px;
+    background: rgb(250, 250, 250);
+    appearance: none;
+    outline: none;
+}
+
+.support-box-form-container button {
+    width: 2.5rem;
+    background-color: rgb(103, 58, 183);
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    color: #fff;
+    box-shadow: 0 0 10px 2px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    position: absolute;
+    right: 0rem;
+    height: 40px;
+    bottom: 0;
+}
+
+.feedback-button-container {
+    display: flex;
+    justify-content: space-between;
+}
+
+.feedback-button-container .feedback-button {
+    font-size: 12px;
+    line-height: 18px;
+    padding: 10px;
+    border-radius: 6px;
+    background-color: rgb(229, 238, 255);
+    color: rgb(0, 52, 153);
+    cursor: pointer;
+}
+
+.feedback-button-container .feedback-button:hover {
+    color: rgb(229, 238, 255);
+    background-color: rgb(0, 52, 153);
+}
+
+.errorText {
+    font-size: 11px;
+    margin-top: 4px;
+    color: #f61515;
+    font-weight: 600;
+}

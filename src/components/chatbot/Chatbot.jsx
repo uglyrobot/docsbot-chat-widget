@@ -21,6 +21,8 @@ import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
 export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const [chatInput, setChatInput] = useState("");
   const [refreshChat, setRefreshChat] = useState(false);
+  const [showSupportMessage, setShowSupportMessage] = useState(false)
+  const [showFeedbackButton, setShowFeedbackButton] = useState(false)
   const { dispatch, state } = useChatbot();
   const {
     color,
@@ -60,6 +62,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             variant: "chatbot",
             message: parsedMessage,
             timestamp: Date.now(),
+            isFirstMessage: true
           },
         });
       }
@@ -72,12 +75,24 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       const savedConversation = JSON.parse(
         localStorage.getItem("docsbot_chat_history")
       );
-      const currentTime = Date.now();
-      let lastMsgTimeStamp = 0;
-      if (savedConversation) {
-        Object.values(savedConversation)?.map((message) => {
-          if (message?.timestamp > lastMsgTimeStamp) {
-            lastMsgTimeStamp = message?.timestamp;
+      const currentTime = Date.now()
+      let lastMsgTimeStamp = 0
+      if(savedConversation){
+        const hideSupportMessage = localStorage.getItem('hideSupportMessage')
+        const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
+        if (!isUserDetailsAvailable && !hideSupportMessage) {
+          setShowSupportMessage(true)
+        }
+        const savedConversationArray = Object.values(savedConversation)
+        if(savedConversationArray){
+          const lastConversation = savedConversationArray[savedConversationArray.length -1]
+          if(!lastConversation?.isFeedback && !lastConversation?.isFirstMessage){
+            setShowFeedbackButton(true)
+          }
+        }
+        savedConversationArray?.map(message=>{
+          if(message?.timestamp > lastMsgTimeStamp){
+             lastMsgTimeStamp = message?.timestamp
           }
         });
         if (currentTime - lastMsgTimeStamp > 12 * 60 * 60 * 1000) {
@@ -100,6 +115,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             variant: "chatbot",
             message: parsedMessage,
             timestamp: Date.now(),
+            isFirstMessage: true
           },
         });
       }
@@ -120,7 +136,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     );
   }, [state.messages]);
 
-  function fetchAnswer(question) {
+  function fetchAnswer(question, isFeedback) {
     const id = uuidv4();
 
     dispatch({
@@ -137,6 +153,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
     let answer = "";
     let metadata = identify;
+    const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+    if(userDetails){
+      metadata = {
+        ...metadata,
+        ...userDetails
+      }
+    }
     metadata.referrer = window.location.href;
     const history = state.chatHistory || [];
     const req = { question, markdown: true, history, metadata };
@@ -214,6 +237,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               answerId: finalData.id,
               rating: finalData.rating,
               loading: false,
+              isFeedback: isFeedback ? isFeedback : false
             },
           });
           dispatch({
@@ -225,6 +249,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
           ref.current.scrollTop = ref.current.scrollHeight;
           ws.close();
+          const hideSupportMessage = localStorage.getItem('hideSupportMessage')
+          const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
+          if(!isUserDetailsAvailable && !hideSupportMessage){
+            setShowSupportMessage(true)
+          }
+          if(!isFeedback){
+            setShowFeedbackButton(true)
+          }
         } else if (data.type === "error") {
           dispatch({
             type: "update_message",
@@ -255,7 +287,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
   async function handleSubmit(event) {
     event.preventDefault();
-
+    setShowSupportMessage(false)
     dispatch({
       type: "add_message",
       payload: {
@@ -368,7 +400,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               message.isLast = key === Object.keys(state.messages).pop();
               return message.variant === "chatbot" ? (
                 <div key={key}>
-                  <BotChatMessage payload={message} />
+                  <BotChatMessage payload={message} showSupportMessage={showSupportMessage} setShowSupportMessage={setShowSupportMessage} fetchAnswer= {fetchAnswer} showFeedbackButton= {showFeedbackButton} setShowFeedbackButton= {setShowFeedbackButton}/>
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
                   ) : null}
@@ -400,6 +432,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                         key={"question" + index}
                         type="button"
                         onClick={() => {
+                          setShowSupportMessage(false)
                           dispatch({
                             type: "add_message",
                             payload: {
