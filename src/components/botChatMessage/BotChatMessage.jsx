@@ -18,6 +18,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
   const [email, setEmail] = useState("")
   const [isShowSaved, setIsShowSaved] = useState(false)
   const [isShowEmail, setIsShowEmail] = useState(false)
+  const [isShowEmailError, setIsShowEmailError] = useState(false)
   const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback } = useConfig();
   const { dispatch, state } = useChatbot();
   const headers = {
@@ -87,15 +88,21 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
     }
   };
 
-  const handleContact = (e) => {
-    e.preventDefault()
-    const userData = {
-      name: name,
-      email: email
+  const handleContact = () => {
+    const isValidEmail = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(email);
+    if (email.trim().length > 0 && isValidEmail) {
+      setIsShowEmailError(false)
+      const userData = {
+        name: name,
+        email: email
+      }
+      localStorage.setItem('userContactDetails', JSON.stringify(userData))
+      setShowSupportMessage(false)
+      setIsShowSaved(true)
     }
-    localStorage.setItem('userContactDetails', JSON.stringify(userData))
-    setShowSupportMessage(false)
-    setIsShowSaved(true)
+    else {
+      setIsShowEmailError(true)
+    }
   }
 
   const handleFeedbackButton = (message, isFeedback) => {
@@ -201,28 +208,31 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                 localStorage.setItem('hideSupportMessage', 'true')
               }} /></button>
             </div>
-            <form onSubmit={isShowEmail ? handleContact : (e) => e.preventDefault()} className="support-box-form-container">
+            <div className="support-box-form-container">
               {
                 !isShowEmail ?
-                  <div>
-                    <input type="text" placeholder="Enter you name" value={name} onChange={(e) => setName(e.target.value)} />
-                  </div>
+                  <>
+                    <div>
+                      <input type="text" placeholder="Enter you name" value={name} onChange={(e) => setName(e.target.value)} />
+                    </div>
+                    <button onClick={() => setIsShowEmail(true)} ><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
+                  </>
                   : null
               }
               {
                 isShowEmail ?
-                  <div>
-                    <input type="email" required placeholder="Enter you email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                  </div>
+                  <>
+                    <div>
+                      <input type="email" required placeholder="Enter you email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                    </div>
+                    <button onClick={handleContact}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
+                  </>
                   : null
               }
-              <button type={isShowEmail ? "submit" : ""}><FontAwesomeIcon icon={faChevronRight} size='lg' onClick={() => {
-                console.log('called..');
-                if (!isShowEmail) {
-                  setIsShowEmail(true)
-                }
-              }} /></button>
-            </form>
+            </div>
+            {
+              isShowEmailError ? <p className="errorText">Please enter a valid email address</p> : null
+            }
           </div>
         </div>
           : null

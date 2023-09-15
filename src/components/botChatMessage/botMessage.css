@@ -70,3 +70,10 @@
     color: rgb(229, 238, 255);
     background-color: rgb(0, 52, 153);
 }
+
+.errorText {
+    font-size: 11px;
+    margin-top: 4px;
+    color: #f61515;
+    font-weight: 600;
+}
