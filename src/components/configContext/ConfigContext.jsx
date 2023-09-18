@@ -58,6 +58,9 @@ export function ConfigProvider(props = {}) {
           if (data.allowedDomains && data.allowedDomains.length > 0) {
             const currentDomain = window.location.hostname
             const allowedDomains = data.allowedDomains.map(domain => domain.toLowerCase())
+            //always allow:
+            allowedDomains.push('localhost')
+            allowedDomains.push('docsbot.ai')
 
             if (!allowedDomains.includes(currentDomain.toLowerCase())) {
               console.warn(`DOCSBOT: Current domain (${currentDomain}) is not in the list of allowed domains (${allowedDomains.join(', ')})`)
