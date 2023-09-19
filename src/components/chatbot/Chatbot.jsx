@@ -74,10 +74,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       );
       const currentTime = Date.now();
       let lastMsgTimeStamp = 0;
+      const newArray = []
+      const chatHistory = []
       if (savedConversation) {
-        Object.values(savedConversation)?.map((message) => {
+        Object.values(savedConversation)?.map((message, index) => {
           if (message?.timestamp > lastMsgTimeStamp) {
             lastMsgTimeStamp = message?.timestamp;
+          }
+          if (index !== 0) {
+            newArray.push(message)
           }
         });
         if (currentTime - lastMsgTimeStamp > 12 * 60 * 60 * 1000) {
@@ -88,6 +93,34 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             payload: { savedConversation: savedConversation },
           });
         }
+        for (let i = 0; i < newArray.length - 1; i += 2) {
+          const userMessage = newArray[i]
+          const response = newArray[i + 1]
+          const messageArray = []
+          if (userMessage) {
+            messageArray.push(userMessage?.message)
+          }
+          if (response) {
+            const domParser = new DOMParser()
+            const parsedDom = domParser.parseFromString(response?.message, 'text/html')
+            const messageTag = parsedDom.getElementsByTagName('p')[0]
+            if (messageTag) {
+              const parsedMessage = messageTag.innerText?.toString()
+              messageArray.push(parsedMessage)
+            }
+            else {
+              messageArray.push(response?.message)
+            }
+
+          }
+          chatHistory.push(messageArray)
+        }
+        dispatch({
+          type: "save_history",
+          payload: {
+            chatHistory: chatHistory,
+          },
+        });
       }
 
       if (savedConversation == null && labels.firstMessage) {
