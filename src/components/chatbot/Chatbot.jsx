@@ -17,6 +17,7 @@ import { getLighterColor, decideTextColor } from "../../utils/colors";
 import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
+import { fetchEventSource } from "@microsoft/fetch-event-source";
 
 export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const [chatInput, setChatInput] = useState("");
@@ -77,22 +78,22 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       );
       const currentTime = Date.now()
       let lastMsgTimeStamp = 0
-      if(savedConversation){
+      if (savedConversation) {
         const hideSupportMessage = localStorage.getItem('hideSupportMessage')
         const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
         if (!isUserDetailsAvailable && !hideSupportMessage) {
           setShowSupportMessage(true)
         }
         const savedConversationArray = Object.values(savedConversation)
-        if(savedConversationArray){
-          const lastConversation = savedConversationArray[savedConversationArray.length -1]
-          if(!lastConversation?.isFeedback && !lastConversation?.isFirstMessage){
+        if (savedConversationArray) {
+          const lastConversation = savedConversationArray[savedConversationArray.length - 1]
+          if (!lastConversation?.isFeedback && !lastConversation?.isFirstMessage) {
             setShowFeedbackButton(true)
           }
         }
-        savedConversationArray?.map(message=>{
-          if(message?.timestamp > lastMsgTimeStamp){
-             lastMsgTimeStamp = message?.timestamp
+        savedConversationArray?.map(message => {
+          if (message?.timestamp > lastMsgTimeStamp) {
+            lastMsgTimeStamp = message?.timestamp
           }
         });
         if (currentTime - lastMsgTimeStamp > 12 * 60 * 60 * 1000) {
@@ -136,9 +137,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     );
   }, [state.messages]);
 
-  function fetchAnswer(question, isFeedback) {
+  async function fetchAnswer(question, isFeedback) {
+    setShowFeedbackButton(false)
     const id = uuidv4();
-
     dispatch({
       type: "add_message",
       payload: {
@@ -154,124 +155,109 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     let answer = "";
     let metadata = identify;
     const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
-    if(userDetails){
+    if (userDetails) {
       metadata = {
         ...metadata,
         ...userDetails
       }
     }
     metadata.referrer = window.location.href;
-    const history = state.chatHistory || [];
-    const req = { question, markdown: true, history, metadata };
+    const sse_req = {
+      question,
+      format: 'markdown',
+      full_source: false,
+      metadata,
+      conversationId: id,
+    }
     if (signature) {
-      req.auth = signature;
+      sse_req.auth = signature;
     }
 
-    const apiUrl = `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
-    //const apiUrl = `ws://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat`;
-    const ws = new WebSocket(apiUrl);
+    await fetchEventSource(`https://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat-agent`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': 'application/json',
+      },
+      method: 'POST',
+      body: JSON.stringify(sse_req),
+      async onmessage(event) {
+        const data = JSON.parse(event.data);
+        if (data.sender === "bot") {
+          if (data.type === "start") {
+            ref.current.scrollTop = ref.current.scrollHeight;
+          } else if (data.type === "stream") {
+            //append to answer
+            answer += data.message;
+            dispatch({
+              type: "update_message",
+              payload: {
+                id,
+                variant: "chatbot",
+                message: await parseMarkdown(answer),
+                sources: null,
+                loading: false,
+              },
+            });
+          } else if (data.type === "info") {
+          } else if (data.type === "end") {
+            const finalData = data.message;
+            dispatch({
+              type: "update_message",
+              payload: {
+                id,
+                variant: "chatbot",
+                message: await parseMarkdown(finalData.answer),
+                sources: finalData.sources,
+                answerId: finalData.id,
+                loading: false,
+                isFeedback: isFeedback ? isFeedback : false
+              },
+            });
+            dispatch({
+              type: "save_history",
+              payload: {
+                chatHistory: finalData.history,
+              },
+            });
 
-    // Send message to server when connection is established
-    ws.onopen = function (event) {
-      ws.send(JSON.stringify(req));
-    };
-
-    ws.onerror = function (event) {
-      console.error("DOCSBOT: WebSocket error", event);
-      dispatch({
-        type: "update_message",
-        payload: {
-          id,
-          variant: "chatbot",
-          message: "There was a connection error. Please try again.",
-          loading: false,
-          error: true,
-        },
-      });
-    };
-
-    ws.onclose = function (event) {
-      if (!event.wasClean) {
+            ref.current.scrollTop = ref.current.scrollHeight;
+            const hideSupportMessage = localStorage.getItem('hideSupportMessage')
+            const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
+            if (!isUserDetailsAvailable && !hideSupportMessage) {
+              setShowSupportMessage(true)
+            }
+            if (!isFeedback) {
+              setShowFeedbackButton(true)
+            }
+          } else if (data.type === "error") {
+            dispatch({
+              type: "update_message",
+              payload: {
+                id,
+                variant: "chatbot",
+                message: data.message,
+                loading: false,
+                error: true,
+              },
+            });
+          }
+        }
+      },
+      onerror() {
         dispatch({
           type: "update_message",
           payload: {
             id,
-            message: "There was a network error. Please try again.",
+            variant: "chatbot",
+            message: "There was a connection error. Please try again.",
             loading: false,
             error: true,
           },
         });
-      }
-    };
+      },
+    }
+    )
 
-    // Receive message from server word by word. Display the words as they are received.
-    ws.onmessage = async function (event) {
-      const data = JSON.parse(event.data);
-      if (data.sender === "bot") {
-        if (data.type === "start") {
-          ref.current.scrollTop = ref.current.scrollHeight;
-        } else if (data.type === "stream") {
-          //append to answer
-          answer += data.message;
-          dispatch({
-            type: "update_message",
-            payload: {
-              id,
-              variant: "chatbot",
-              message: await parseMarkdown(answer),
-              sources: null,
-              loading: false,
-            },
-          });
-        } else if (data.type === "info") {
-          // console.log(data.message);
-        } else if (data.type === "end") {
-          const finalData = JSON.parse(data.message);
-          dispatch({
-            type: "update_message",
-            payload: {
-              id,
-              variant: "chatbot",
-              message: await parseMarkdown(finalData.answer),
-              sources: finalData.sources,
-              answerId: finalData.id,
-              rating: finalData.rating,
-              loading: false,
-              isFeedback: isFeedback ? isFeedback : false
-            },
-          });
-          dispatch({
-            type: "save_history",
-            payload: {
-              chatHistory: finalData.history,
-            },
-          });
-
-          ref.current.scrollTop = ref.current.scrollHeight;
-          ws.close();
-          const hideSupportMessage = localStorage.getItem('hideSupportMessage')
-          const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
-          if(!isUserDetailsAvailable && !hideSupportMessage){
-            setShowSupportMessage(true)
-          }
-          if(!isFeedback){
-            setShowFeedbackButton(true)
-          }
-        } else if (data.type === "error") {
-          dispatch({
-            type: "update_message",
-            payload: {
-              id,
-              variant: "chatbot",
-              message: data.message,
-              loading: false,
-              error: true,
-            },
-          });
-          ws.close();
-        }
-      }
-    };
   }
 
   async function parseMarkdown(text) {
@@ -298,7 +284,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       },
     });
 
-    fetchAnswer(chatInput);
+    fetchAnswer(chatInput, false);
     setChatInput("");
     inputRef.current.focus();
   }
@@ -312,10 +298,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       style={
         mediaMatch.matches
           ? {
-              left: alignment === "left" ? horizontalMargin || 20 : "auto",
-              right: alignment === "right" ? horizontalMargin || 20 : "auto",
-              bottom: verticalMargin ? verticalMargin + 80 : 100,
-            }
+            left: alignment === "left" ? horizontalMargin || 20 : "auto",
+            right: alignment === "right" ? horizontalMargin || 20 : "auto",
+            bottom: verticalMargin ? verticalMargin + 80 : 100,
+          }
           : {}
       }
       part="wrapper"
@@ -343,13 +329,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             style={
               (isEmbeddedBox && hideHeader)
                 ? {
-                    backgroundColor: "transparent",
-                    color: "rgb(103, 58, 183)",
-                  }
+                  backgroundColor: "transparent",
+                  color: "rgb(103, 58, 183)",
+                }
                 : {
-                    backgroundColor: color,
-                    color: decideTextColor(color || "#1292EE"),
-                  }
+                  backgroundColor: color,
+                  color: decideTextColor(color || "#1292EE"),
+                }
             }
           >
             <div style={{ width: "100%" }}>
@@ -400,7 +386,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               message.isLast = key === Object.keys(state.messages).pop();
               return message.variant === "chatbot" ? (
                 <div key={key}>
-                  <BotChatMessage payload={message} showSupportMessage={showSupportMessage} setShowSupportMessage={setShowSupportMessage} fetchAnswer= {fetchAnswer} showFeedbackButton= {showFeedbackButton} setShowFeedbackButton= {setShowFeedbackButton}/>
+                  <BotChatMessage payload={message} showSupportMessage={showSupportMessage} setShowSupportMessage={setShowSupportMessage} fetchAnswer={fetchAnswer} showFeedbackButton={showFeedbackButton} setShowFeedbackButton={setShowFeedbackButton} />
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
                   ) : null}
@@ -442,7 +428,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                               timestamp: Date.now(),
                             },
                           });
-                          fetchAnswer(question);
+                          fetchAnswer(question, false);
                           setChatInput("");
                         }}
                         style={{
