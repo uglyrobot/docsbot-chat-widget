@@ -45,6 +45,7 @@ function chatbotReducer(state, action) {
     case "clear_messages":
       return {
         messages: [],
+        chatHistory: []
       }
 
     default: {
