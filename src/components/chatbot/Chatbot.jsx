@@ -147,7 +147,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   }, [state.messages]);
 
   useEffect(() => {
-    if (state.chatHistory) {
+    if (state.chatHistory?.length) {
       localStorage.setItem(
         "chatHistory",
         JSON.stringify(state?.chatHistory)
@@ -231,10 +231,17 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 isFeedback: isFeedback ? isFeedback : false
               },
             });
+            let newChatHistory = []
+            if (state.chatHistory?.length) {
+              newChatHistory = [...state?.chatHistory, finalData.history[0]]
+            }
+            else {
+              newChatHistory = finalData.history
+            }
             dispatch({
               type: "save_history",
               payload: {
-                chatHistory: finalData.history,
+                chatHistory: newChatHistory,
               },
             });
 
