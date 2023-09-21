@@ -144,7 +144,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
             return (
               <>
                 <span dangerouslySetInnerHTML={{ __html: payload.message }} />
-                {payload.sources && (
+                {payload.sources?.length && (
                   <>
                     <div className="docsbot-chat-bot-message-meta">
                       {payload.options?.hideSources}
