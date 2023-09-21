@@ -52,6 +52,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       if (refreshChat) {
         dispatch({ type: "clear_messages" });
         localStorage.removeItem("docsbot_chat_history");
+        localStorage.removeItem("chatHistory");
         setRefreshChat((prevState) => !prevState);
 
         const parsedMessage = await parseMarkdown(labels.firstMessage);
@@ -76,6 +77,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       const savedConversation = JSON.parse(
         localStorage.getItem("docsbot_chat_history")
       );
+      const chatHistory = JSON.parse(localStorage.getItem('chatHistory'))
       const currentTime = Date.now()
       let lastMsgTimeStamp = 0
       if (savedConversation) {
@@ -120,7 +122,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           },
         });
       }
-
+      if (chatHistory) {
+        dispatch({
+          type: "save_history",
+          payload: {
+            chatHistory: chatHistory,
+          },
+        });
+      }
       //only focus on input if not mobile
       if (mediaMatch.matches && !isEmbeddedBox) {
         inputRef.current.focus();
@@ -136,6 +145,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       JSON.stringify(state.messages)
     );
   }, [state.messages]);
+
+  useEffect(() => {
+    if (state.chatHistory) {
+      localStorage.setItem(
+        "chatHistory",
+        JSON.stringify(state?.chatHistory)
+      );
+    }
+  }, [state.chatHistory]);
 
   async function fetchAnswer(question, isFeedback) {
     setShowFeedbackButton(false)
