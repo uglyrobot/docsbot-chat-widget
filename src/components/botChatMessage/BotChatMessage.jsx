@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Loader } from "../loader/Loader";
 import { faChevronDown, faChevronUp, faFlag as solidFlag, faBullhorn, faXmark, faChevronRight } from "@fortawesome/free-solid-svg-icons";
@@ -10,7 +10,7 @@ import { getLighterColor, decideTextColor } from "../../utils/colors";
 import { useChatbot } from "../chatbotContext/ChatbotContext";
 import botMessageStyles from "!raw-loader!./botMessage.css";
 
-export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMessage, fetchAnswer, showFeedbackButton, setShowFeedbackButton }) => {
+export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMessage, fetchAnswer, showFeedbackButton, setShowFeedbackButton, showHumanButton, setShowHumanButton }) => {
   const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
@@ -19,7 +19,8 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
   const [isShowSaved, setIsShowSaved] = useState(false)
   const [isShowEmail, setIsShowEmail] = useState(false)
   const [isShowEmailError, setIsShowEmailError] = useState(false)
-  const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback } = useConfig();
+  const [showHumanSupportButton, setShowHumanSupportButton] = useState(false)
+  const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback, identify } = useConfig();
   const { dispatch, state } = useChatbot();
   const headers = {
     Accept: "application/json",
@@ -29,9 +30,20 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
     headers.Authorization = `Bearer ${signature}`;
   }
 
+  useEffect(() => {
+    if (showHumanButton) {
+      const supportButtonTimeout = setTimeout(() => {
+        setShowHumanSupportButton(true)
+      }, 1000)
+      return () => {
+        clearTimeout(supportButtonTimeout)
+      }
+    }
+  }, [showHumanButton])
+
   const runSupportCallback = (e, history) => {
     // post to api endpoint
-    const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/support/${payload.answerId}`;
+    const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/conversations/${payload.answerId}/escalate`;
 
     fetch(apiUrl, {
       method: "PUT",
@@ -96,6 +108,25 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
         name: name,
         email: email
       }
+      let metadata = identify;
+      metadata = {
+        ...metadata,
+        ...userData
+      }
+      const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/conversations/${payload.id}`;
+      const contactPayload = {
+        metadata: metadata,
+        fullChange: false
+      }
+      fetch(apiUrl, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(contactPayload)
+      })
+        .catch((e) => {
+          console.warn(`DOCSBOT: Error recording support click: ${e}`);
+        });
+
       localStorage.setItem('userContactDetails', JSON.stringify(userData))
       setShowSupportMessage(false)
       setIsShowSaved(true)
@@ -116,8 +147,10 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
         timestamp: Date.now(),
       },
     });
-    fetchAnswer(message, isFeedback);
     setShowFeedbackButton(false)
+    setShowHumanButton(false)
+    setShowHumanSupportButton(false)
+    fetchAnswer(message, isFeedback);
   }
 
   const bgColor = payload.error
@@ -255,7 +288,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
           : null
       }
       {
-        showFeedbackButton && !payload?.isFeedback && payload?.isLast && !payload?.isFirstMessage ?
+        showFeedbackButton && !showHumanButton && !payload?.isFeedback && payload?.isLast && !payload?.isFirstMessage ?
           <div className="docsbot-chat-bot-message-container support-box-container">
             <div className="docsbot-chat-bot-message"
               style={{
@@ -267,6 +300,24 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
               <div className="feedback-button-container">
                 <button className="feedback-button" onClick={() => handleFeedbackButton("Thanks, that's helped me", true)}>That's Helped</button>
                 <button className="feedback-button" onClick={() => handleFeedbackButton("Need More Information", false)}>Need More Information</button>
+              </div>
+            </div>
+          </div>
+          : null
+      }
+      {
+        showHumanButton && showHumanSupportButton && payload?.isLast && !payload?.isFirstMessage ?
+          <div className="docsbot-chat-bot-message-container support-box-container">
+            <div className="docsbot-chat-bot-message"
+              style={{
+                backgroundColor: 'transparent',
+                color: fontColor,
+                width: '100%',
+                border: 'none'
+              }}>
+              <div className="feedback-button-container">
+                <button className="feedback-button" onClick={() => handleFeedbackButton("Get Support", false)}>Get Support</button>
+                <button className="feedback-button" onClick={() => handleFeedbackButton("No Thanks", false)}>No Thanks</button>
               </div>
             </div>
           </div>

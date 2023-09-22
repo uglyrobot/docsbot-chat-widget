@@ -24,6 +24,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const [refreshChat, setRefreshChat] = useState(false);
   const [showSupportMessage, setShowSupportMessage] = useState(false)
   const [showFeedbackButton, setShowFeedbackButton] = useState(false)
+  const [showHumanButton, setShowHumanButton] = useState(false)
   const { dispatch, state } = useChatbot();
   const {
     color,
@@ -199,73 +200,74 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       method: 'POST',
       body: JSON.stringify(sse_req),
       async onmessage(event) {
-        const data = JSON.parse(event.data);
-        if (data.sender === "bot") {
-          if (data.type === "start") {
-            ref.current.scrollTop = ref.current.scrollHeight;
-          } else if (data.type === "stream") {
-            //append to answer
-            answer += data.message;
-            dispatch({
-              type: "update_message",
-              payload: {
-                id,
-                variant: "chatbot",
-                message: await parseMarkdown(answer),
-                sources: null,
-                loading: false,
-              },
-            });
-          } else if (data.type === "info") {
-          } else if (data.type === "end") {
-            const finalData = data.message;
-            dispatch({
-              type: "update_message",
-              payload: {
-                id,
-                variant: "chatbot",
-                message: await parseMarkdown(finalData.answer),
-                sources: finalData.sources,
-                answerId: finalData.id,
-                loading: false,
-                isFeedback: isFeedback ? isFeedback : false
-              },
-            });
-            let newChatHistory = []
-            if (state.chatHistory?.length) {
-              newChatHistory = [...state?.chatHistory, finalData.history[0]]
-            }
-            else {
-              newChatHistory = finalData.history
-            }
-            dispatch({
-              type: "save_history",
-              payload: {
-                chatHistory: newChatHistory,
-              },
-            });
-
-            ref.current.scrollTop = ref.current.scrollHeight;
-            const hideSupportMessage = localStorage.getItem('hideSupportMessage')
-            const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
-            if (!isUserDetailsAvailable && !hideSupportMessage) {
-              setShowSupportMessage(true)
-            }
-            if (!isFeedback) {
-              setShowFeedbackButton(true)
-            }
-          } else if (data.type === "error") {
-            dispatch({
-              type: "update_message",
-              payload: {
-                id,
-                variant: "chatbot",
-                message: data.message,
-                loading: false,
-                error: true,
-              },
-            });
+        const data = event;
+        if (data.event === "start") {
+          ref.current.scrollTop = ref.current.scrollHeight;
+        }
+        else if (data.event === "support_escalation") {
+          setShowHumanButton(true)
+        }
+        else if (data.event === "stream") {
+          //append to answer
+          answer += data.data;
+          dispatch({
+            type: "update_message",
+            payload: {
+              id,
+              variant: "chatbot",
+              message: await parseMarkdown(answer),
+              sources: null,
+              loading: false,
+            },
+          });
+        } else if (data.event === "end") {
+          const finalData = data.data;
+          dispatch({
+            type: "update_message",
+            payload: {
+              id,
+              variant: "chatbot",
+              message: await parseMarkdown(finalData.answer),
+              sources: finalData.sources,
+              answerId: finalData.id,
+              loading: false,
+              isFeedback: isFeedback ? isFeedback : false
+            },
+          });
+          let newChatHistory = []
+          if (state.chatHistory?.length) {
+            newChatHistory = [...state?.chatHistory, finalData.history[0]]
           }
+          else {
+            newChatHistory = finalData.history
+          }
+          dispatch({
+            type: "save_history",
+            payload: {
+              chatHistory: newChatHistory,
+            },
+          });
+
+          ref.current.scrollTop = ref.current.scrollHeight;
+          const hideSupportMessage = localStorage.getItem('hideSupportMessage')
+          const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
+          if (!isUserDetailsAvailable && !hideSupportMessage) {
+            setShowSupportMessage(true)
+          }
+          if (!isFeedback) {
+            setShowFeedbackButton(true)
+          }
+        } else if (data.event === "error") {
+          dispatch({
+            type: "update_message",
+            payload: {
+              id,
+              variant: "chatbot",
+              message: data.message,
+              loading: false,
+              error: true,
+            },
+          });
         }
       },
       onerror() {
@@ -411,7 +413,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               message.isLast = key === Object.keys(state.messages).pop();
               return message.variant === "chatbot" ? (
                 <div key={key}>
-                  <BotChatMessage payload={message} showSupportMessage={showSupportMessage} setShowSupportMessage={setShowSupportMessage} fetchAnswer={fetchAnswer} showFeedbackButton={showFeedbackButton} setShowFeedbackButton={setShowFeedbackButton} />
+                  <BotChatMessage payload={message} showSupportMessage={showSupportMessage} setShowSupportMessage={setShowSupportMessage} fetchAnswer={fetchAnswer} showFeedbackButton={showFeedbackButton} setShowFeedbackButton={setShowFeedbackButton} showHumanButton={showHumanButton} setShowHumanButton={setShowHumanButton} />
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
                   ) : null}
