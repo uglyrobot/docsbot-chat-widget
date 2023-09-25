@@ -25,9 +25,9 @@
     <script>
       DocsBotAI.init({
         id: "ZrbLG98bbxZ9EFqiPvyl/UaRQtd7AOTaMXeRQGQRl",
-        supportCallback: function (event, history) {
+        supportCallback: function (event, history, metadata) {
           //event.preventDefault();
-          console.log(history, DocsBotAI);
+          console.log(history, DocsBotAI, metadata);
         },
         identify: {
           name: 'Steve Aoki',
@@ -77,9 +77,9 @@
         reinitBtn.addEventListener("click", () => {
           DocsBotAI.mount({
             id: "ZrbLG98bbxZ9EFqiPvyl/UaRQtd7AOTaMXeRQGQRl",
-            supportCallback: function (event, history) {
+            supportCallback: function (event, history, metadata) {
               event.preventDefault();
-              console.log(history, DocsBotAI);
+              console.log(history, DocsBotAI, metadata);
             },
           });
         });

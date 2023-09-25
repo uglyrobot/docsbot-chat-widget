@@ -10,7 +10,7 @@ import { getLighterColor, decideTextColor } from "../../utils/colors";
 import { useChatbot } from "../chatbotContext/ChatbotContext";
 import botMessageStyles from "!raw-loader!./botMessage.css";
 
-export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMessage, fetchAnswer, showFeedbackButton, setShowFeedbackButton, showHumanButton, setShowHumanButton }) => {
+export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMessage, fetchAnswer, showFeedbackButton, showHumanButton, suppportTabRef }) => {
   const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
@@ -20,7 +20,8 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
   const [isShowEmail, setIsShowEmail] = useState(false)
   const [isShowEmailError, setIsShowEmailError] = useState(false)
   const [showHumanSupportButton, setShowHumanSupportButton] = useState(false)
-  const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback, identify } = useConfig();
+  const [showSupportLink, setShowSupportLink] = useState(false)
+  const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback, identify, updateIdentify } = useConfig();
   const { dispatch, state } = useChatbot();
   const headers = {
     Accept: "application/json",
@@ -41,7 +42,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
     }
   }, [showHumanButton])
 
-  const runSupportCallback = (e, history) => {
+  const runSupportCallback = (e, history, metadata) => {
     // post to api endpoint
     const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/conversations/${payload.answerId}/escalate`;
 
@@ -54,7 +55,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
 
     // run callback if provided
     if (supportCallback && typeof supportCallback === "function") {
-      supportCallback(e, history)
+      supportCallback(e, history, metadata)
     }
 
     return true // ensure link is opened
@@ -108,6 +109,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
         name: name,
         email: email
       }
+      updateIdentify(userData)
       let metadata = identify;
       metadata = {
         ...metadata,
@@ -147,9 +149,6 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
         timestamp: Date.now(),
       },
     });
-    setShowFeedbackButton(false)
-    setShowHumanButton(false)
-    setShowHumanSupportButton(false)
     fetchAnswer(message, isFeedback);
   }
 
@@ -177,62 +176,63 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
             return (
               <>
                 <span dangerouslySetInnerHTML={{ __html: payload.message }} />
-                {payload.sources?.length && (
-                  <>
-                    <div className="docsbot-chat-bot-message-meta">
-                      {payload.options?.hideSources}
-                      {!hideSources && (
-                        <button onClick={() => setShowSources(!showSources)}>
-                          {labels.sources}
-                          {showSources ? (
-                            <FontAwesomeIcon icon={faChevronUp} />
-                          ) : (
-                            <FontAwesomeIcon icon={faChevronDown} />
-                          )}
-                        </button>
-                      )}
-                      <div className="docbot-chat-bot-message-rate">
-                        <button
-                          onClick={(e) => {
-                            if (isFlagged)
-                              saveRating(0)
-                            else
-                              saveRating(-1)
-
-                            setIsFlagged(!isFlagged)
-                          }}
-                          style={{ opacity: rating === -1 ? 1 : null }}
-                          title={labels.unhelpful}
-                        >
-                          {
-                            isFlagged ? (
-                              <FontAwesomeIcon icon={solidFlag} size="sm" style={{ color: '#ff0000' }} />
+                {payload.sources?.length ?
+                  (
+                    <>
+                      <div className="docsbot-chat-bot-message-meta">
+                        {payload.options?.hideSources}
+                        {!hideSources && (
+                          <button onClick={() => setShowSources(!showSources)}>
+                            {labels.sources}
+                            {showSources ? (
+                              <FontAwesomeIcon icon={faChevronUp} />
                             ) : (
-                              <FontAwesomeIcon icon={regularFlag} size="sm" />
-                            )
-                          }
+                              <FontAwesomeIcon icon={faChevronDown} />
+                            )}
+                          </button>
+                        )}
+                        <div className="docbot-chat-bot-message-rate">
+                          <button
+                            onClick={(e) => {
+                              if (isFlagged)
+                                saveRating(0)
+                              else
+                                saveRating(-1)
 
-                        </button>
+                              setIsFlagged(!isFlagged)
+                            }}
+                            style={{ opacity: rating === -1 ? 1 : null }}
+                            title={labels.unhelpful}
+                          >
+                            {
+                              isFlagged ? (
+                                <FontAwesomeIcon icon={solidFlag} size="sm" style={{ color: '#ff0000' }} />
+                              ) : (
+                                <FontAwesomeIcon icon={regularFlag} size="sm" />
+                              )
+                            }
+
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    {showSources && (
-                      <ul className="docsbot-sources">
-                        {payload.sources?.map((source, index) => {
-                          if (source?.type?.toLowerCase() !== 'qa') {
-                            return <Source key={index} source={source} />
-                          }
-                        })}
-                      </ul>
-                    )}
-                  </>
-                )}
+                      {showSources && (
+                        <ul className="docsbot-sources">
+                          {payload.sources?.map((source, index) => {
+                            if (source?.type?.toLowerCase() !== 'qa') {
+                              return <Source key={index} source={source} />
+                            }
+                          })}
+                        </ul>
+                      )}
+                    </>
+                  ) : null}
               </>
             );
           })()}
         </div>
       </div>
       {
-        showSupportMessage && payload?.isLast && !payload?.isFirstMessage ? <div className="docsbot-chat-bot-message-container support-box-container">
+        showSupportMessage && payload?.isLast && !payload?.isFirstMessage ? <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
           <div className="docsbot-chat-bot-message chat-support-message-box">
             <div className="contact-header-container">
               <p>Let us know how to contact you?</p>
@@ -316,19 +316,22 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                 border: 'none'
               }}>
               <div className="feedback-button-container">
-                <button className="feedback-button" onClick={() => handleFeedbackButton("Get Support", false)}>Get Support</button>
-                <button className="feedback-button" onClick={() => handleFeedbackButton("No Thanks", false)}>No Thanks</button>
+                <button className="feedback-button" onClick={() => {
+                  setShowSupportLink(true)
+                  setShowHumanSupportButton(false)
+                }}>Get Support</button>
+                <button className="feedback-button" onClick={() => setShowHumanSupportButton(false)}>No Thanks</button>
               </div>
             </div>
           </div>
           : null
       }
-      {payload.isLast && supportLink && (payload.sources || payload.error) && (
+      {showSupportLink && payload.isLast && supportLink && (payload.sources || payload.error) && (
         <div className="docsbot-chat-bot-message-support">
           <a
             href={supportLink}
             target="_blank"
-            onClick={(e) => runSupportCallback(e, state.chatHistory || [])}
+            onClick={(e) => runSupportCallback(e, state.chatHistory || [], identify)}
             style={{
               color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)),
             }}

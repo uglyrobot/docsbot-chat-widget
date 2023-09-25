@@ -52,7 +52,8 @@
 
 .feedback-button-container {
     display: flex;
-    justify-content: space-between;
+    justify-content: end;
+    gap: 1.5rem;
 }
 
 .feedback-button-container .feedback-button {

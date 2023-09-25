@@ -43,9 +43,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     logo,
     headerAlignment,
     hideHeader,
+    updateIdentify
   } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
+  const suppportTabRef = useRef()
   const mediaMatch = window.matchMedia("(min-width: 480px)");
 
   useEffect(() => {
@@ -78,6 +80,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       const savedConversation = JSON.parse(
         localStorage.getItem("docsbot_chat_history")
       );
+      const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+      if (userDetails) {
+        updateIdentify(userDetails)
+      }
       const chatHistory = JSON.parse(localStorage.getItem('chatHistory'))
       const currentTime = Date.now()
       let lastMsgTimeStamp = 0
@@ -90,8 +96,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         const savedConversationArray = Object.values(savedConversation)
         if (savedConversationArray) {
           const lastConversation = savedConversationArray[savedConversationArray.length - 1]
-          if (!lastConversation?.isFeedback && !lastConversation?.isFirstMessage) {
+          if (!lastConversation?.isFeedback && !lastConversation?.isFirstMessage && !lastConversation?.isHumanSupport) {
             setShowFeedbackButton(true)
+          }
+          if (!lastConversation?.isFeedback && !lastConversation?.isFirstMessage && lastConversation?.isHumanSupport) {
+            setShowHumanButton(true)
           }
         }
         savedConversationArray?.map(message => {
@@ -158,6 +167,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
   async function fetchAnswer(question, isFeedback) {
     setShowFeedbackButton(false)
+    setShowHumanButton(false)
     const id = uuidv4();
     dispatch({
       type: "add_message",
@@ -173,13 +183,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
     let answer = "";
     let metadata = identify;
-    const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
-    if (userDetails) {
-      metadata = {
-        ...metadata,
-        ...userDetails
-      }
-    }
     metadata.referrer = window.location.href;
     const sse_req = {
       question,
@@ -206,6 +209,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         }
         else if (data.event === "support_escalation") {
           setShowHumanButton(true)
+          answer += data.data;
+          dispatch({
+            type: "update_message",
+            payload: {
+              id,
+              variant: "chatbot",
+              message: await parseMarkdown(answer),
+              sources: null,
+              loading: false,
+              isHumanSupport: true
+            },
+          });
         }
         else if (data.event === "stream") {
           //append to answer
@@ -221,7 +236,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             },
           });
         } else if (data.event === "end") {
-          const finalData = data.data;
+          const finalData = JSON.parse(data.data);
           dispatch({
             type: "update_message",
             payload: {
@@ -231,7 +246,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               sources: finalData.sources,
               answerId: finalData.id,
               loading: false,
-              isFeedback: isFeedback ? isFeedback : false
+              isFeedback: isFeedback ? isFeedback : false,
             },
           });
           let newChatHistory = []
@@ -413,7 +428,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               message.isLast = key === Object.keys(state.messages).pop();
               return message.variant === "chatbot" ? (
                 <div key={key}>
-                  <BotChatMessage payload={message} showSupportMessage={showSupportMessage} setShowSupportMessage={setShowSupportMessage} fetchAnswer={fetchAnswer} showFeedbackButton={showFeedbackButton} setShowFeedbackButton={setShowFeedbackButton} showHumanButton={showHumanButton} setShowHumanButton={setShowHumanButton} />
+                  <BotChatMessage payload={message} showSupportMessage={showSupportMessage} setShowSupportMessage={setShowSupportMessage} fetchAnswer={fetchAnswer} showFeedbackButton={showFeedbackButton} showHumanButton={showHumanButton} suppportTabRef={suppportTabRef} />
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
                   ) : null}
@@ -504,7 +519,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             )}
           </div>
           <div className="docsbot-chat-input-container">
-            <form className="docsbot-chat-input-form" onSubmit={handleSubmit}>
+            <form className="docsbot-chat-input-form" onSubmit={(e) => {
+              if (showSupportMessage) {
+                e.preventDefault()
+                suppportTabRef.current?.scrollIntoView({ behavior: 'smooth' })
+              }
+              else {
+                handleSubmit(e)
+              }
+            }}>
               <textarea
                 className="docsbot-chat-input"
                 placeholder={labels.inputPlaceholder}
@@ -521,8 +544,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                     return;
                   }
                   if (e.key === "Enter" && !e.shiftKey) {
-                    handleSubmit(e);
-                    e.target.style.height = "auto";
+                    if (showSupportMessage) {
+                      e.preventDefault()
+                      suppportTabRef.current?.scrollIntoView({ behavior: 'smooth' })
+                    }
+                    else {
+                      handleSubmit(e);
+                      e.target.style.height = "auto";
+                    }
                   }
                 }}
                 ref={inputRef}
@@ -535,7 +564,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 style={{
                   fill: color,
                 }}
-                disabled={chatInput.length < 2}
+                disabled={chatInput.length < 2 || showSupportMessage}
               >
                 <SendIcon />
               </button>
