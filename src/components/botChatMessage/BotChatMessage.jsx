@@ -232,42 +232,65 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
         </div>
       </div>
       {
-        showSupportMessage && payload?.isLast && !payload?.isFirstMessage ? <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
-          <div className="docsbot-chat-bot-message chat-support-message-box">
-            <div className="contact-header-container">
-              <p>Let us know how to contact you?</p>
-              <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => {
-                setShowSupportMessage(false)
-                localStorage.setItem('hideSupportMessage', 'true')
-              }} /></button>
-            </div>
-            <div className="support-box-form-container">
-              {
-                !isShowEmail ?
-                  <>
-                    <div>
-                      <input type="text" placeholder="Enter you name" value={name} onChange={(e) => setName(e.target.value)} />
-                    </div>
-                    <button onClick={() => setIsShowEmail(true)} ><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
-                  </>
-                  : null
-              }
-              {
-                isShowEmail ?
-                  <>
-                    <div>
-                      <input type="email" required placeholder="Enter you email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                    </div>
-                    <button onClick={handleContact}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
-                  </>
-                  : null
-              }
-            </div>
+        showSupportMessage && payload?.isLast && !payload?.isFirstMessage ?
+          <>
             {
-              isShowEmailError ? <p className="errorText">Please enter a valid email address</p> : null
+              isShowEmail && name ? <div className="docsbot-chat-bot-message-container support-box-container">
+                <div className="docsbot-chat-bot-message" style={{
+                  backgroundColor: bgColor,
+                  color: fontColor,
+                }}>
+                  <p>Name : {name}</p>
+                </div>
+              </div> : null
             }
-          </div>
-        </div>
+            {isShowEmail && email ?
+              <div className="docsbot-chat-bot-message-container support-box-container">
+                <div className="docsbot-chat-bot-message" style={{
+                  backgroundColor: bgColor,
+                  color: fontColor,
+                }}>
+                  <p>Email id : {email}</p>
+                </div>
+              </div> : null
+            }
+            <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
+              <div className="docsbot-chat-bot-message chat-support-message-box">
+                <div className="contact-header-container">
+                  <p>Let us know how to contact you?</p>
+                  <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => {
+                    setShowSupportMessage(false)
+                    localStorage.setItem('hideSupportMessage', 'true')
+                  }} /></button>
+                </div>
+                <div className="support-box-form-container">
+                  {
+                    !isShowEmail ?
+                      <>
+                        <div>
+                          <input type="text" placeholder="Enter you name" value={name} onChange={(e) => setName(e.target.value)} />
+                        </div>
+                        <button onClick={() => setIsShowEmail(true)} ><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
+                      </>
+                      : null
+                  }
+                  {
+                    isShowEmail ?
+                      <>
+                        <div>
+                          <input type="email" required placeholder="Enter you email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                        </div>
+                        <button onClick={handleContact}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
+                      </>
+                      : null
+                  }
+                </div>
+                {
+                  isShowEmailError ? <p className="errorText">Please enter a valid email address</p> : null
+                }
+              </div>
+            </div>
+          </>
           : null
       }
       {
