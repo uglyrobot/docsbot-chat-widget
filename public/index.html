@@ -49,6 +49,20 @@
           //headerAlignment: "left",
           //logo: "https://docsbot.ai/branding/docsbot-logo-lg.png",
           //hideHeader: true,
+          leadFields:[
+            {
+              name: "Name",
+              type: "text",
+              key: "name",
+              required: false
+            },
+            {
+              name: "Email",
+              type: "email",
+              key: "email",
+              required: true
+            },
+          ]
         }
       }).then(() => {
         //  Script is safely loaded, you can do whatever you want from here with bot

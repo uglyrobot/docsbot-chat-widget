@@ -9,19 +9,19 @@ import { Source } from "../source/Source";
 import { getLighterColor, decideTextColor } from "../../utils/colors";
 import { useChatbot } from "../chatbotContext/ChatbotContext";
 import botMessageStyles from "!raw-loader!./botMessage.css";
+import { UserChatMessage } from "../userChatMessage/UserChatMessage";
 
 export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMessage, fetchAnswer, showFeedbackButton, showHumanButton, suppportTabRef }) => {
   const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
+  const [fieldsValue, setFieldsValue] = useState({})
+  const [currentStep, setCurrentStep] = useState(0)
   const [isShowSaved, setIsShowSaved] = useState(false)
-  const [isShowEmail, setIsShowEmail] = useState(false)
-  const [isShowEmailError, setIsShowEmailError] = useState(false)
   const [showHumanSupportButton, setShowHumanSupportButton] = useState(false)
   const [showSupportLink, setShowSupportLink] = useState(false)
-  const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback, identify, updateIdentify } = useConfig();
+  const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback, identify, updateIdentify, leadFields
+  } = useConfig();
   const { dispatch, state } = useChatbot();
   const headers = {
     Accept: "application/json",
@@ -30,7 +30,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
   if (signature) {
     headers.Authorization = `Bearer ${signature}`;
   }
-
+  console.log(leadFields);
   useEffect(() => {
     if (showHumanButton) {
       const supportButtonTimeout = setTimeout(() => {
@@ -101,41 +101,83 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
     }
   };
 
-  const handleContact = () => {
-    const isValidEmail = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(email);
-    if (email.trim().length > 0 && isValidEmail) {
-      setIsShowEmailError(false)
-      const userData = {
-        name: name,
-        email: email
-      }
-      updateIdentify(userData)
-      let metadata = identify;
-      metadata = {
-        ...metadata,
-        ...userData
-      }
-      const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/conversations/${payload.id}`;
-      const contactPayload = {
-        metadata: metadata,
-        fullChange: false
-      }
-      fetch(apiUrl, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify(contactPayload)
-      })
-        .catch((e) => {
-          console.warn(`DOCSBOT: Error recording support click: ${e}`);
-        });
-
-      localStorage.setItem('userContactDetails', JSON.stringify(userData))
-      setShowSupportMessage(false)
-      setIsShowSaved(true)
+  const capitalizeText = (text) => {
+    if (text) {
+      return text?.charAt(0).toUpperCase() + text?.slice(1);
     }
     else {
-      setIsShowEmailError(true)
+      return ""
     }
+  }
+
+  const handleFieldChange = (event) => {
+    const { name, value } = event.target
+    setFieldsValue((old) => {
+      return {
+        ...old,
+        [name]: value
+      }
+    })
+  }
+
+  const handleNext = () => {
+    const lastStep = leadFields?.length - 1
+    const currentStepFields = leadFields[currentStep]
+    const currentStepFieldValue = fieldsValue[currentStepFields.key]
+    if (currentStepFields.required && !currentStepFieldValue?.trim().length) {
+      return false
+    }
+    else {
+      if (currentStepFieldValue?.trim().length && currentStepFields.key === 'email') {
+        const isValidEmail = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(currentStepFieldValue);
+        if (isValidEmail) {
+          if (currentStep >= lastStep) {
+            handleContact(fieldsValue)
+          }
+          else
+            setCurrentStep(currentStep + 1)
+        }
+        else return false
+      }
+      else {
+        if (currentStep >= lastStep) {
+          handleContact(fieldsValue)
+        }
+        else
+          setCurrentStep(currentStep + 1)
+      }
+    }
+  }
+
+  const handleContact = (userData) => {
+    const newUserData = {}
+    Object.keys(userData).map(data => {
+      newUserData[data] = userData[data]?.trim()
+    })
+    console.log(userData, newUserData);
+    updateIdentify(newUserData)
+    let metadata = identify;
+    metadata = {
+      ...metadata,
+      ...newUserData
+    }
+    const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/conversations/${payload.id}`;
+    const contactPayload = {
+      metadata: metadata,
+      fullChange: false
+    }
+    fetch(apiUrl, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(contactPayload)
+    })
+      .catch((e) => {
+        console.warn(`DOCSBOT: Error recording support click: ${e}`);
+      });
+
+    localStorage.setItem('userContactDetails', JSON.stringify(newUserData))
+    setShowSupportMessage(false)
+    setIsShowSaved(true)
   }
 
   const handleFeedbackButton = (message, isFeedback) => {
@@ -233,81 +275,55 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
       </div>
       {
         showSupportMessage && payload?.isLast && !payload?.isFirstMessage ?
-          <>
-            {
-              isShowEmail && name ? <div className="docsbot-chat-bot-message-container support-box-container">
-                <div className="docsbot-chat-bot-message" style={{
-                  backgroundColor: bgColor,
-                  color: fontColor,
-                }}>
-                  <p>Name : {name}</p>
-                </div>
-              </div> : null
-            }
-            {isShowEmail && email ?
-              <div className="docsbot-chat-bot-message-container support-box-container">
-                <div className="docsbot-chat-bot-message" style={{
-                  backgroundColor: bgColor,
-                  color: fontColor,
-                }}>
-                  <p>Email id : {email}</p>
-                </div>
-              </div> : null
-            }
-            <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
-              <div className="docsbot-chat-bot-message chat-support-message-box">
-                <div className="contact-header-container">
-                  <p>Let us know how to contact you?</p>
-                  <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => {
-                    setShowSupportMessage(false)
-                    localStorage.setItem('hideSupportMessage', 'true')
-                  }} /></button>
-                </div>
-                <div className="support-box-form-container">
-                  {
-                    !isShowEmail ?
-                      <>
-                        <div>
-                          <input type="text" placeholder="Enter you name" value={name} onChange={(e) => setName(e.target.value)} />
-                        </div>
-                        <button onClick={() => setIsShowEmail(true)} ><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
-                      </>
-                      : null
-                  }
-                  {
-                    isShowEmail ?
-                      <>
-                        <div>
-                          <input type="email" required placeholder="Enter you email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                        </div>
-                        <button onClick={handleContact}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
-                      </>
-                      : null
-                  }
-                </div>
+          <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
+            <div className="docsbot-chat-bot-message chat-support-message-box">
+              <div className="contact-header-container">
+                <p>Let us know how to contact you?</p>
+                <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => {
+                  setShowSupportMessage(false)
+                  localStorage.setItem('hideSupportMessage', 'true')
+                }} /></button>
+              </div>
+              <div className="support-box-form-container">
                 {
-                  isShowEmailError ? <p className="errorText">Please enter a valid email address</p> : null
+                  leadFields?.map((field, fieldIndex) => {
+                    return fieldIndex === currentStep ? <div style={{ display: 'flex', flexDirection: 'column', gap: "8px" }} key={fieldIndex}>
+                      <label style={{ fontWeight: '500', fontSize: "1rem" }}>{field.name}</label>
+                      <input type={field.type} name={field.key} value={fieldsValue[field.key] || ''} onChange={handleFieldChange} />
+                    </div> : null
+                  })
                 }
+                <button onClick={handleNext}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
               </div>
             </div>
-          </>
+          </div>
           : null
       }
       {
         isShowSaved ?
-          <div className="docsbot-chat-bot-message-container support-box-container">
-            <div className="docsbot-chat-bot-message"
-              style={{
-                backgroundColor: bgColor,
-                color: fontColor,
-                width: '100%'
-              }}>
-              <div className="contact-header-container">
-                <p>Your details has been saved successfully!</p>
-                <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => setIsShowSaved(false)} /></button>
+          <>
+            {
+              Object.keys(fieldsValue).map((message, messageKey) => {
+                if (fieldsValue[message]) {
+                  return <UserChatMessage key={messageKey} loading={false} message={`${capitalizeText(message)} : ${fieldsValue[message]}`} />
+                }
+              }
+              )
+            }
+            <div className="docsbot-chat-bot-message-container support-box-container">
+              <div className="docsbot-chat-bot-message"
+                style={{
+                  backgroundColor: bgColor,
+                  color: fontColor,
+                  width: '100%'
+                }}>
+                <div className="contact-header-container">
+                  <p>Your details has been saved successfully!</p>
+                  <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => setIsShowSaved(false)} /></button>
+                </div>
               </div>
             </div>
-          </div>
+          </>
           : null
       }
       {
