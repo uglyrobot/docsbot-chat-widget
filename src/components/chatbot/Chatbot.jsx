@@ -96,7 +96,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         const savedConversationArray = Object.values(savedConversation)
         if (savedConversationArray) {
           const lastConversation = savedConversationArray[savedConversationArray.length - 1]
-          if (!lastConversation?.isFeedback && !lastConversation?.isFirstMessage && !lastConversation?.isHumanSupport) {
+          if (lastConversation?.isFeedback && !lastConversation?.isFirstMessage && !lastConversation?.isHumanSupport) {
             setShowFeedbackButton(true)
           }
           if (!lastConversation?.isFeedback && !lastConversation?.isFirstMessage && lastConversation?.isHumanSupport) {

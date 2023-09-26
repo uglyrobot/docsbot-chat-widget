@@ -339,7 +339,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
           : null
       }
       {
-        showFeedbackButton && !showHumanButton && !payload?.isFeedback && payload?.isLast && !payload?.isFirstMessage ?
+        showFeedbackButton && !showHumanButton && payload?.isFeedback && payload?.isLast && !payload?.isFirstMessage ?
           <div className="docsbot-chat-bot-message-container support-box-container">
             <div className="docsbot-chat-bot-message"
               style={{
