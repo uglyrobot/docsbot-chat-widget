@@ -303,7 +303,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                   }
                   <button style={{
                     backgroundColor: color,
-                    color : decideTextColor(color)
+                    color: decideTextColor(color)
                   }} onClick={handleNext}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
                 </div>
               </div>
@@ -329,7 +329,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                   color: fontColor,
                   width: '100%'
                 }}>
-                <div className="contact-header-container">
+                <div className="contact-header-container" style={{ justifyContent: 'space-between' }}>
                   <p>Your details has been saved successfully!</p>
                   <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => setIsShowSaved(false)} /></button>
                 </div>
