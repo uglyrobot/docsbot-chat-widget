@@ -191,7 +191,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
         timestamp: Date.now(),
       },
     });
-    fetchAnswer(message, isFeedback);
+    fetchAnswer(message);
   }
 
   const bgColor = payload.error
@@ -275,28 +275,42 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
       </div>
       {
         showSupportMessage && payload?.isLast && !payload?.isFirstMessage ?
-          <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
-            <div className="docsbot-chat-bot-message chat-support-message-box">
-              <div className="contact-header-container">
+          <>
+            <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
+              <div className="docsbot-chat-bot-message"
+                style={{
+                  background: bgColor,
+                  color: fontColor
+                }}
+              >
                 <p>Let us know how to contact you?</p>
-                <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => {
-                  setShowSupportMessage(false)
-                  localStorage.setItem('hideSupportMessage', 'true')
-                }} /></button>
-              </div>
-              <div className="support-box-form-container">
-                {
-                  leadFields?.map((field, fieldIndex) => {
-                    return fieldIndex === currentStep ? <div style={{ display: 'flex', flexDirection: 'column', gap: "8px" }} key={fieldIndex}>
-                      <label style={{ fontWeight: '500', fontSize: "1rem" }}>{field.name}</label>
-                      <input type={field.type} name={field.key} value={fieldsValue[field.key] || ''} onChange={handleFieldChange} />
-                    </div> : null
-                  })
-                }
-                <button onClick={handleNext}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
               </div>
             </div>
-          </div>
+            <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
+              <div className="docsbot-chat-bot-message chat-support-message-box">
+                <div className="contact-header-container">
+                  <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => {
+                    setShowSupportMessage(false)
+                    localStorage.setItem('hideSupportMessage', 'true')
+                  }} /></button>
+                </div>
+                <div className="support-box-form-container">
+                  {
+                    leadFields?.map((field, fieldIndex) => {
+                      return fieldIndex === currentStep ? <div style={{ display: 'flex', flexDirection: 'column', gap: "8px" }} key={fieldIndex}>
+                        <label style={{ fontWeight: '500', fontSize: "1rem" }}>{field.name}</label>
+                        <input type={field.type} name={field.key} value={fieldsValue[field.key] || ''} onChange={handleFieldChange} />
+                      </div> : null
+                    })
+                  }
+                  <button style={{
+                    backgroundColor: color,
+                    color : decideTextColor(color)
+                  }} onClick={handleNext}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
+                </div>
+              </div>
+            </div>
+          </>
           : null
       }
       {

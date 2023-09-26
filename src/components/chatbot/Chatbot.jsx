@@ -165,7 +165,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     }
   }, [state.chatHistory]);
 
-  async function fetchAnswer(question, isFeedback) {
+  async function fetchAnswer(question) {
     setShowFeedbackButton(false)
     setShowHumanButton(false)
     const id = uuidv4();
@@ -222,6 +222,22 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             },
           });
         }
+        else if (data.event === "is_resolved_question") {
+          setShowFeedbackButton(true)
+          answer += data.data;
+          dispatch({
+            type: "update_message",
+            payload: {
+              id,
+              variant: "chatbot",
+              message: await parseMarkdown(answer),
+              sources: null,
+              loading: false,
+              isHumanSupport: false,
+              isFeedback: true,
+            },
+          });
+        }
         else if (data.event === "stream") {
           //append to answer
           answer += data.data;
@@ -246,7 +262,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               sources: finalData.sources,
               answerId: finalData.id,
               loading: false,
-              isFeedback: isFeedback ? isFeedback : false,
             },
           });
           let newChatHistory = []
@@ -268,9 +283,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
           if (!isUserDetailsAvailable && !hideSupportMessage) {
             setShowSupportMessage(true)
-          }
-          if (!isFeedback) {
-            setShowFeedbackButton(true)
           }
         } else if (data.event === "error") {
           dispatch({
@@ -326,7 +338,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       },
     });
 
-    fetchAnswer(chatInput, false);
+    fetchAnswer(chatInput);
     setChatInput("");
     inputRef.current.focus();
   }
@@ -470,7 +482,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                               timestamp: Date.now(),
                             },
                           });
-                          fetchAnswer(question, false);
+                          fetchAnswer(question);
                           setChatInput("");
                         }}
                         style={{
