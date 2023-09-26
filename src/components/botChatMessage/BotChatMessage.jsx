@@ -30,7 +30,6 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
   if (signature) {
     headers.Authorization = `Bearer ${signature}`;
   }
-  console.log(leadFields);
   useEffect(() => {
     if (showHumanButton) {
       const supportButtonTimeout = setTimeout(() => {
@@ -154,7 +153,6 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
     Object.keys(userData).map(data => {
       newUserData[data] = userData[data]?.trim()
     })
-    console.log(userData, newUserData);
     updateIdentify(newUserData)
     let metadata = identify;
     metadata = {
