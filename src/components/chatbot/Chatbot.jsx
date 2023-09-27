@@ -75,6 +75,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
     fetchData();
   }, [refreshChat]);
+
   useEffect(() => {
     const fetchData = async () => {
       const savedConversation = JSON.parse(
@@ -90,10 +91,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       if (savedConversation) {
         const hideSupportMessage = localStorage.getItem('hideSupportMessage')
         const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
-        if (!isUserDetailsAvailable && !hideSupportMessage) {
+        const savedConversationArray = Object.values(savedConversation)
+        if (!isUserDetailsAvailable && !hideSupportMessage && savedConversationArray?.length > 1) {
           setShowSupportMessage(true)
         }
-        const savedConversationArray = Object.values(savedConversation)
         if (savedConversationArray) {
           const lastConversation = savedConversationArray[savedConversationArray.length - 1]
           if (lastConversation?.isFeedback && !lastConversation?.isFirstMessage && !lastConversation?.isHumanSupport) {
@@ -290,7 +291,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             payload: {
               id,
               variant: "chatbot",
-              message: data.message,
+              message: data.data,
               loading: false,
               error: true,
             },

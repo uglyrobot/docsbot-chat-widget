@@ -20,6 +20,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
   const [isShowSaved, setIsShowSaved] = useState(false)
   const [showHumanSupportButton, setShowHumanSupportButton] = useState(false)
   const [showSupportLink, setShowSupportLink] = useState(false)
+  const [showUserMsgKeys, setUserMsgKeys] = useState({})
   const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback, identify, updateIdentify, leadFields
   } = useConfig();
   const { dispatch, state } = useChatbot();
@@ -59,7 +60,6 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
 
     return true // ensure link is opened
   }
-
   // make api call to rate
   const saveRating = async (newRating = 0) => {
     setRating(newRating);
@@ -133,8 +133,15 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
           if (currentStep >= lastStep) {
             handleContact(fieldsValue)
           }
-          else
+          else {
             setCurrentStep(currentStep + 1)
+          }
+          setUserMsgKeys((old) => {
+            return {
+              ...old,
+              [currentStepFields.key]: 1
+            }
+          })
         }
         else return false
       }
@@ -142,9 +149,27 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
         if (currentStep >= lastStep) {
           handleContact(fieldsValue)
         }
-        else
+        else {
           setCurrentStep(currentStep + 1)
+        }
+        setUserMsgKeys((old) => {
+          return {
+            ...old,
+            [currentStepFields.key]: 1
+          }
+        })
       }
+    }
+  }
+
+  const getButtonState = () => {
+    const currentStepFields = leadFields[currentStep]
+    const currentStepFieldValue = fieldsValue[currentStepFields.key]
+    if (currentStepFields.required && !currentStepFieldValue?.trim().length) {
+      return false
+    }
+    else {
+      return true
     }
   }
 
@@ -271,71 +296,74 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
           })()}
         </div>
       </div>
+
       {
         showSupportMessage && payload?.isLast && !payload?.isFirstMessage ?
-          <>
-            <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
-              <div className="docsbot-chat-bot-message"
-                style={{
-                  background: bgColor,
-                  color: fontColor
-                }}
-              >
-                <p>Let us know how to contact you?</p>
-              </div>
+          <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
+            <div className="docsbot-chat-bot-message"
+              style={{
+                background: bgColor,
+                color: fontColor
+              }}
+            >
+              <p>Let us know how to contact you?</p>
             </div>
-            <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
-              <div className="docsbot-chat-bot-message chat-support-message-box">
-                <div className="contact-header-container">
-                  <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => {
-                    setShowSupportMessage(false)
-                    localStorage.setItem('hideSupportMessage', 'true')
-                  }} /></button>
-                </div>
-                <div className="support-box-form-container">
-                  {
-                    leadFields?.map((field, fieldIndex) => {
-                      return fieldIndex === currentStep ? <div style={{ display: 'flex', flexDirection: 'column', gap: "8px" }} key={fieldIndex}>
-                        <label style={{ fontWeight: '500', fontSize: "1rem" }}>{field.name}</label>
-                        <input type={field.type} name={field.key} value={fieldsValue[field.key] || ''} onChange={handleFieldChange} />
-                      </div> : null
-                    })
-                  }
-                  <button style={{
-                    backgroundColor: color,
-                    color: decideTextColor(color)
-                  }} onClick={handleNext}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
-                </div>
-              </div>
-            </div>
-          </>
-          : null
+          </div> : null
       }
       {
-        isShowSaved ?
-          <>
-            {
-              Object.keys(fieldsValue).map((message, messageKey) => {
-                if (fieldsValue[message]) {
-                  return <UserChatMessage key={messageKey} loading={false} message={`${capitalizeText(message)} : ${fieldsValue[message]}`} />
+        Object.keys(fieldsValue).map((message, messageKey) => {
+          if (fieldsValue[message] && showUserMsgKeys[message]) {
+            return <UserChatMessage key={messageKey} loading={false} message={`${capitalizeText(message)} : ${fieldsValue[message]}`} />
+          }
+        }
+        )
+      }
+      {
+        showSupportMessage && payload?.isLast && !payload?.isFirstMessage ?
+          <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
+            <div className="docsbot-chat-bot-message chat-support-message-box">
+              <div className="contact-header-container">
+                <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => {
+                  setShowSupportMessage(false)
+                  localStorage.setItem('hideSupportMessage', 'true')
+                }} /></button>
+              </div>
+              <div className="support-box-form-container">
+                {
+                  leadFields?.map((field, fieldIndex) => {
+                    return fieldIndex === currentStep ? <div style={{ display: 'flex', flexDirection: 'column', gap: "8px" }} key={fieldIndex}>
+                      <label style={{ fontWeight: '500', fontSize: "1rem" }}>{field.name}</label>
+                      <input type={field.type} name={field.key} value={fieldsValue[field.key] || ''} onChange={handleFieldChange} />
+                    </div> : null
+                  })
                 }
-              }
-              )
-            }
-            <div className="docsbot-chat-bot-message-container support-box-container">
-              <div className="docsbot-chat-bot-message"
-                style={{
-                  backgroundColor: bgColor,
-                  color: fontColor,
-                  width: '100%'
-                }}>
-                <div className="contact-header-container" style={{ justifyContent: 'space-between' }}>
-                  <p>Your details has been saved successfully!</p>
-                  <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => setIsShowSaved(false)} /></button>
-                </div>
+                {
+                  getButtonState() ? <button style={{
+                    backgroundColor: color,
+                    color: decideTextColor(color)
+                  }} onClick={handleNext}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button> : null
+                }
               </div>
             </div>
-          </>
+          </div>
+          : null
+      }
+
+      {
+        isShowSaved ?
+          <div className="docsbot-chat-bot-message-container support-box-container">
+            <div className="docsbot-chat-bot-message"
+              style={{
+                backgroundColor: bgColor,
+                color: fontColor,
+                width: '100%'
+              }}>
+              <div className="contact-header-container" style={{ justifyContent: 'space-between' }}>
+                <p>Your details has been saved successfully!</p>
+                <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => setIsShowSaved(false)} /></button>
+              </div>
+            </div>
+          </div>
           : null
       }
       {
