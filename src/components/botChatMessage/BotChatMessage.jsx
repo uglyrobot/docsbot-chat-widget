@@ -19,7 +19,6 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
   const [currentStep, setCurrentStep] = useState(0)
   const [isShowSaved, setIsShowSaved] = useState(false)
   const [showHumanSupportButton, setShowHumanSupportButton] = useState(false)
-  const [showSupportLink, setShowSupportLink] = useState(false)
   const [showUserMsgKeys, setUserMsgKeys] = useState({})
   const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback, identify, updateIdentify, leadFields
   } = useConfig();
@@ -44,14 +43,18 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
 
   const runSupportCallback = (e, history, metadata) => {
     // post to api endpoint
-    const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/conversations/${payload.answerId}/escalate`;
+    const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/conversations/${payload.id}/escalate`;
 
     fetch(apiUrl, {
       method: "PUT",
       headers,
-    }).catch((e) => {
-      console.warn(`DOCSBOT: Error recording support click: ${e}`);
-    });
+    })
+      .then(() => {
+        window.open(supportLink, "_blank")
+      })
+      .catch((e) => {
+        console.warn(`DOCSBOT: Error recording support click: ${e}`);
+      });
 
     // run callback if provided
     if (supportCallback && typeof supportCallback === "function") {
@@ -395,31 +398,17 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                 border: 'none'
               }}>
               <div className="feedback-button-container">
-                <button className="feedback-button" onClick={() => {
-                  setShowSupportLink(true)
+                <button className="feedback-button" onClick={(e) => {
+                  runSupportCallback(e, state.chatHistory || [], identify)
                   setShowHumanSupportButton(false)
-                }}>Get Support</button>
+                }}>{labels.getSupport}
+                </button>
                 <button className="feedback-button" onClick={() => setShowHumanSupportButton(false)}>No Thanks</button>
               </div>
             </div>
           </div>
           : null
       }
-      {showSupportLink && payload.isLast && supportLink && (payload.sources || payload.error) && (
-        <div className="docsbot-chat-bot-message-support">
-          <a
-            href={supportLink}
-            target="_blank"
-            onClick={(e) => runSupportCallback(e, state.chatHistory || [], identify)}
-            style={{
-              color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)),
-            }}
-          >
-            {labels.getSupport}
-            <FontAwesomeIcon icon={faBullhorn} style={{ color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)), marginLeft: 5 }} />
-          </a>
-        </div>
-      )}
     </>
   );
 };

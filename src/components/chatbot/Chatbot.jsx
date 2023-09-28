@@ -56,6 +56,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         dispatch({ type: "clear_messages" });
         localStorage.removeItem("docsbot_chat_history");
         localStorage.removeItem("chatHistory");
+        setShowSupportMessage(false)
         setRefreshChat((prevState) => !prevState);
 
         const parsedMessage = await parseMarkdown(labels.firstMessage);
@@ -283,7 +284,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           const hideSupportMessage = localStorage.getItem('hideSupportMessage')
           const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
           if (!isUserDetailsAvailable && !hideSupportMessage) {
-            setShowSupportMessage(true)
+            setTimeout(() => {
+              setShowSupportMessage(true)
+            }, 1000)
           }
         } else if (data.event === "error") {
           dispatch({
