@@ -11,11 +11,13 @@ import linkListStyles from "!raw-loader!../linkList/LinkList.css";
 import { Chatbot } from "../chatbot/Chatbot";
 import { ChatbotProvider } from "../chatbotContext/ChatbotContext";
 import { Emitter } from "../../utils/event-emitter";
+import { useConfig } from "../configContext/ConfigContext";
 
 fontAwesomeConfig.autoAddCss = false;
 
 function App() {
   const [isOpen, setIsOpen] = useState(false);
+  const { customCSS } = useConfig();
 
   useEffect(() => {
     Emitter.on("OPEN_CHATBOT", () => {
@@ -39,6 +41,7 @@ function App() {
       <style type="text/css">{floatingButtonStyles}</style>
       <style type="text/css">{optionsStyles}</style>
       <style type="text/css">{linkListStyles}</style>
+      {customCSS ? <style type="text/css">{customCSS}</style> : null}
 
       <FloatingButton {...{isOpen, setIsOpen}} />
       {isOpen ? (
