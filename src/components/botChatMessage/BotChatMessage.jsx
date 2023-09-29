@@ -20,7 +20,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
   const [isShowSaved, setIsShowSaved] = useState(false)
   const [showHumanSupportButton, setShowHumanSupportButton] = useState(false)
   const [showUserMsgKeys, setUserMsgKeys] = useState({})
-  const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback, identify, updateIdentify, leadFields
+  const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback, identify, updateIdentify, leadFields, leadCollectionOptions
   } = useConfig();
   const { dispatch, state } = useChatbot();
   const headers = {
@@ -122,7 +122,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
     })
   }
 
-  const handleNext = () => {
+  const handleNext = (e) => {
     const lastStep = leadFields?.length - 1
     const currentStepFields = leadFields[currentStep]
     const currentStepFieldValue = fieldsValue[currentStepFields.key]
@@ -134,7 +134,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
         const isValidEmail = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(currentStepFieldValue);
         if (isValidEmail) {
           if (currentStep >= lastStep) {
-            handleContact(fieldsValue)
+            handleContact(e, fieldsValue)
           }
           else {
             setCurrentStep(currentStep + 1)
@@ -150,7 +150,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
       }
       else {
         if (currentStep >= lastStep) {
-          handleContact(fieldsValue)
+          handleContact(e, fieldsValue)
         }
         else {
           setCurrentStep(currentStep + 1)
@@ -176,7 +176,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
     }
   }
 
-  const handleContact = (userData) => {
+  const handleContact = (e, userData) => {
     const newUserData = {}
     Object.keys(userData).map(data => {
       newUserData[data] = userData[data]?.trim()
@@ -202,6 +202,9 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
       });
 
     localStorage.setItem('userContactDetails', JSON.stringify(newUserData))
+    if (leadCollectionOptions?.escalation) {
+      runSupportCallback(e, state.chatHistory || [], identify)
+    }
     setShowSupportMessage(false)
     setIsShowSaved(true)
   }
@@ -301,7 +304,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
       </div>
 
       {
-        showSupportMessage && payload?.isLast && !payload?.isFirstMessage ?
+        showSupportMessage && payload?.isLast ?
           <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
             <div className="docsbot-chat-bot-message"
               style={{
@@ -322,14 +325,14 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
         )
       }
       {
-        showSupportMessage && payload?.isLast && !payload?.isFirstMessage ?
+        showSupportMessage && payload?.isLast ?
           <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
             <div className="docsbot-chat-bot-message chat-support-message-box">
               <div className="contact-header-container">
-                <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => {
-                  setShowSupportMessage(false)
-                  localStorage.setItem('hideSupportMessage', 'true')
-                }} /></button>
+                {
+                  getButtonState() ?
+                    <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={handleNext} /></button> : null
+                }
               </div>
               <div className="support-box-form-container">
                 {
@@ -341,10 +344,10 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                   })
                 }
                 {
-                  getButtonState() ? <button style={{
+                  <button style={{
                     backgroundColor: color,
                     color: decideTextColor(color)
-                  }} onClick={handleNext}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button> : null
+                  }} onClick={handleNext}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
                 }
               </div>
             </div>
@@ -399,7 +402,14 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
               }}>
               <div className="feedback-button-container">
                 <button className="feedback-button" onClick={(e) => {
-                  runSupportCallback(e, state.chatHistory || [], identify)
+                  if (leadCollectionOptions?.escalation) {
+                    setTimeout(() => {
+                      setShowSupportMessage(true)
+                    }, 1000)
+                  }
+                  else {
+                    runSupportCallback(e, state.chatHistory || [], identify)
+                  }
                   setShowHumanSupportButton(false)
                 }}>{labels.getSupport}
                 </button>

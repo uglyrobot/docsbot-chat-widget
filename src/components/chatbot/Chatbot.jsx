@@ -43,7 +43,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     logo,
     headerAlignment,
     hideHeader,
-    updateIdentify
+    updateIdentify,
+    leadCollectionOptions
   } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
@@ -56,11 +57,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         dispatch({ type: "clear_messages" });
         localStorage.removeItem("docsbot_chat_history");
         localStorage.removeItem("chatHistory");
-        setShowSupportMessage(false)
         setRefreshChat((prevState) => !prevState);
-
         const parsedMessage = await parseMarkdown(labels.firstMessage);
-
         dispatch({
           type: "add_message",
           payload: {
@@ -71,6 +69,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             isFirstMessage: true
           },
         });
+        const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+        if (!userDetails && leadCollectionOptions.default) {
+          setShowSupportMessage(true)
+        }
+        else {
+          setShowSupportMessage(false)
+        }
       }
     };
 
@@ -78,24 +83,30 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   }, [refreshChat]);
 
   useEffect(() => {
+    let supportbtnTimout = null
     const fetchData = async () => {
       const savedConversation = JSON.parse(
         localStorage.getItem("docsbot_chat_history")
       );
+      const savedConversationArray = Object.values(savedConversation)
       const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
       if (userDetails) {
         updateIdentify(userDetails)
+      }
+      if (!userDetails) {
+        if (leadCollectionOptions.default && savedConversationArray?.length === 1 || leadCollectionOptions.immediately && savedConversationArray?.length > 1) {
+          supportbtnTimout = setTimeout(() => {
+            setShowSupportMessage(true)
+          }, 1000)
+        }
+        else {
+          setShowSupportMessage(false)
+        }
       }
       const chatHistory = JSON.parse(localStorage.getItem('chatHistory'))
       const currentTime = Date.now()
       let lastMsgTimeStamp = 0
       if (savedConversation) {
-        const hideSupportMessage = localStorage.getItem('hideSupportMessage')
-        const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
-        const savedConversationArray = Object.values(savedConversation)
-        if (!isUserDetailsAvailable && !hideSupportMessage && savedConversationArray?.length > 1) {
-          setShowSupportMessage(true)
-        }
         if (savedConversationArray) {
           const lastConversation = savedConversationArray[savedConversationArray.length - 1]
           if (lastConversation?.isFeedback && !lastConversation?.isFirstMessage && !lastConversation?.isHumanSupport) {
@@ -149,6 +160,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     };
 
     fetchData();
+    return () => {
+      clearTimeout(supportbtnTimout)
+    }
   }, [labels.firstMessage]);
 
   useEffect(() => {
@@ -168,6 +182,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   }, [state.chatHistory]);
 
   async function fetchAnswer(question) {
+    setShowSupportMessage(false)
     setShowFeedbackButton(false)
     setShowHumanButton(false)
     const id = uuidv4();
@@ -279,15 +294,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               chatHistory: newChatHistory,
             },
           });
-
-          ref.current.scrollTop = ref.current.scrollHeight;
-          const hideSupportMessage = localStorage.getItem('hideSupportMessage')
-          const isUserDetailsAvailable = localStorage.getItem('userContactDetails')
-          if (!isUserDetailsAvailable && !hideSupportMessage) {
+          const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+          if (!userDetails && leadCollectionOptions.immediately) {
             setTimeout(() => {
               setShowSupportMessage(true)
             }, 1000)
           }
+          ref.current.scrollTop = ref.current.scrollHeight;
         } else if (data.event === "error") {
           dispatch({
             type: "update_message",
@@ -331,7 +344,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    setShowSupportMessage(false)
     dispatch({
       type: "add_message",
       payload: {
@@ -475,19 +487,26 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                       <button
                         key={"question" + index}
                         type="button"
+                        disabled={showSupportMessage}
                         onClick={() => {
-                          setShowSupportMessage(false)
-                          dispatch({
-                            type: "add_message",
-                            payload: {
-                              variant: "user",
-                              message: question,
-                              loading: false,
-                              timestamp: Date.now(),
-                            },
-                          });
-                          fetchAnswer(question);
-                          setChatInput("");
+                          if (leadCollectionOptions.ask) {
+                            setTimeout(() => {
+                              setShowSupportMessage(true)
+                            }, 1000)
+                          }
+                          else {
+                            dispatch({
+                              type: "add_message",
+                              payload: {
+                                variant: "user",
+                                message: question,
+                                loading: false,
+                                timestamp: Date.now(),
+                              },
+                            });
+                            fetchAnswer(question);
+                            setChatInput("");
+                          }
                         }}
                         style={{
                           backgroundColor: getLighterColor(
@@ -541,7 +560,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 suppportTabRef.current?.scrollIntoView({ behavior: 'smooth' })
               }
               else {
-                handleSubmit(e)
+                if (leadCollectionOptions.ask) {
+                  setTimeout(() => {
+                    setShowSupportMessage(true)
+                  }, 1000)
+                }
+                else {
+                  handleSubmit(e)
+                }
               }
             }}>
               <textarea
@@ -565,8 +591,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                       suppportTabRef.current?.scrollIntoView({ behavior: 'smooth' })
                     }
                     else {
-                      handleSubmit(e);
-                      e.target.style.height = "auto";
+                      if (leadCollectionOptions.ask) {
+                        setTimeout(() => {
+                          setShowSupportMessage(true)
+                        }, 1000)
+                      }
+                      else {
+                        handleSubmit(e);
+                        e.target.style.height = "auto";
+                      }
                     }
                   }
                 }}
