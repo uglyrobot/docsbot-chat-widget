@@ -607,16 +607,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 maxLength={200}
                 rows={1}
               />
-              <button
-                type="submit"
-                className="docsbot-chat-btn-send"
-                style={{
-                  fill: color,
-                }}
-                disabled={chatInput.length < 2 || showSupportMessage}
-              >
-                <SendIcon />
-              </button>
+              {
+                !color?.includes('fff') ? <button
+                  type="submit"
+                  className="docsbot-chat-btn-send"
+                  style={{
+                    fill: color,
+                  }}
+                  disabled={chatInput.length < 2 || showSupportMessage}
+                >
+                  <SendIcon />
+                </button> : null
+              }
             </form>
           </div>
         </div>
