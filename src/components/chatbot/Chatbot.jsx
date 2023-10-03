@@ -25,6 +25,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const [showSupportMessage, setShowSupportMessage] = useState(false)
   const [showFeedbackButton, setShowFeedbackButton] = useState(false)
   const [showHumanButton, setShowHumanButton] = useState(false)
+  const [timeoutLoader, setTimeoutLoader] = useState(false)
   const { dispatch, state } = useChatbot();
   const {
     color,
@@ -95,8 +96,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       }
       if (!userDetails) {
         if (leadCollectionOptions.default && savedConversationArray?.length === 1 || leadCollectionOptions.immediately && savedConversationArray?.length > 1) {
+          setTimeoutLoader(true)
           supportbtnTimout = setTimeout(() => {
             setShowSupportMessage(true)
+            setTimeoutLoader(false)
           }, 1000)
         }
         else {
@@ -296,8 +299,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           });
           const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
           if (!userDetails && leadCollectionOptions.immediately) {
+            setTimeoutLoader(true)
             setTimeout(() => {
               setShowSupportMessage(true)
+              setTimeoutLoader(false)
             }, 1000)
           }
           ref.current.scrollTop = ref.current.scrollHeight;
@@ -456,7 +461,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               message.isLast = key === Object.keys(state.messages).pop();
               return message.variant === "chatbot" ? (
                 <div key={key}>
-                  <BotChatMessage payload={message} showSupportMessage={showSupportMessage} setShowSupportMessage={setShowSupportMessage} fetchAnswer={fetchAnswer} showFeedbackButton={showFeedbackButton} showHumanButton={showHumanButton} suppportTabRef={suppportTabRef} />
+                  <BotChatMessage payload={message} showSupportMessage={showSupportMessage} setShowSupportMessage={setShowSupportMessage} fetchAnswer={fetchAnswer} showFeedbackButton={showFeedbackButton} showHumanButton={showHumanButton} suppportTabRef={suppportTabRef}
+                    timeoutLoader={timeoutLoader}
+                    setTimeoutLoader={setTimeoutLoader}
+                  />
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
                   ) : null}
@@ -490,8 +498,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                         disabled={showSupportMessage}
                         onClick={() => {
                           if (leadCollectionOptions.ask) {
+                            setTimeoutLoader(true)
                             setTimeout(() => {
                               setShowSupportMessage(true)
+                              setTimeoutLoader(false)
                             }, 1000)
                           }
                           else {
@@ -561,8 +571,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               }
               else {
                 if (leadCollectionOptions.ask) {
+                  setTimeoutLoader(true)
                   setTimeout(() => {
                     setShowSupportMessage(true)
+                    setTimeoutLoader(false)
                   }, 1000)
                 }
                 else {
@@ -592,8 +604,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                     }
                     else {
                       if (leadCollectionOptions.ask) {
+                        setTimeoutLoader(true)
                         setTimeout(() => {
                           setShowSupportMessage(true)
+                          setTimeoutLoader(false)
                         }, 1000)
                       }
                       else {

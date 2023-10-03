@@ -11,7 +11,7 @@ import { useChatbot } from "../chatbotContext/ChatbotContext";
 import botMessageStyles from "!raw-loader!./botMessage.css";
 import { UserChatMessage } from "../userChatMessage/UserChatMessage";
 
-export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMessage, fetchAnswer, showFeedbackButton, showHumanButton, suppportTabRef }) => {
+export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMessage, fetchAnswer, showFeedbackButton, showHumanButton, suppportTabRef, timeoutLoader, setTimeoutLoader }) => {
   const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
@@ -167,8 +167,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
 
   const getButtonState = () => {
     const currentStepFields = leadFields[currentStep]
-    const currentStepFieldValue = fieldsValue[currentStepFields.key]
-    if (currentStepFields.required && !currentStepFieldValue?.trim().length) {
+    if (currentStepFields.required) {
       return false
     }
     else {
@@ -302,6 +301,19 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
           })()}
         </div>
       </div>
+      {
+        timeoutLoader && payload?.isLast ?
+          <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
+            <div className="docsbot-chat-bot-message"
+              style={{
+                background: bgColor,
+                color: fontColor
+              }}
+            >
+              <Loader />
+            </div>
+          </div> : null
+      }
 
       {
         showSupportMessage && payload?.isLast ?
@@ -328,12 +340,6 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
         showSupportMessage && payload?.isLast ?
           <div ref={suppportTabRef} className="docsbot-chat-bot-message-container support-box-container">
             <div className="docsbot-chat-bot-message chat-support-message-box">
-              <div className="contact-header-container">
-                {
-                  getButtonState() ?
-                    <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={handleNext} /></button> : null
-                }
-              </div>
               <div className="support-box-form-container">
                 {
                   leadFields?.map((field, fieldIndex) => {
@@ -346,8 +352,15 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                 {
                   <button style={{
                     backgroundColor: color,
-                    color: decideTextColor(color)
+                    color: decideTextColor(color),
+                    borderRadius: !getButtonState() ? '8px' : '0px',
+                    right: !getButtonState() ? '0px' : '2.5rem',
+
                   }} onClick={handleNext}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
+                }
+                {
+                  getButtonState() ?
+                    <button style={{ boxShadow: 'none' }}><FontAwesomeIcon size="xl" icon={faXmark} onClick={handleNext} /></button> : null
                 }
               </div>
             </div>
@@ -403,8 +416,10 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
               <div className="feedback-button-container">
                 <button className="feedback-button" onClick={(e) => {
                   if (leadCollectionOptions?.escalation) {
+                    setTimeoutLoader(true)
                     setTimeout(() => {
                       setShowSupportMessage(true)
+                      setTimeoutLoader(false)
                     }, 1000)
                   }
                   else {
