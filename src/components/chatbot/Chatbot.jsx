@@ -228,13 +228,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         }
         else if (data.event === "support_escalation") {
           setShowHumanButton(true)
-          answer += data.data;
+          const finalData = JSON.parse(data.data);
           dispatch({
             type: "update_message",
             payload: {
               id,
               variant: "chatbot",
-              message: await parseMarkdown(answer),
+              message: await parseMarkdown(finalData.answer),
               sources: null,
               loading: false,
               isHumanSupport: true
