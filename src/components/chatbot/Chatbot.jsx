@@ -214,7 +214,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     if (signature) {
       sse_req.auth = signature;
     }
-
     await fetchEventSource(`https://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat-agent`, {
       headers: {
         'Content-Type': 'application/json',
@@ -244,13 +243,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         }
         else if (data.event === "is_resolved_question") {
           setShowFeedbackButton(true)
-          answer += data.data;
+          const finalData = JSON.parse(data.data);
           dispatch({
             type: "update_message",
             payload: {
-              id,
               variant: "chatbot",
-              message: await parseMarkdown(answer),
+              message: await parseMarkdown(finalData.answer),
               sources: null,
               loading: false,
               isHumanSupport: false,
@@ -271,7 +269,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               loading: false,
             },
           });
-        } else if (data.event === "end") {
+          if (data.data?.includes('\n')) {
+            console.log(data, 'nknbhjbhjb');
+            ref.current.scrollTop = ref.current.scrollHeight;
+          }
+        } else if (data.event === "lookup_answer") {
           const finalData = JSON.parse(data.data);
           dispatch({
             type: "update_message",
