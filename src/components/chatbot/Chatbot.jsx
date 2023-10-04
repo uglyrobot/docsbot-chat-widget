@@ -71,7 +71,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           },
         });
         const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
-        if (!userDetails && leadCollectionOptions.default) {
+        if (!userDetails && leadCollectionOptions.immediately) {
           setShowSupportMessage(true)
         }
         else {
@@ -95,7 +95,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         updateIdentify(userDetails)
       }
       if (!userDetails) {
-        if (leadCollectionOptions.default && savedConversationArray?.length === 1 || leadCollectionOptions.immediately && savedConversationArray?.length > 1) {
+        if (leadCollectionOptions.immediately && savedConversationArray?.length === 1) {
           setTimeoutLoader(true)
           supportbtnTimout = setTimeout(() => {
             setShowSupportMessage(true)
@@ -300,13 +300,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             },
           });
           const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
-          if (!userDetails && leadCollectionOptions.immediately) {
-            setTimeoutLoader(true)
-            setTimeout(() => {
-              setShowSupportMessage(true)
-              setTimeoutLoader(false)
-            }, 1000)
-          }
           ref.current.scrollTop = ref.current.scrollHeight;
         } else if (data.event === "error") {
           dispatch({
