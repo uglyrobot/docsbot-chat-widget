@@ -45,7 +45,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     headerAlignment,
     hideHeader,
     updateIdentify,
-    leadCollectionOptions
+    collectLead
   } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
@@ -71,7 +71,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           },
         });
         const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
-        if (!userDetails && leadCollectionOptions.immediately) {
+        if (!userDetails && collectLead === "immediately") {
           setShowSupportMessage(true)
         }
         else {
@@ -95,7 +95,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         updateIdentify(userDetails)
       }
       if (!userDetails) {
-        if (leadCollectionOptions.immediately && savedConversationArray?.length === 1) {
+        if (collectLead === "immediately" && savedConversationArray?.length === 1) {
           setTimeoutLoader(true)
           supportbtnTimout = setTimeout(() => {
             setShowSupportMessage(true)
@@ -492,7 +492,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                         type="button"
                         disabled={showSupportMessage}
                         onClick={() => {
-                          if (leadCollectionOptions.ask) {
+                          if (collectLead === "ask") {
                             setTimeoutLoader(true)
                             setTimeout(() => {
                               setShowSupportMessage(true)
@@ -565,7 +565,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 suppportTabRef.current?.scrollIntoView({ behavior: 'smooth' })
               }
               else {
-                if (leadCollectionOptions.ask) {
+                if (collectLead === "ask") {
+                  e.preventDefault()
                   setTimeoutLoader(true)
                   setTimeout(() => {
                     setShowSupportMessage(true)
@@ -598,7 +599,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                       suppportTabRef.current?.scrollIntoView({ behavior: 'smooth' })
                     }
                     else {
-                      if (leadCollectionOptions.ask) {
+                      if (collectLead === "ask") {
                         setTimeoutLoader(true)
                         setTimeout(() => {
                           setShowSupportMessage(true)

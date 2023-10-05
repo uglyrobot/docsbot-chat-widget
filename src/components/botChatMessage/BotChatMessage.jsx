@@ -20,7 +20,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
   const [isShowSaved, setIsShowSaved] = useState(false)
   const [showHumanSupportButton, setShowHumanSupportButton] = useState(false)
   const [showUserMsgKeys, setUserMsgKeys] = useState({})
-  const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback, identify, updateIdentify, leadFields, leadCollectionOptions
+  const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback, identify, updateIdentify, leadFields, collectLead
   } = useConfig();
   const { dispatch, state } = useChatbot();
   const headers = {
@@ -201,7 +201,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
       });
 
     localStorage.setItem('userContactDetails', JSON.stringify(newUserData))
-    if (leadCollectionOptions?.escalation) {
+    if (collectLead === "escalation") {
       runSupportCallback(e, state.chatHistory || [], identify)
     }
     setShowSupportMessage(false)
@@ -344,7 +344,13 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                 {
                   leadFields?.map((field, fieldIndex) => {
                     return fieldIndex === currentStep ? <div style={{ display: 'flex', flexDirection: 'column', gap: "8px" }} key={fieldIndex}>
-                      <label style={{ fontWeight: '500', fontSize: "1rem" }}>{field.name}</label>
+                      <div className="label-xbutton-container">
+                        <label style={{ fontWeight: '500', fontSize: "1rem" }}>{field.name}</label>
+                        {
+                          getButtonState() ?
+                            <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={handleNext} /></button> : null
+                        }
+                      </div>
                       <input type={field.type} name={field.key} value={fieldsValue[field.key] || ''} onChange={handleFieldChange} />
                     </div> : null
                   })
@@ -353,14 +359,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                   <button style={{
                     backgroundColor: color,
                     color: decideTextColor(color),
-                    borderRadius: !getButtonState() ? '8px' : '0px',
-                    right: !getButtonState() ? '0px' : '2.5rem',
-
-                  }} onClick={handleNext}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
-                }
-                {
-                  getButtonState() ?
-                    <button style={{ boxShadow: 'none' }}><FontAwesomeIcon size="xl" icon={faXmark} onClick={handleNext} /></button> : null
+                  }} className="next-buttom" onClick={handleNext}><FontAwesomeIcon icon={faChevronRight} size='lg' /></button>
                 }
               </div>
             </div>
@@ -377,9 +376,8 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                 color: fontColor,
                 width: '100%'
               }}>
-              <div className="contact-header-container" style={{ justifyContent: 'space-between' }}>
+              <div>
                 <p>Your details has been saved successfully!</p>
-                <button><FontAwesomeIcon size="xl" icon={faXmark} onClick={() => setIsShowSaved(false)} /></button>
               </div>
             </div>
           </div>
@@ -415,7 +413,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
               }}>
               <div className="feedback-button-container">
                 <button className="feedback-button" onClick={(e) => {
-                  if (leadCollectionOptions?.escalation) {
+                  if (collectLead === "escalation") {
                     setTimeoutLoader(true)
                     setTimeout(() => {
                       setShowSupportMessage(true)
