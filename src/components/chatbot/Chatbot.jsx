@@ -492,7 +492,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                         type="button"
                         disabled={showSupportMessage}
                         onClick={() => {
-                          if (collectLead === "ask") {
+                          const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+                          if (collectLead === "ask" && !userDetails) {
                             setTimeoutLoader(true)
                             setTimeout(() => {
                               setShowSupportMessage(true)
@@ -565,7 +566,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 suppportTabRef.current?.scrollIntoView({ behavior: 'smooth' })
               }
               else {
-                if (collectLead === "ask") {
+                const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+                if (collectLead === "ask" && !userDetails) {
                   e.preventDefault()
                   setTimeoutLoader(true)
                   setTimeout(() => {
@@ -599,7 +601,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                       suppportTabRef.current?.scrollIntoView({ behavior: 'smooth' })
                     }
                     else {
-                      if (collectLead === "ask") {
+                      const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+                      if (collectLead === "ask" && !userDetails) {
                         setTimeoutLoader(true)
                         setTimeout(() => {
                           setShowSupportMessage(true)

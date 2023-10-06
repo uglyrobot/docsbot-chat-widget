@@ -413,7 +413,8 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
               }}>
               <div className="feedback-button-container">
                 <button className="feedback-button" onClick={(e) => {
-                  if (collectLead === "escalation") {
+                  const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+                  if (collectLead === "escalation" && !userDetails) {
                     setTimeoutLoader(true)
                     setTimeout(() => {
                       setShowSupportMessage(true)
