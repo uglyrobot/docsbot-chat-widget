@@ -11,7 +11,7 @@ import { useChatbot } from "../chatbotContext/ChatbotContext";
 import botMessageStyles from "!raw-loader!./botMessage.css";
 import { UserChatMessage } from "../userChatMessage/UserChatMessage";
 
-export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMessage, fetchAnswer, showFeedbackButton, showHumanButton, suppportTabRef, timeoutLoader, setTimeoutLoader }) => {
+export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMessage, fetchAnswer, showFeedbackButton, showHumanButton, suppportTabRef, timeoutLoader, setTimeoutLoader, messageBoxRef }) => {
   const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
@@ -237,6 +237,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
             backgroundColor: bgColor,
             color: fontColor,
           }}
+          ref={messageBoxRef}
         >
           {(() => {
             if (payload.loading) {
@@ -368,7 +369,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
       }
 
       {
-        isShowSaved ?
+        isShowSaved && collectLead !== "escalation" ?
           <div className="docsbot-chat-bot-message-container support-box-container">
             <div className="docsbot-chat-bot-message"
               style={{

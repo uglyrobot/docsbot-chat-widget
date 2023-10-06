@@ -1,6 +1,6 @@
 /** @format */
 
-import { useEffect, useRef, useState } from "react";
+import { createRef, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { remark } from "remark";
 import html from "remark-html";
@@ -50,6 +50,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const ref = useRef();
   const inputRef = useRef();
   const suppportTabRef = useRef()
+  const messagesRefs = useRef({});
   const mediaMatch = window.matchMedia("(min-width: 480px)");
 
   useEffect(() => {
@@ -199,6 +200,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         timestamp: Date.now(),
       },
     });
+    let currentHeight = 0;
     ref.current.scrollTop = ref.current.scrollHeight;
 
     let answer = "";
@@ -222,11 +224,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       method: 'POST',
       body: JSON.stringify(sse_req),
       async onmessage(event) {
+        const currentReplyHeight = messagesRefs?.current[id]?.current?.clientHeight
         const data = event;
-        if (data.event === "start") {
-          ref.current.scrollTop = ref.current.scrollHeight;
-        }
-        else if (data.event === "support_escalation") {
+        if (data.event === "support_escalation") {
           setShowHumanButton(true)
           const finalData = JSON.parse(data.data);
           dispatch({
@@ -269,8 +269,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               loading: false,
             },
           });
-          if (data.data?.includes('\n')) {
-            console.log(data, 'nknbhjbhjb');
+          if (currentReplyHeight - currentHeight >= 20) {
+            currentHeight = currentReplyHeight
             ref.current.scrollTop = ref.current.scrollHeight;
           }
         } else if (data.event === "lookup_answer") {
@@ -299,8 +299,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               chatHistory: newChatHistory,
             },
           });
-          const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
           ref.current.scrollTop = ref.current.scrollHeight;
+          currentHeight = 0
         } else if (data.event === "error") {
           dispatch({
             type: "update_message",
@@ -454,23 +454,34 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             {Object.keys(state.messages).map((key) => {
               const message = state.messages[key];
               message.isLast = key === Object.keys(state.messages).pop();
+              messagesRefs.current[message.id] = createRef();
               return message.variant === "chatbot" ? (
+
                 <div key={key}>
-                  <BotChatMessage payload={message} showSupportMessage={showSupportMessage} setShowSupportMessage={setShowSupportMessage} fetchAnswer={fetchAnswer} showFeedbackButton={showFeedbackButton} showHumanButton={showHumanButton} suppportTabRef={suppportTabRef}
+                  <BotChatMessage
+                    payload={message}
+                    showSupportMessage={showSupportMessage}
+                    setShowSupportMessage={setShowSupportMessage}
+                    fetchAnswer={fetchAnswer}
+                    showFeedbackButton={showFeedbackButton}
+                    showHumanButton={showHumanButton}
+                    suppportTabRef={suppportTabRef}
                     timeoutLoader={timeoutLoader}
                     setTimeoutLoader={setTimeoutLoader}
+                    messageBoxRef={messagesRefs.current[message.id]}
                   />
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
                   ) : null}
                 </div>
-              ) : (
-                <UserChatMessage
-                  key={key}
-                  loading={message.loading}
-                  message={message.message}
-                />
-              );
+              )
+                : (
+                  <UserChatMessage
+                    key={key}
+                    loading={message.loading}
+                    message={message.message}
+                  />
+                );
             })}
             {Object.keys(state.messages).length <= 1 &&
               Object.keys(questions).length >= 1 && (
