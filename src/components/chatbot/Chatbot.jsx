@@ -205,7 +205,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       const currentReplyHeight = messagesRefs?.current[id]?.current?.clientHeight
       const data = JSON.parse(event.data);
       if (data.sender === "bot") {
-        if (currentReplyHeight - currentHeight >= 20) {
+        if (currentReplyHeight - currentHeight >= 80) {
           currentHeight = currentReplyHeight
           ref.current.scrollTop = ref.current.scrollHeight;
         }
