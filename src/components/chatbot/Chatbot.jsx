@@ -49,6 +49,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       if (refreshChat) {
         dispatch({ type: "clear_messages" });
         localStorage.removeItem("docsbot_chat_history");
+        localStorage.removeItem("chatHistory");
         setRefreshChat((prevState) => !prevState);
 
         const parsedMessage = await parseMarkdown(labels.firstMessage);
@@ -72,10 +73,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       const savedConversation = JSON.parse(
         localStorage.getItem("docsbot_chat_history")
       );
+      const chatHistory = JSON.parse(localStorage.getItem('chatHistory'))
       const currentTime = Date.now();
       let lastMsgTimeStamp = 0;
       if (savedConversation) {
-        Object.values(savedConversation)?.map((message) => {
+        Object.values(savedConversation)?.map((message, index) => {
           if (message?.timestamp > lastMsgTimeStamp) {
             lastMsgTimeStamp = message?.timestamp;
           }
@@ -103,7 +105,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           },
         });
       }
-
+      if (chatHistory) {
+        dispatch({
+          type: "save_history",
+          payload: {
+            chatHistory: chatHistory,
+          },
+        });
+      }
       //only focus on input if not mobile
       if (mediaMatch.matches && !isEmbeddedBox) {
         inputRef.current.focus();
@@ -119,6 +128,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       JSON.stringify(state.messages)
     );
   }, [state.messages]);
+
+  useEffect(() => {
+    if (state.chatHistory) {
+      localStorage.setItem(
+        "chatHistory",
+        JSON.stringify(state?.chatHistory)
+      );
+    }
+  }, [state.chatHistory]);
 
   function fetchAnswer(question) {
     const id = uuidv4();
@@ -201,7 +219,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             },
           });
         } else if (data.type === "info") {
-          // console.log(data.message);
         } else if (data.type === "end") {
           const finalData = JSON.parse(data.message);
           dispatch({
@@ -280,10 +297,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       style={
         mediaMatch.matches
           ? {
-              left: alignment === "left" ? horizontalMargin || 20 : "auto",
-              right: alignment === "right" ? horizontalMargin || 20 : "auto",
-              bottom: verticalMargin ? verticalMargin + 80 : 100,
-            }
+            left: alignment === "left" ? horizontalMargin || 20 : "auto",
+            right: alignment === "right" ? horizontalMargin || 20 : "auto",
+            bottom: verticalMargin ? verticalMargin + 80 : 100,
+          }
           : {}
       }
       part="wrapper"
@@ -311,13 +328,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             style={
               (isEmbeddedBox && hideHeader)
                 ? {
-                    backgroundColor: "transparent",
-                    color: "rgb(103, 58, 183)",
-                  }
+                  backgroundColor: "transparent",
+                  color: "rgb(103, 58, 183)",
+                }
                 : {
-                    backgroundColor: color,
-                    color: decideTextColor(color || "#1292EE"),
-                  }
+                  backgroundColor: color,
+                  color: decideTextColor(color || "#1292EE"),
+                }
             }
           >
             <div style={{ width: "100%" }}>
@@ -487,7 +504,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 type="submit"
                 className="docsbot-chat-btn-send"
                 style={{
-                  fill: color,
+                  fill: ['#ffffff', '#FFFFFF', 'rgb(255, 255, 255)'].includes(color) ? 'inherit' : color,
                 }}
                 disabled={chatInput.length < 2}
               >
