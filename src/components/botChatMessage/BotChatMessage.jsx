@@ -9,7 +9,7 @@ import { Source } from "../source/Source";
 import { getLighterColor, decideTextColor } from "../../utils/colors";
 import { useChatbot } from "../chatbotContext/ChatbotContext";
 
-export const BotChatMessage = ({ payload }) => {
+export const BotChatMessage = ({ payload, messageBoxRef }) => {
   const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false)
   const [rating, setRating] = useState(payload.rating || 0);
@@ -96,13 +96,14 @@ export const BotChatMessage = ({ payload }) => {
             backgroundColor: bgColor,
             color: fontColor,
           }}
+          ref={messageBoxRef}
         >
           {(() => {
             if (payload.loading) {
               return <Loader />;
             }
 
-            return ( 
+            return (
               <>
                 <span dangerouslySetInnerHTML={{ __html: payload.message }} />
                 {payload.sources && (
@@ -146,9 +147,9 @@ export const BotChatMessage = ({ payload }) => {
                     {showSources && (
                       <ul className="docsbot-sources">
                         {payload.sources?.map((source, index) => {
-                           if(source?.type?.toLowerCase() !=='qa'){
-                             return <Source key={index} source={source} />
-                           }
+                          if (source?.type?.toLowerCase() !== 'qa') {
+                            return <Source key={index} source={source} />
+                          }
                         })}
                       </ul>
                     )}
