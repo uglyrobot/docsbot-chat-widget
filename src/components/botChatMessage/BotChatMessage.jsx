@@ -395,8 +395,8 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                 border: 'none'
               }}>
               <div className="feedback-button-container">
-                <button className="feedback-button" onClick={() => handleFeedbackButton("Thanks, that's helped me", true)}>That's Helped</button>
-                <button className="feedback-button" onClick={() => handleFeedbackButton("Need More Information", false)}>Need More Information</button>
+                <button className="feedback-button" onClick={() => handleFeedbackButton("Yes", true)}>Yes</button>
+                <button className="feedback-button" onClick={() => handleFeedbackButton("No", false)}>No</button>
               </div>
             </div>
           </div>
