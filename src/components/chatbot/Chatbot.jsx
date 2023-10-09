@@ -71,9 +71,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   useEffect(() => {
     const fetchData = async () => {
       const savedConversation = JSON.parse(
-        localStorage.getItem("docsbot_chat_history")
+        localStorage.getItem(`${botId}_docsbot_chat_history`)
       );
-      const chatHistory = JSON.parse(localStorage.getItem('chatHistory'))
+      const chatHistory = JSON.parse(localStorage.getItem(`${botId}_chatHistory`))
       const currentTime = Date.now();
       let lastMsgTimeStamp = 0;
       if (savedConversation) {
@@ -124,7 +124,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
   useEffect(() => {
     localStorage.setItem(
-      "docsbot_chat_history",
+      `${botId}_docsbot_chat_history`,
       JSON.stringify(state.messages)
     );
   }, [state.messages]);
@@ -132,7 +132,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   useEffect(() => {
     if (state.chatHistory) {
       localStorage.setItem(
-        "chatHistory",
+        `${botId}_chatHistory`,
         JSON.stringify(state?.chatHistory)
       );
     }
