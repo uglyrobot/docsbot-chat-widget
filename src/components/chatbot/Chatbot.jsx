@@ -50,8 +50,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const ref = useRef();
   const inputRef = useRef();
   const suppportTabRef = useRef()
-  const messagesRefs = useRef({});
   const mediaMatch = window.matchMedia("(min-width: 480px)");
+  const messagesRefs = useRef({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -88,7 +88,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     let supportbtnTimout = null
     const fetchData = async () => {
       const savedConversation = JSON.parse(
-        localStorage.getItem("docsbot_chat_history")
+        localStorage.getItem(`${botId}_docsbot_chat_history`)
       );
       const savedConversationArray = Object.values(savedConversation)
       const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
@@ -171,7 +171,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
   useEffect(() => {
     localStorage.setItem(
-      "docsbot_chat_history",
+      `${botId}_docsbot_chat_history`,
       JSON.stringify(state.messages)
     );
   }, [state.messages]);
@@ -179,7 +179,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   useEffect(() => {
     if (state.chatHistory?.length) {
       localStorage.setItem(
-        "chatHistory",
+        `${botId}_chatHistory`,
         JSON.stringify(state?.chatHistory)
       );
     }
@@ -202,7 +202,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     });
     let currentHeight = 0;
     ref.current.scrollTop = ref.current.scrollHeight;
-
     let answer = "";
     let metadata = identify;
     metadata.referrer = window.location.href;
@@ -454,6 +453,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             {Object.keys(state.messages).map((key) => {
               const message = state.messages[key];
               message.isLast = key === Object.keys(state.messages).pop();
+              messagesRefs.current[message.id] = createRef();
               messagesRefs.current[message.id] = createRef();
               return message.variant === "chatbot" ? (
 
