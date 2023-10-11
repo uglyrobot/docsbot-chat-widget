@@ -346,7 +346,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             <div style={{ width: "100%" }}>
               <button
                 onClick={() => setRefreshChat(!refreshChat)}
-                title="Reset conversation"
+                title={labels?.resetChat}
                 style={(isEmbeddedBox && hideHeader) ? { top: "2px" } : { top: "5px" }}
               >
                 <FontAwesomeIcon icon={faRefresh} />
