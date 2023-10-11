@@ -1,6 +1,6 @@
 /** @format */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, createRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { remark } from "remark";
 import html from "remark-html";
@@ -43,6 +43,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const ref = useRef();
   const inputRef = useRef();
   const mediaMatch = window.matchMedia("(min-width: 480px)");
+  const messagesRefs = useRef({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,9 +72,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   useEffect(() => {
     const fetchData = async () => {
       const savedConversation = JSON.parse(
-        localStorage.getItem("docsbot_chat_history")
+        localStorage.getItem(`${botId}_docsbot_chat_history`)
       );
-      const chatHistory = JSON.parse(localStorage.getItem('chatHistory'))
+      const chatHistory = JSON.parse(localStorage.getItem(`${botId}_chatHistory`))
       const currentTime = Date.now();
       let lastMsgTimeStamp = 0;
       if (savedConversation) {
@@ -124,7 +125,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
   useEffect(() => {
     localStorage.setItem(
-      "docsbot_chat_history",
+      `${botId}_docsbot_chat_history`,
       JSON.stringify(state.messages)
     );
   }, [state.messages]);
@@ -132,7 +133,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   useEffect(() => {
     if (state.chatHistory) {
       localStorage.setItem(
-        "chatHistory",
+        `${botId}_chatHistory`,
         JSON.stringify(state?.chatHistory)
       );
     }
@@ -152,7 +153,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       },
     });
     ref.current.scrollTop = ref.current.scrollHeight;
-
+    let currentHeight = 0;
     let answer = "";
     let metadata = identify;
     metadata.referrer = window.location.href;
@@ -201,8 +202,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
     // Receive message from server word by word. Display the words as they are received.
     ws.onmessage = async function (event) {
+      const currentReplyHeight = messagesRefs?.current[id]?.current?.clientHeight
       const data = JSON.parse(event.data);
       if (data.sender === "bot") {
+        if (currentReplyHeight - currentHeight >= 80) {
+          currentHeight = currentReplyHeight
+          ref.current.scrollTop = ref.current.scrollHeight;
+        }
         if (data.type === "start") {
           ref.current.scrollTop = ref.current.scrollHeight;
         } else if (data.type === "stream") {
@@ -239,7 +245,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               chatHistory: finalData.history,
             },
           });
-
+          currentHeight = 0
           ref.current.scrollTop = ref.current.scrollHeight;
           ws.close();
         } else if (data.type === "error") {
@@ -383,9 +389,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             {Object.keys(state.messages).map((key) => {
               const message = state.messages[key];
               message.isLast = key === Object.keys(state.messages).pop();
+              messagesRefs.current[message.id] = createRef();
               return message.variant === "chatbot" ? (
                 <div key={key}>
-                  <BotChatMessage payload={message} />
+                  <BotChatMessage payload={message} messageBoxRef={messagesRefs.current[message.id]}
+                  />
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
                   ) : null}
