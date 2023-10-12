@@ -39,6 +39,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     logo,
     headerAlignment,
     hideHeader,
+    inputLimit,
   } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
@@ -505,7 +506,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                   }
                 }}
                 ref={inputRef}
-                maxLength={200}
+                maxLength={inputLimit ? Math.min(inputLimit, 2000) : 500}
                 rows={1}
               />
               <button
