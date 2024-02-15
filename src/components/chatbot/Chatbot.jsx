@@ -40,6 +40,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     headerAlignment,
     hideHeader,
     inputLimit,
+    contextItems,
   } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
@@ -159,7 +160,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     let metadata = identify;
     metadata.referrer = window.location.href;
     const history = state.chatHistory || [];
-    const req = { question, markdown: true, history, metadata };
+    const req = { question, markdown: true, history, metadata, context_items: contextItems || 5 };
     if (signature) {
       req.auth = signature;
     }
