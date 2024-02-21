@@ -45,7 +45,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     headerAlignment,
     hideHeader,
     updateIdentify,
-    collectLead
+    collectLead,
+    inputLimit,
+    contextItems,
   } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
@@ -211,6 +213,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       full_source: false,
       metadata,
       conversationId: id,
+      context_items: contextItems || 5,
     }
     if (signature) {
       sse_req.auth = signature;
@@ -410,7 +413,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             <div style={{ width: "100%" }}>
               <button
                 onClick={() => setRefreshChat(!refreshChat)}
-                title="Reset conversation"
+                title={labels?.resetChat}
                 style={(isEmbeddedBox && hideHeader) ? { top: "2px" } : { top: "5px" }}
               >
                 <FontAwesomeIcon icon={faRefresh} />
@@ -628,7 +631,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                   }
                 }}
                 ref={inputRef}
-                maxLength={200}
+                maxLength={inputLimit ? Math.min(inputLimit, 2000) : 500}
                 rows={1}
               />
               <button

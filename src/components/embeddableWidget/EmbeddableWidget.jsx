@@ -48,6 +48,7 @@ export default class EmbeddableWidget {
       else {
         el = document.createElement("div");
         el.id = "docsbotai-root";
+        el.style.display = "block";
         if (parentElement) {
           document.querySelector(parentElement).appendChild(el);
         } else {

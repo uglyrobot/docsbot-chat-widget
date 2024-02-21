@@ -29,7 +29,7 @@
              escalation: "escalation" 
           }
       DocsBotAI.init({
-        id: "ZrbLG98bbxZ9EFqiPvyl/UaRQtd7AOTaMXeRQGQRl",
+        id: "ZrbLG98bbxZ9EFqiPvyl/N2mWls8WYE6VxTmObjr3",
         supportCallback: function (event, history, metadata) {
           //event.preventDefault();
           console.log(history, DocsBotAI, metadata);
@@ -70,6 +70,7 @@
             },
           ],
           customCSS: `.docsbot-chat-credits a { color: red; }`,
+          //inputLimit: 2000,
         }
       }).then(() => {
         //  Script is safely loaded, you can do whatever you want from here with bot
@@ -97,7 +98,7 @@
         const reinitBtn = document.getElementById("reinit-btn");
         reinitBtn.addEventListener("click", () => {
           DocsBotAI.mount({
-            id: "ZrbLG98bbxZ9EFqiPvyl/UaRQtd7AOTaMXeRQGQRl",
+            id: "ZrbLG98bbxZ9EFqiPvyl/N2mWls8WYE6VxTmObjr3",
             supportCallback: function (event, history, metadata) {
               event.preventDefault();
               console.log(history, DocsBotAI, metadata);
@@ -121,7 +122,7 @@
       quis, accumsan porttitor, facilisis luctus, metus
     </p>
 
-    <div id="docsbot-widget-embed" style="max-width:600px;height:650px;margin: 20px auto;">
+    <div id="1docsbot-widget-embed" style="max-width:600px;height:650px;margin: 20px auto;">
     </div>
 
     <h1>HTML Ipsum Presents</h1>
