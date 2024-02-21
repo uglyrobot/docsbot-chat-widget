@@ -40,6 +40,7 @@ function chatbotReducer(state, action) {
       }
     case "load_conversation":
       return {
+        ...state,
         messages: action.payload.savedConversation || [],
       }
     case "clear_messages":
@@ -60,6 +61,7 @@ export function ChatbotProvider({ children }) {
     suggestions: [],
     chatInput: "",
     lastMessage: Date.now(),
+    chatHistory: []
   })
   const value = { state, dispatch }
   return <ChatbotContext.Provider value={value}>{children}</ChatbotContext.Provider>
