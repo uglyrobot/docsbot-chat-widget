@@ -95,11 +95,8 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: right;
-  position: absolute;
   padding: 20px;
   padding-right: 10px;
-  bottom: 0;
-  right: 0;
 }
 
 .docsbot-chat-suggested-questions-container span {
