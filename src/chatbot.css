@@ -146,6 +146,11 @@
   color: #cc0000;
 }
 
+.docbot-chat-bot-message-rate button:last-child:hover {
+  opacity: 1;
+  color: #00cc00;
+}
+
 .docbot-chat-bot-message-rate button:last-child {
   margin-left: 5px;
 }

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Loader } from "../loader/Loader";
-import { faChevronDown, faChevronUp, faFlag as solidFlag, faBullhorn } from "@fortawesome/free-solid-svg-icons";
-import { faFlag as regularFlag, } from "@fortawesome/free-regular-svg-icons";
+import { faChevronDown, faChevronUp, faBullhorn, faThumbsDown as solidThumbsDown, faThumbsUp as solidThumbsUp } from "@fortawesome/free-solid-svg-icons";
+import { faThumbsDown as regularThumbsDown, faThumbsUp as regularThumbsUp} from "@fortawesome/free-regular-svg-icons";
 import { useConfig } from "../configContext/ConfigContext";
 import { BotAvatar } from "../botAvatar/BotAvatar";
 import { Source } from "../source/Source";
@@ -123,21 +123,32 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
                       <div className="docbot-chat-bot-message-rate">
                         <button
                           onClick={(e) => {
-                            if (isFlagged)
-                              saveRating(0)
-                            else
-                              saveRating(-1)
-
-                            setIsFlagged(!isFlagged)
+                            saveRating(-1)
                           }}
                           style={{ opacity: rating === -1 ? 1 : null }}
                           title={labels.unhelpful}
                         >
                           {
-                            isFlagged ? (
-                              <FontAwesomeIcon icon={solidFlag} size="sm" style={{ color: '#ff0000' }} />
+                            rating === -1 ? (
+                              <FontAwesomeIcon icon={solidThumbsDown} size="sm" style={{ color: '#ff0000' }} />
                             ) : (
-                              <FontAwesomeIcon icon={regularFlag} size="sm" />
+                              <FontAwesomeIcon icon={regularThumbsDown} size="sm" />
+                            )
+                          }
+
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            saveRating(1)
+                          }}
+                          style={{ opacity: rating === -1 ? 1 : null }}
+                          title={labels.unhelpful}
+                        >
+                          {
+                            rating === 1 ? (
+                              <FontAwesomeIcon icon={solidThumbsUp} size="sm" style={{ color: '#00cc00' }} />
+                            ) : (
+                              <FontAwesomeIcon icon={regularThumbsUp} size="sm" />
                             )
                           }
 
