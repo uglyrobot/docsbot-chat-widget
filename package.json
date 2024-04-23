@@ -2,6 +2,7 @@
   "scripts": {
     "build": "webpack --mode production",
     "start": "webpack serve --mode development --client-overlay --port=3005",
+    "dev": "npm run start",
     "preview": "npm run build && serve build",
     "prepare": "npm run build && rm build/index.html"
   },

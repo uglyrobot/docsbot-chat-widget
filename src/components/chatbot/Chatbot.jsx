@@ -228,11 +228,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       async onmessage(event) {
         const currentReplyHeight = messagesRefs?.current[id]?.current?.clientHeight
         const data = event;
+        console.log(data.event)
         if (data.event === "support_escalation") {
           setShowHumanButton(true)
           const finalData = JSON.parse(data.data);
+          console.log(finalData)
           dispatch({
-            type: "update_message",
+            type: "add_message",
             payload: {
               id,
               variant: "chatbot",
@@ -246,15 +248,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         else if (data.event === "is_resolved_question") {
           setShowFeedbackButton(true)
           const finalData = JSON.parse(data.data);
+          console.log(finalData)
           dispatch({
-            type: "update_message",
+            type: "add_message",
             payload: {
               variant: "chatbot",
               message: await parseMarkdown(finalData.answer),
               sources: null,
               loading: false,
               isHumanSupport: false,
-              isFeedback: true,
+              isFeedback: finalData.option,
             },
           });
         }
@@ -277,6 +280,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           }
         } else if (data.event === "lookup_answer") {
           const finalData = JSON.parse(data.data);
+          console.log(finalData)
           dispatch({
             type: "update_message",
             payload: {

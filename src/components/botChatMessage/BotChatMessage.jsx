@@ -220,6 +220,21 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
       },
     });
     fetchAnswer(message);
+    saveRating(isFeedback ? 1 : -1)
+  }
+
+  const handleEscalationFeedbackButton = (message) => {
+    setShowHumanSupportButton(false)
+    dispatch({
+      type: "add_message",
+      payload: {
+        variant: "user",
+        message: message,
+        loading: false,
+        timestamp: Date.now(),
+      },
+    });
+    fetchAnswer(message);
   }
 
   const bgColor = payload.error
@@ -395,8 +410,8 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                 border: 'none'
               }}>
               <div className="feedback-button-container">
-                <button className="feedback-button" onClick={() => handleFeedbackButton("Yes", true)}>Yes</button>
-                <button className="feedback-button" onClick={() => handleFeedbackButton("No", false)}>No</button>
+                <button className="feedback-button" onClick={() => handleFeedbackButton(payload?.isFeedback.yes, true)}>{payload?.isFeedback.yes}</button>
+                <button className="feedback-button" onClick={() => handleFeedbackButton(payload?.isFeedback.no, false)}>{payload?.isFeedback.no}</button>
               </div>
             </div>
           </div>
@@ -428,7 +443,7 @@ export const BotChatMessage = ({ payload, showSupportMessage, setShowSupportMess
                   setShowHumanSupportButton(false)
                 }}>{labels.getSupport}
                 </button>
-                <button className="feedback-button" onClick={() => setShowHumanSupportButton(false)}>No Thanks</button>
+                <button className="feedback-button" onClick={() => handleEscalationFeedbackButton('No')}>No</button>
               </div>
             </div>
           </div>
