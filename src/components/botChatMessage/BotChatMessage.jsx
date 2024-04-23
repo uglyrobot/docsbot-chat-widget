@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Loader } from "../loader/Loader";
-import { faChevronDown, faChevronUp, faFlag as solidFlag, faBullhorn } from "@fortawesome/free-solid-svg-icons";
-import { faFlag as regularFlag, } from "@fortawesome/free-regular-svg-icons";
+import {
+  faChevronDown,
+  faChevronUp,
+  faBullhorn,
+} from "@fortawesome/free-solid-svg-icons";
+import {
+  faThumbsDown as regularThumbsDown,
+  faThumbsUp as regularThumbsUp,
+} from "@fortawesome/free-regular-svg-icons";
 import { useConfig } from "../configContext/ConfigContext";
 import { BotAvatar } from "../botAvatar/BotAvatar";
 import { Source } from "../source/Source";
@@ -11,9 +18,18 @@ import { useChatbot } from "../chatbotContext/ChatbotContext";
 
 export const BotChatMessage = ({ payload, messageBoxRef }) => {
   const [showSources, setShowSources] = useState(false);
-  const [isFlagged, setIsFlagged] = useState(false)
+  const [isFlagged, setIsFlagged] = useState(false);
   const [rating, setRating] = useState(payload.rating || 0);
-  const { color, teamId, botId, signature, hideSources, labels, supportLink, supportCallback } = useConfig();
+  const {
+    color,
+    teamId,
+    botId,
+    signature,
+    hideSources,
+    labels,
+    supportLink,
+    supportCallback,
+  } = useConfig();
   const { dispatch, state } = useChatbot();
   const headers = {
     Accept: "application/json",
@@ -36,11 +52,11 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
 
     // run callback if provided
     if (supportCallback && typeof supportCallback === "function") {
-      supportCallback(e, history)
+      supportCallback(e, history);
     }
 
-    return true // ensure link is opened
-  }
+    return true; // ensure link is opened
+  };
 
   // make api call to rate
   const saveRating = async (newRating = 0) => {
@@ -109,8 +125,7 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
                 {payload.sources && (
                   <>
                     <div className="docsbot-chat-bot-message-meta">
-                      {payload.options?.hideSources}
-                      {!hideSources && (
+                      {!hideSources && payload.sources.length ? (
                         <button onClick={() => setShowSources(!showSources)}>
                           {labels.sources}
                           {showSources ? (
@@ -119,40 +134,45 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
                             <FontAwesomeIcon icon={faChevronDown} />
                           )}
                         </button>
-                      )}
+                      ) : null}
                       <div className="docbot-chat-bot-message-rate">
                         <button
                           onClick={(e) => {
-                            if (isFlagged)
-                              saveRating(0)
-                            else
-                              saveRating(-1)
-
-                            setIsFlagged(!isFlagged)
+                            saveRating(1);
+                          }}
+                          style={{ opacity: rating === 1 ? 1 : null }}
+                          title={labels.helpful}
+                        >
+                          <FontAwesomeIcon
+                            icon={regularThumbsUp}
+                            size="sm"
+                            style={{ color: rating === 1 ? "#037103" : null }}
+                          />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            saveRating(-1);
                           }}
                           style={{ opacity: rating === -1 ? 1 : null }}
                           title={labels.unhelpful}
                         >
-                          {
-                            isFlagged ? (
-                              <FontAwesomeIcon icon={solidFlag} size="sm" style={{ color: '#ff0000' }} />
-                            ) : (
-                              <FontAwesomeIcon icon={regularFlag} size="sm" />
-                            )
-                          }
-
+                          <FontAwesomeIcon
+                            icon={regularThumbsDown}
+                            size="sm"
+                            style={{ color: rating === -1 ? "#cc0000" : null }}
+                          />
                         </button>
                       </div>
                     </div>
-                    {showSources && (
+                    {showSources && payload.sources.length ? (
                       <ul className="docsbot-sources">
                         {payload.sources?.map((source, index) => {
-                          if (source?.type?.toLowerCase() !== 'qa') {
-                            return <Source key={index} source={source} />
+                          if (source?.type?.toLowerCase() !== "qa") {
+                            return <Source key={index} source={source} />;
                           }
                         })}
                       </ul>
-                    )}
+                    ) : null}
                   </>
                 )}
               </>
@@ -171,7 +191,15 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
             }}
           >
             {labels.getSupport}
-            <FontAwesomeIcon icon={faBullhorn} style={{ color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)), marginLeft: 5 }} />
+            <FontAwesomeIcon
+              icon={faBullhorn}
+              style={{
+                color: decideTextColor(
+                  getLighterColor(color || "#1292EE", 0.93)
+                ),
+                marginLeft: 5,
+              }}
+            />
           </a>
         </div>
       )}
