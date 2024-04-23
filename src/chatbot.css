@@ -143,12 +143,12 @@
 
 .docbot-chat-bot-message-rate button:hover {
   opacity: 1;
-  color: #cc0000;
+  color: #037103;
 }
 
 .docbot-chat-bot-message-rate button:last-child:hover {
   opacity: 1;
-  color: #00cc00;
+  color: #cc0000;
 }
 
 .docbot-chat-bot-message-rate button:last-child {
