@@ -145,7 +145,7 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
                         >
                           <FontAwesomeIcon
                             icon={regularThumbsUp}
-                            size="sm"
+                            size="lg"
                             style={{ color: rating === 1 ? "#037103" : null }}
                           />
                         </button>
@@ -158,7 +158,7 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
                         >
                           <FontAwesomeIcon
                             icon={regularThumbsDown}
-                            size="sm"
+                            size="lg"
                             style={{ color: rating === -1 ? "#cc0000" : null }}
                           />
                         </button>
