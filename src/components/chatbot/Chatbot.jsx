@@ -72,6 +72,20 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     fetchData();
   }, [refreshChat]);
   useEffect(() => {
+    const addFistMessage = async () => {
+      const parsedMessage = await parseMarkdown(labels.firstMessage);
+
+      dispatch({
+        type: "add_message",
+        payload: {
+          id: uuidv4(),
+          variant: "chatbot",
+          message: parsedMessage,
+          timestamp: Date.now(),
+        },
+      });
+    }
+
     const fetchData = async () => {
       const savedConversation = JSON.parse(
         localStorage.getItem(`${botId}_docsbot_chat_history`)
@@ -80,34 +94,30 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       const currentTime = Date.now();
       let lastMsgTimeStamp = 0;
       if (savedConversation) {
-        Object.values(savedConversation)?.map((message, index) => {
-          if (message?.timestamp > lastMsgTimeStamp) {
-            lastMsgTimeStamp = message?.timestamp;
-          }
-        });
-        if (currentTime - lastMsgTimeStamp > 12 * 60 * 60 * 1000) {
-          setRefreshChat(true);
-        } else {
-          dispatch({
-            type: "load_conversation",
-            payload: { savedConversation: savedConversation },
+        const convo = Object.values(savedConversation)
+        // dont bother recreating the conversation if there is only one message (it's the first message)
+        if (convo?.length > 1) {
+          convo?.map((message, index) => {
+            if (message?.timestamp > lastMsgTimeStamp) {
+              lastMsgTimeStamp = message?.timestamp;
+            }
           });
+          if (currentTime - lastMsgTimeStamp > 12 * 60 * 60 * 1000) {
+            setRefreshChat(true);
+          } else {
+            dispatch({
+              type: "load_conversation",
+              payload: { savedConversation: savedConversation },
+            });
+          }
+        } else {
+          await addFistMessage();
         }
+      } else if (labels.firstMessage) {
+        console.log(labels.firstMessage)
+        await addFistMessage();
       }
 
-      if (savedConversation == null && labels.firstMessage) {
-        const parsedMessage = await parseMarkdown(labels.firstMessage);
-
-        dispatch({
-          type: "add_message",
-          payload: {
-            id: uuidv4(),
-            variant: "chatbot",
-            message: parsedMessage,
-            timestamp: Date.now(),
-          },
-        });
-      }
       if (chatHistory) {
         dispatch({
           type: "save_history",
@@ -116,6 +126,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           },
         });
       }
+
       //only focus on input if not mobile
       if (mediaMatch.matches && !isEmbeddedBox) {
         inputRef.current.focus();
