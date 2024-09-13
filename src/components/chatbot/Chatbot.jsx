@@ -17,11 +17,13 @@ import { getLighterColor, decideTextColor } from "../../utils/colors";
 import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
+import { Resizable } from 're-resizable';
 
 export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const [chatInput, setChatInput] = useState("");
   const [refreshChat, setRefreshChat] = useState(false);
   const { dispatch, state } = useChatbot();
+  const [width, setWidth] = useState(400)
   const {
     color,
     teamId,
@@ -319,12 +321,24 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             left: alignment === "left" ? horizontalMargin || 20 : "auto",
             right: alignment === "right" ? horizontalMargin || 20 : "auto",
             bottom: verticalMargin ? verticalMargin + 80 : 100,
+            width: `${width}px`
           }
-          : {}
+          : {
+            width: `${width}px`
+          }
       }
       part="wrapper"
     >
-      <div className="docsbot-chat-container">
+      <Resizable
+        className="docsbot-chat-container"
+        size={{ height: '100%', width: width }}
+        enable={{ top: false, bottom: false, left: !isEmbeddedBox, right: !isEmbeddedBox }}
+        minWidth={400}
+        maxWidth={'100vw'}
+        onResizeStop={(e, direction, ref, d) => {
+          setWidth(prev => prev + d.width)
+        }}
+      >
         <div className="docsbot-chat-inner-container">
           {!isEmbeddedBox && (
             <a
@@ -534,7 +548,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             </form>
           </div>
         </div>
-      </div>
-    </div>
+      </Resizable>
+    </div >
   );
 };
