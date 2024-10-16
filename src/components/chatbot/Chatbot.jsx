@@ -17,10 +17,10 @@ import { getLighterColor, decideTextColor } from "../../utils/colors";
 import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
+import { Emitter } from "../../utils/event-emitter";
 
 export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const [chatInput, setChatInput] = useState("");
-  const [refreshChat, setRefreshChat] = useState(false);
   const { dispatch, state } = useChatbot();
   const {
     color,
@@ -48,29 +48,70 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const messagesRefs = useRef({});
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (refreshChat) {
-        dispatch({ type: "clear_messages" });
-        localStorage.removeItem("docsbot_chat_history");
-        localStorage.removeItem("chatHistory");
-        setRefreshChat((prevState) => !prevState);
+    Emitter.on("docsbot_add_user_message", async ({ message, send }) => {
+      await dispatch({
+        type: "add_message",
+        payload: {
+          variant: "user",
+          message: message,
+          loading: false,
+          timestamp: Date.now(),
+        },
+      });
 
-        const parsedMessage = await parseMarkdown(labels.firstMessage);
-
-        dispatch({
-          type: "add_message",
-          payload: {
-            id: uuidv4(),
-            variant: "chatbot",
-            message: parsedMessage,
-            timestamp: Date.now(),
-          },
-        });
+      if (send) {
+        fetchAnswer(message);
       }
-    };
 
-    fetchData();
-  }, [refreshChat]);
+      Emitter.emit("docsbot_add_user_message_complete");
+    });
+
+    Emitter.on("docsbot_add_bot_message", async ({ message }) => {
+      await dispatch({
+        type: "add_message",
+        payload: {
+          id: uuidv4(),
+          variant: "chatbot",
+          message: await parseMarkdown(message),
+          loading: false,
+          timestamp: Date.now(),
+        },
+      });
+
+      Emitter.emit("docsbot_add_bot_message_complete");
+    });
+
+    Emitter.on("docsbot_clear_history", async () => {
+      await refreshChatHistory();
+      Emitter.emit("docsbot_clear_history_complete");
+    });
+
+    // Clean up event listeners
+    return () => {
+      Emitter.off("docsbot_add_user_message");
+      Emitter.off("docsbot_add_bot_message");
+      Emitter.off("docsbot_clear_history");
+    };
+  }, []);
+
+  const refreshChatHistory = async () => {
+    dispatch({ type: "clear_messages" });
+    localStorage.removeItem(`${botId}_docsbot_chat_history`);
+    localStorage.removeItem(`${botId}_chatHistory`);
+
+    const parsedMessage = await parseMarkdown(labels.firstMessage);
+
+    dispatch({
+      type: "add_message",
+      payload: {
+        id: uuidv4(),
+        variant: "chatbot",
+        message: parsedMessage,
+        timestamp: Date.now(),
+      },
+    });
+  };
+
   useEffect(() => {
     const addFistMessage = async () => {
       const parsedMessage = await parseMarkdown(labels.firstMessage);
@@ -84,17 +125,19 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           timestamp: Date.now(),
         },
       });
-    }
+    };
 
     const fetchData = async () => {
       const savedConversation = JSON.parse(
         localStorage.getItem(`${botId}_docsbot_chat_history`)
       );
-      const chatHistory = JSON.parse(localStorage.getItem(`${botId}_chatHistory`))
+      const chatHistory = JSON.parse(
+        localStorage.getItem(`${botId}_chatHistory`)
+      );
       const currentTime = Date.now();
       let lastMsgTimeStamp = 0;
       if (savedConversation) {
-        const convo = Object.values(savedConversation)
+        const convo = Object.values(savedConversation);
         // dont bother recreating the conversation if there is only one message (it's the first message)
         if (convo?.length > 1) {
           convo?.map((message, index) => {
@@ -103,7 +146,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             }
           });
           if (currentTime - lastMsgTimeStamp > 12 * 60 * 60 * 1000) {
-            setRefreshChat(true);
+            refreshChatHistory();
           } else {
             dispatch({
               type: "load_conversation",
@@ -114,7 +157,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           await addFistMessage();
         }
       } else if (labels.firstMessage) {
-        console.log(labels.firstMessage)
+        console.log(labels.firstMessage);
         await addFistMessage();
       }
 
@@ -165,13 +208,26 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         timestamp: Date.now(),
       },
     });
-    ref.current.scrollTop = ref.current.scrollHeight;
+
+    Emitter.emit("docsbot_fetching_answer", { question });
+
+    // Add null check before accessing scrollHeight
+    if (ref.current) {
+      ref.current.scrollTop = ref.current.scrollHeight;
+    }
+
     let currentHeight = 0;
     let answer = "";
     let metadata = identify;
     metadata.referrer = window.location.href;
     const history = state.chatHistory || [];
-    const req = { question, markdown: true, history, metadata, context_items: contextItems || 5 };
+    const req = {
+      question,
+      markdown: true,
+      history,
+      metadata,
+      context_items: contextItems || 5,
+    };
     if (signature) {
       req.auth = signature;
     }
@@ -215,15 +271,20 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
     // Receive message from server word by word. Display the words as they are received.
     ws.onmessage = async function (event) {
-      const currentReplyHeight = messagesRefs?.current[id]?.current?.clientHeight
+      const currentReplyHeight =
+        messagesRefs?.current[id]?.current?.clientHeight;
       const data = JSON.parse(event.data);
       if (data.sender === "bot") {
         if (currentReplyHeight - currentHeight >= 80) {
-          currentHeight = currentReplyHeight
-          ref.current.scrollTop = ref.current.scrollHeight;
+          currentHeight = currentReplyHeight;
+          if (ref.current) {
+            ref.current.scrollTop = ref.current.scrollHeight;
+          }
         }
         if (data.type === "start") {
-          ref.current.scrollTop = ref.current.scrollHeight;
+          if (ref.current) {
+            ref.current.scrollTop = ref.current.scrollHeight;
+          }
         } else if (data.type === "stream") {
           //append to answer
           answer += data.message;
@@ -258,9 +319,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               chatHistory: finalData.history,
             },
           });
-          currentHeight = 0
-          ref.current.scrollTop = ref.current.scrollHeight;
+          currentHeight = 0;
+          if (ref.current) {
+            ref.current.scrollTop = ref.current.scrollHeight;
+          }
           ws.close();
+          Emitter.emit("docsbot_fetching_answer_complete", finalData);
         } else if (data.type === "error") {
           dispatch({
             type: "update_message",
@@ -280,9 +344,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
   async function parseMarkdown(text) {
     // Remove incomplete markdown images, but keep the alt text
-    let filteredText = text.replace(/!\[([^\]]*?)(?:\](?:\([^)]*)?)?$/gm, '$1');
+    let filteredText = text.replace(/!\[([^\]]*?)(?:\](?:\([^)]*)?)?$/gm, "$1");
     // Remove incomplete markdown links, but keep the link text
-    filteredText = filteredText.replace(/\[([^\]]*?)(?:\](?:\([^)"]*(?:"[^"]*")?[^)]*)?)?$/gm, '$1');
+    filteredText = filteredText.replace(
+      /\[([^\]]*?)(?:\](?:\([^)"]*(?:"[^"]*")?[^)]*)?)?$/gm,
+      "$1"
+    );
 
     return await remark()
       .use(html)
@@ -321,10 +388,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       style={
         mediaMatch.matches
           ? {
-            left: alignment === "left" ? horizontalMargin || 20 : "auto",
-            right: alignment === "right" ? horizontalMargin || 20 : "auto",
-            bottom: verticalMargin ? verticalMargin + 80 : 100,
-          }
+              left: alignment === "left" ? horizontalMargin || 20 : "auto",
+              right: alignment === "right" ? horizontalMargin || 20 : "auto",
+              bottom: verticalMargin ? verticalMargin + 80 : 100,
+            }
           : {}
       }
       part="wrapper"
@@ -350,22 +417,24 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           <div
             className="docsbot-chat-header"
             style={
-              (isEmbeddedBox && hideHeader)
+              isEmbeddedBox && hideHeader
                 ? {
-                  backgroundColor: "transparent",
-                  color: "rgb(103, 58, 183)",
-                }
+                    backgroundColor: "transparent",
+                    color: "rgb(103, 58, 183)",
+                  }
                 : {
-                  backgroundColor: color,
-                  color: decideTextColor(color || "#1292EE"),
-                }
+                    backgroundColor: color,
+                    color: decideTextColor(color || "#1292EE"),
+                  }
             }
           >
             <div style={{ width: "100%" }}>
               <button
-                onClick={() => setRefreshChat(!refreshChat)}
+                onClick={() => refreshChatHistory()}
                 title={labels?.resetChat}
-                style={(isEmbeddedBox && hideHeader) ? { top: "2px" } : { top: "5px" }}
+                style={
+                  isEmbeddedBox && hideHeader ? { top: "2px" } : { top: "5px" }
+                }
               >
                 <FontAwesomeIcon icon={faRefresh} />
               </button>
@@ -375,7 +444,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                   textAlign: headerAlignment === "left" ? "left" : "center",
                 }}
               >
-                {(isEmbeddedBox && hideHeader) ? null : logo ? (
+                {isEmbeddedBox && hideHeader ? null : logo ? (
                   <div
                     className="docsbot-chat-header-branded"
                     style={{
@@ -410,7 +479,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               messagesRefs.current[message.id] = createRef();
               return message.variant === "chatbot" ? (
                 <div key={key}>
-                  <BotChatMessage payload={message} messageBoxRef={messagesRefs.current[message.id]}
+                  <BotChatMessage
+                    payload={message}
+                    messageBoxRef={messagesRefs.current[message.id]}
                   />
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
@@ -530,7 +601,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 type="submit"
                 className="docsbot-chat-btn-send"
                 style={{
-                  fill: ['#ffffff', '#FFFFFF', 'rgb(255, 255, 255)'].includes(color) ? 'inherit' : color,
+                  fill: ["#ffffff", "#FFFFFF", "rgb(255, 255, 255)"].includes(
+                    color
+                  )
+                    ? "inherit"
+                    : color,
                 }}
                 disabled={chatInput.length < 2}
               >

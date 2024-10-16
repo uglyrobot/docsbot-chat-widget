@@ -20,17 +20,40 @@ function App() {
   const { customCSS } = useConfig();
 
   useEffect(() => {
-    Emitter.on("OPEN_CHATBOT", () => {
-      setIsOpen(true);
-    });
+    const handleOpen = async () => {
+      await setIsOpen(true);
+      Emitter.emit("docsbot_open_complete");
+    };
 
-    Emitter.on("CLOSE_CHATBOT", () => {
-      setIsOpen(false);
-    });
+    const handleClose = async () => {
+      await setIsOpen(false);
+      Emitter.emit("docsbot_close_complete");
+    };
 
-    Emitter.on("TOGGLE_CHATBOT", ({ isChatbotOpen }) => {
-      setIsOpen(isChatbotOpen);
-    });
+    const handleToggle = async ({ isChatbotOpen }) => {
+      await setIsOpen(isChatbotOpen);
+      Emitter.emit("docsbot_toggle_complete");
+    };
+
+    Emitter.on("docsbot_open", handleOpen);
+    Emitter.on("docsbot_close", handleClose);
+    Emitter.on("docsbot_toggle", handleToggle);
+
+    return () => {
+      Emitter.off("docsbot_open", handleOpen);
+      Emitter.off("docsbot_close", handleClose);
+      Emitter.off("docsbot_toggle", handleToggle);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Emit mount complete event when the component is fully mounted
+    Emitter.emit("docsbot_mount_complete");
+
+    return () => {
+      // Emit unmount complete event when the component is about to unmount
+      Emitter.emit("docsbot_unmount_complete");
+    };
   }, []);
 
   return (
