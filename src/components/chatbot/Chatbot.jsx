@@ -279,11 +279,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   }
 
   async function parseMarkdown(text) {
+    // Remove incomplete markdown images, but keep the alt text
+    let filteredText = text.replace(/!\[([^\]]*?)(?:\](?:\([^)]*)?)?$/gm, '$1');
+    // Remove incomplete markdown links, but keep the link text
+    filteredText = filteredText.replace(/\[([^\]]*?)(?:\](?:\([^)"]*(?:"[^"]*")?[^)]*)?)?$/gm, '$1');
+
     return await remark()
       .use(html)
       .use(remarkGfm)
       .use(externalLinks, { target: "_blank" })
-      .process(text)
+      .process(filteredText)
       .then((html) => {
         return html.toString();
       });
