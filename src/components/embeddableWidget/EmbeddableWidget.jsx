@@ -80,8 +80,12 @@ export default class EmbeddableWidget {
       return false;
     }
     const div_root = document.getElementById("docsbotai-root");
-    this._root.unmount();
-    div_root.remove();
+    if (this._root) {
+      this._root.unmount();
+    }
+    if (div_root) {
+      div_root.remove();
+    }
     EmbeddableWidget.el = null;
   }
 }

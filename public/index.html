@@ -26,8 +26,9 @@
       DocsBotAI.init({
         id: "ZrbLG98bbxZ9EFqiPvyl/N2mWls8WYE6VxTmObjr3",
         supportCallback: function (event, history) {
-          //event.preventDefault();
+          event.preventDefault();
           console.log(history, DocsBotAI);
+          DocsBotAI.unmount();
         },
         identify: {
           name: 'Steve Aoki',
@@ -51,6 +52,7 @@
           //hideHeader: true,
           customCSS: `.docsbot-chat-credits a { color: red; }`,
           //inputLimit: 2000,
+          supportLink: "https://docsbot.ai/support",
         }
       }).then(() => {
         //  Script is safely loaded, you can do whatever you want from here with bot
