@@ -209,7 +209,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       },
     });
 
-    Emitter.emit("docsbot_fetching_answer", { question });
+    // Change this to use native JS event
+    document.dispatchEvent(new CustomEvent("docsbot_fetching_answer", { detail: { question } }));
 
     // Add null check before accessing scrollHeight
     if (ref.current) {
@@ -324,7 +325,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             ref.current.scrollTop = ref.current.scrollHeight;
           }
           ws.close();
-          Emitter.emit("docsbot_fetching_answer_complete", finalData);
+          // Change this to use native JS event
+          document.dispatchEvent(new CustomEvent("docsbot_fetching_answer_complete", { detail: finalData }));
         } else if (data.type === "error") {
           dispatch({
             type: "update_message",

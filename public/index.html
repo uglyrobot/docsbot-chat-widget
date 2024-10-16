@@ -129,6 +129,14 @@
           }
         });
       });
+
+      document.addEventListener("docsbot_fetching_answer", (event) => {
+        console.log(`Fetching answer for question: ${event.detail.question}`);
+      });
+
+      document.addEventListener("docsbot_fetching_answer_complete", (event) => {
+        console.log("Answer fetched:", event.detail);
+      });
     </script>
 
     <p>
