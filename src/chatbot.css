@@ -579,3 +579,9 @@
   width: 25px;
   height: auto;
 }
+
+@media print {
+  .docsbot-wrapper {
+    display: none !important;
+  }
+}
