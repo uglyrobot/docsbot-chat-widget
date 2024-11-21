@@ -2,15 +2,15 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
-const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
-
 
 module.exports = (_, { mode }) => {
+  const isProduction = mode === 'production';
+
   return {
     entry: "./src/components/embeddableWidget/EmbeddableWidget.jsx",
     output: {
       path: path.resolve(__dirname, "build"),
-      publicPath: "/",
+      publicPath: isProduction ? "https://widget.docsbot.ai/" : "/",
       filename: "chat.js",
       library: "DocsBotAI",
       libraryExport: "default",
@@ -21,7 +21,6 @@ module.exports = (_, { mode }) => {
         template: path.join(__dirname, "public", "index.html"),
       }),
       new CleanWebpackPlugin(),
-      //new BundleAnalyzerPlugin(),
     ],
     devServer: {
       static: {
@@ -30,7 +29,6 @@ module.exports = (_, { mode }) => {
       port: 3000,
     },
     module: {
-      // exclude node_modules
       rules: [
         {
           test: /\.(js|jsx)$/,
