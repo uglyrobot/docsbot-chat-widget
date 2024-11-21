@@ -20,20 +20,9 @@ jobs:
       run: |
         npm install
         npm run build
-        
-    - name: Deploy to BunnyCDN
-      uses: ayeressian/bunnycdn-storage-deploy@v2.1.0
-      with:
-        source: "build"
-        storageZoneName: "${{ secrets.STORAGE_NAME }}"
-        storagePassword: "${{ secrets.STORAGE_PASSWORD }}"
-        accessKey: "${{ secrets.STORAGE_KEY }}"
-        pullZoneId: "${{ secrets.ZONE_ID }}"
-        upload: "true"
-        remove: "true"
-        purgePullZone: "true"
-
-    - uses: ryand56/r2-upload-action@latest # Can be any release
+    
+    - name: Deploy to R2 Storage
+      uses: ryand56/r2-upload-action@latest # Can be any release
       with:
         r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
         r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
