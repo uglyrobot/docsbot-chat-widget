@@ -10,7 +10,7 @@ module.exports = (_, { mode }) => {
     entry: "./src/components/embeddableWidget/EmbeddableWidget.jsx",
     output: {
       path: path.resolve(__dirname, "build"),
-      publicPath: isProduction ? "https://widget-test.docsbot.ai/" : "/",
+      publicPath: isProduction ? "https://widget.docsbot.ai/" : "/",
       filename: "chat.js",
       library: "DocsBotAI",
       libraryExport: "default",
