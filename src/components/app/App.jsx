@@ -8,6 +8,8 @@ import appStyles from "!raw-loader!./App.css";
 import floatingButtonStyles from "!raw-loader!../floatingButton/FloatingButton.css";
 import optionsStyles from "!raw-loader!../options/Options.css";
 import linkListStyles from "!raw-loader!../linkList/LinkList.css";
+import highlightJSStyles from "!raw-loader!highlight.js/styles/github.min.css";
+import hljsCopyStyles from "!raw-loader!highlightjs-copy/dist/highlightjs-copy.min.css";
 import { Chatbot } from "../chatbot/Chatbot";
 import { ChatbotProvider } from "../chatbotContext/ChatbotContext";
 import { Emitter } from "../../utils/event-emitter";
@@ -59,6 +61,8 @@ function App() {
   return (
     <ReactShadowRoot>
       <style type="text/css">{fontAwesomeStyles}</style>
+      <style type="text/css">{highlightJSStyles}</style>
+      <style type="text/css">{hljsCopyStyles}</style>
       <style type="text/css">{reactChatbotStyles}</style>
       <style type="text/css">{appStyles}</style>
       <style type="text/css">{floatingButtonStyles}</style>

@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import random from "random";
 
 const ConfigContext = createContext();
 
@@ -18,7 +17,7 @@ const grabQuestions = (questions) => {
     const questionsLimit = questions.length > 3 ? 3 : questions.length
 
     for (let i = 0; i < questionsLimit; i++) {
-      const randomIndex = random.int(0, questions.length - 1)
+      const randomIndex = Math.floor(Math.random() * questions.length)
 
       // check if question is already included
       if (randomQuestions.includes(questions[randomIndex])) {

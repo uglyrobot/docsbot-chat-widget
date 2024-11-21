@@ -2,6 +2,8 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+
 
 module.exports = (_, { mode }) => {
   return {
@@ -19,6 +21,7 @@ module.exports = (_, { mode }) => {
         template: path.join(__dirname, "public", "index.html"),
       }),
       new CleanWebpackPlugin(),
+      //new BundleAnalyzerPlugin(),
     ],
     devServer: {
       static: {

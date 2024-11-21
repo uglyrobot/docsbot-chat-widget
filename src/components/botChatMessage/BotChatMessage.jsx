@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Loader } from "../loader/Loader";
 import {
@@ -15,6 +15,7 @@ import { BotAvatar } from "../botAvatar/BotAvatar";
 import { Source } from "../source/Source";
 import { getLighterColor, decideTextColor } from "../../utils/colors";
 import { useChatbot } from "../chatbotContext/ChatbotContext";
+import { getHighlightJs } from '../../utils/highlightjs';
 
 export const BotChatMessage = ({ payload, messageBoxRef }) => {
   const [showSources, setShowSources] = useState(false);
@@ -38,6 +39,21 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
   if (signature) {
     headers.Authorization = `Bearer ${signature}`;
   }
+  const contentRef = useRef(null);
+  const [hljs, setHljs] = useState(null);
+
+  useEffect(() => {
+    getHighlightJs().then(setHljs);
+  }, []);
+
+  useEffect(() => {
+    if (contentRef.current && hljs) {
+      const codeBlocks = contentRef.current.querySelectorAll('pre code');
+      codeBlocks.forEach((block) => {
+        hljs.highlightElement(block);
+      });
+    }
+  }, [payload.message, hljs]);
 
   const runSupportCallback = (e, history) => {
     // post to api endpoint
@@ -121,7 +137,10 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
 
             return (
               <>
-                <span dangerouslySetInnerHTML={{ __html: payload.message }} />
+                <span 
+                  ref={contentRef}
+                  dangerouslySetInnerHTML={{ __html: payload.message }} 
+                />
                 {payload.sources && (
                   <>
                     <div className="docsbot-chat-bot-message-meta">
