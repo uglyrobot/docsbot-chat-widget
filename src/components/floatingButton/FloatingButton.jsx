@@ -57,7 +57,7 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
         <img src={icon} alt="Icon" />
       )}
       {showButtonLabel ? (
-        <span className="floating-button-label">TEST2 {labels.floatingButton}</span>
+        <span className="floating-button-label">{labels.floatingButton}</span>
       ) : null}
     </a>
   )
