@@ -4,12 +4,20 @@ import { useConfig } from "../configContext/ConfigContext";
 
 export const Source = ({ source }) => {
   const { noURLSourceTypes } = useConfig();
+  const ALWAYS_HIDE_SOURCE_TYPES = [
+    'helpscout',
+    'freshdesk',
+    'zendesk-tickets', 
+    'intercom-tickets',
+    'jira-issues'
+  ];
 
-  // Check if source type matches hideSourceTypes
-  const shouldHideUrl = noURLSourceTypes &&
+  // Check if source type matches hideSourceTypes or is in ALWAYS_HIDE_SOURCE_TYPES
+  const shouldHideUrl = (noURLSourceTypes &&
     (Array.isArray(noURLSourceTypes)
       ? noURLSourceTypes.includes(source.type)
-      : noURLSourceTypes === source.type);
+      : noURLSourceTypes === source.type)) ||
+    ALWAYS_HIDE_SOURCE_TYPES.includes(source.type);
 
   const icon = source.url && !shouldHideUrl ? faLink : faFile;
   const page = source.page ? ` - Page ${source.page}` : "";
