@@ -59,19 +59,30 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
     // post to api endpoint
     const apiUrl = `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/support/${payload.answerId}`;
 
-    fetch(apiUrl, {
-      method: "PUT",
-      headers,
-    }).catch((e) => {
-      console.warn(`DOCSBOT: Error recording support click: ${e}`);
-    });
-
-    // run callback if provided
-    if (supportCallback && typeof supportCallback === "function") {
-      supportCallback(e, history);
+    // Prevent default to ensure we complete the request before navigation
+    if (e && e.preventDefault) {
+      e.preventDefault();
     }
 
-    return true; // ensure link is opened
+    // Return a promise to ensure the request completes
+    return fetch(apiUrl, {
+      method: "PUT",
+      headers,
+    })
+      .catch((err) => {
+        console.warn(`DOCSBOT: Error recording support click: ${err}`);
+      })
+      .finally(() => {
+        // run callback if provided
+        if (supportCallback && typeof supportCallback === "function") {
+          supportCallback(e, history);
+        }
+        
+        // If this was triggered by a link, navigate after the request completes
+        if (e && e.target && e.target.href) {
+          window.open(e.target.href, e.target.target || "_blank");
+        }
+      });
   };
 
   // make api call to rate
