@@ -8,6 +8,8 @@ import EmbeddedChat from "../embeddedChatBox/EmbeddedChat";
 export default class EmbeddableWidget {
   static _root;
   static el;
+  static teamId;
+  static botId;
 
   static isChatbotOpen = false;
 
@@ -67,6 +69,13 @@ export default class EmbeddableWidget {
 
   static mount({ parentElement = null, ...props } = {}) {
     return new Promise((resolve) => {
+      if (props.id) {
+        // Split the id into teamId and botId (format: teamId/botId)
+        const [teamId, botId] = props.id.split('/');
+        this.teamId = teamId;
+        this.botId = botId;
+      }
+      
       const embeddedChatElement = document.getElementById(
         "docsbot-widget-embed"
       );
@@ -153,8 +162,26 @@ export default class EmbeddableWidget {
         return;
       }
 
+      if (this.botId) {
+        localStorage.removeItem(`${this.botId}_docsbot_chat_history`);
+        localStorage.removeItem(`${this.botId}_chatHistory`);
+        console.log(`Cleared chat history for bot ID: ${this.botId}`);
+      } else {
+        console.warn("No bot ID found, cannot clear chat history");
+        resolve(false);
+        return;
+      }
+
       Emitter.emit("docsbot_clear_history");
-      Emitter.once("docsbot_clear_history_complete", resolve);
+      
+      const timeoutId = setTimeout(() => {
+        resolve(true);
+      }, 100);
+      
+      Emitter.once("docsbot_clear_history_complete", () => {
+        clearTimeout(timeoutId);
+        resolve(true);
+      });
     });
   }
 }
