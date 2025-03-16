@@ -212,7 +212,7 @@
 .docsbot-chat-inner-container {
   height: 100%;
   background-color: rgb(249, 250, 250);
-  border-radius: 15px;
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
