@@ -45,6 +45,42 @@
   box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 2px;
 }
 
+.floating-button-icon {
+	user-select: none;
+	width: 24px;
+	height: 24px;
+	position: relative;
+}
+
+.floating-button-default-icon,
+.floating-button-minimize-icon {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	transition: transform 0.16s linear, opacity 0.08s linear;
+}
+
+.floating-button-default-icon {
+	opacity: 1;
+	transform: translate(-50%, -50%) rotate(0) scale(1);
+}
+
+.is-open .floating-button-default-icon {
+	opacity: 0;
+	transform: translate(-50%, -50%) rotate(-60deg) scale(0);
+}
+
+.floating-button-minimize-icon {
+	opacity: 0;
+	transform: translate(-50%, -50%) rotate(-60deg) scale(0);
+}
+
+.is-open .floating-button-minimize-icon {
+	opacity: 1;
+	transform: translate(-50%, -50%) rotate(0) scale(1);
+}
+
 @media print {
   .floating-button {
     display: none !important;

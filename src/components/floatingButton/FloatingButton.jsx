@@ -26,7 +26,6 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
     book: faBook,
   }
 
-  const iconToUse = isOpen ? faXmark : iconMap[icon] || iconMap.default
   const isIconInList = iconMap.hasOwnProperty(icon) || !icon // if empty string, use default icon
 
   return (
@@ -51,11 +50,12 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
         bottom: verticalMargin || 20,
       }}
       sr-label="Open/close chat">
-      {isIconInList || isOpen ? (
-        <FontAwesomeIcon size="xl" icon={iconToUse} />
-      ) : (
-        <img src={icon} alt="Icon" />
-      )}
+        <div className="floating-button-icon">
+          { isIconInList
+            ? <FontAwesomeIcon size="xl" icon={iconMap[icon] || iconMap.default} className="floating-button-default-icon" />
+            : <img src={icon} alt="Icon" className="floating-button-default-icon" /> }
+          <FontAwesomeIcon size="xl" icon={faXmark} className="floating-button-minimize-icon" />
+        </div>
       {showButtonLabel ? (
         <span className="floating-button-label">{labels.floatingButton}</span>
       ) : null}
