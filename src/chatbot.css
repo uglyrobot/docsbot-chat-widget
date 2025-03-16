@@ -389,16 +389,34 @@
 
 .docsbot-chat-input-container {
   width: 100%;
+  position: relative;
   display: flex;
   border: none;
-  border-top: 1px solid #d8d8d8;
+  border-top: 3px solid #d8d8d8;
+  transition: border-color 0.16s linear;
+}
+
+.docsbot-chat-input-container:before {
+	content: "";
+	width: 0%;
+	height: 3px;
+	position: absolute;
+	top: -3px;
+	left: 0;
+	background: var(--docsbot-color-main);
+	transition: width 0.16s linear;
+}
+
+.docsbot-chat-input-container.focused:before {
+	width: 100%;
 }
 
 .docsbot-chat-input {
   width: 100%;
-  padding: 12.5px 3px 12.5px 12.5px;
+  padding: 16px 24px;
   border: none;
-  font-size: 13.6px !important;
+  font-size: 14px !important;
+  line-height: 22px !important;
   font: inherit;
   resize: none;
   overflow-y: hidden;

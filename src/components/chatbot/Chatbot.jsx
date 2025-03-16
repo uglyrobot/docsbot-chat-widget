@@ -193,7 +193,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         JSON.stringify(state?.chatHistory)
       );
     }
-  }, [state.chatHistory]);
+
+	document.documentElement.style.setProperty('--docsbot-color-main', color || "#1292EE");
+  }, [state.chatHistory, color]);
 
   function fetchAnswer(question) {
     const id = uuidv4();
@@ -579,11 +581,32 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 className="docsbot-chat-input"
                 placeholder={labels.inputPlaceholder}
                 value={chatInput}
+				onFocus={(e) => {
+					const textarea = e.target;
+					const form = textarea.parentNode;
+					const container = form.parentNode;
+
+					container.classList.add("focused");
+				}}
+				onBlur={(e) => {
+					const textarea = e.target;
+					const form = textarea.parentNode;
+					const container = form.parentNode;
+
+					container.classList.remove("focused"); // remove focused class
+				}}
                 onChange={(e) => {
                   setChatInput(e.target.value);
 
                   e.target.style.height = "auto";
-                  e.target.style.height = e.target.scrollHeight - 25 + "px"; // Adjust the textarea's height to wrap the input text
+
+				  // get the computed style of the textarea
+				  const computed = window.getComputedStyle(e.target);
+				  const padding = parseInt(computed.paddingTop) + parseInt(computed.paddingBottom);
+
+				  if (e.target.scrollHeight > 54) {
+					e.target.style.height = e.target.scrollHeight - padding + "px";
+				  }
                 }}
                 onKeyDown={(e) => {
                   //this detects if the user is typing in a IME session (ie Kanji autocomplete) to avoid premature submission
