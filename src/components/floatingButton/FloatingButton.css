@@ -1,7 +1,7 @@
 .floating-button {
   position: fixed;
-  min-width: 55px;
-  height: 55px;
+  min-width: 48px;
+  height: 48px;
   bottom: 20px;
   right: 20px;
   color: #fff;
