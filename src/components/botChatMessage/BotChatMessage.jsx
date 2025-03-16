@@ -58,7 +58,7 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
   const runSupportCallback = (e, history) => {
     // Store the original URL we want to navigate to
     const targetUrl = e && e.target && e.target.href;
-    
+
     // Prevent default to ensure we complete the request before navigation
     if (e && e.preventDefault) {
       e.preventDefault();
@@ -78,7 +78,7 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
       .finally(() => {
         // Create a flag to track if we should open the link
         let shouldOpenLink = true;
-        
+
         // run callback if provided
         if (supportCallback && typeof supportCallback === "function") {
           // Create a synthetic event with its own preventDefault method
@@ -86,10 +86,10 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
           syntheticEvent.preventDefault = () => {
             shouldOpenLink = false;
           };
-          
+
           supportCallback(syntheticEvent, history);
         }
-        
+
         // Open the link if it exists and shouldOpenLink is still true
         if (shouldOpenLink && targetUrl && targetUrl !== '#') {
           window.open(targetUrl, "_blank");
@@ -139,7 +139,7 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
 
   const bgColor = payload.error
     ? "#FEFCE8"
-    : getLighterColor(color || "#1292EE");
+    : "#FFFFFF";
   const fontColor = payload.error ? "#713F12" : decideTextColor(bgColor);
   return (
     <>
@@ -160,9 +160,9 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
 
             return (
               <>
-                <span 
+                <span
                   ref={contentRef}
-                  dangerouslySetInnerHTML={{ __html: payload.message }} 
+                  dangerouslySetInnerHTML={{ __html: payload.message }}
                 />
                 {payload.sources && (
                   <>

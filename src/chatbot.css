@@ -29,7 +29,6 @@
   padding: 10px;
   border-radius: 15px;
   margin-left: 50px;
-  border-bottom-right-radius: 0;
   border: 0.5px solid rgb(197, 206, 214);
   font-size: 14.4px;
   line-height: 1.4;
@@ -75,20 +74,22 @@
 }
 
 .docsbot-chat-bot-message {
-  background-color: #dadada;
-  padding: 10px;
-  border-radius: 15px;
-  border-top-left-radius: 0;
-  font-size: 14.4px;
+  background-color: #ffffff;
+  padding: 12px 18px 14px;
+  border-radius: 8px;
+  font-size: 14px;
   line-height: 1.4;
   color: #494646;
   font-weight: medium;
   position: relative;
   margin-left: auto;
   text-align: left;
-  border: 0.5px solid rgb(197, 206, 214);
   overflow-wrap: break-word;
   overflow: hidden;
+  box-shadow:
+  	rgba(0, 0, 0, 0.15) 0px 0.6px 0.54px -1.33px,
+  	rgba(0, 0, 0, 0.13) 0px 2.29px 2.06px -2.67px,
+	rgba(0, 0, 0, 0.04) 0px 10px 9px -4px;
 }
 
 .docsbot-chat-bot-message pre {
