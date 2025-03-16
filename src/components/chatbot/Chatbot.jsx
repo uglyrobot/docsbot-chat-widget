@@ -625,13 +625,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               <button
                 type="submit"
                 className="docsbot-chat-btn-send"
-                style={{
-                  fill: ["#ffffff", "#FFFFFF", "rgb(255, 255, 255)"].includes(
-                    color
-                  )
-                    ? "inherit"
-                    : color,
-                }}
+				{...(["#ffffff", "#FFFFFF", "rgb(255, 255, 255)"].includes(color) && {style: {fill: "inherit"}})}
                 disabled={chatInput.length < 2}
               >
                 <SendIcon />
