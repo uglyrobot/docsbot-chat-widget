@@ -17,6 +17,7 @@
   font-weight: 500;
   font-family: Verdana, Geneva, Tahoma, sans-serif;
   cursor: pointer;
+  transition: transform 0.16s linear;
 }
 
 .floating-button.has-label {
@@ -34,7 +35,10 @@
 
 .floating-button:hover {
   transform: scale(1.05);
-  transition: transform 0.2s ease-in-out;
+}
+
+.floating-button:active {
+	transform: scale(0.95);
 }
 
 .floating-button:active {
