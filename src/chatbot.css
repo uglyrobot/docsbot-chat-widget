@@ -158,8 +158,11 @@
 
 .docsbot-chat-bot-message-meta {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  font-size: 11.2px;
+  font-size: 13px;
+  line-height: 19px;
+  margin-top: 16px;
 }
 
 .docbot-chat-bot-message-rate {
@@ -509,8 +512,11 @@
   color: inherit;
   font-weight: bold;
   padding: 0;
-  margin-top: 8px;
   cursor: pointer;
+}
+
+.docsbot-chat-bot-message button svg {
+  margin-left: 8px;
 }
 
 .docsbot-chat-bot-message img {
@@ -571,19 +577,30 @@
 
 
 .docsbot-chat-bot-message .docsbot-sources svg {
-  margin-right: 4px;
+  margin-right: 8px;
 }
 
 .docsbot-chat-bot-message .docsbot-sources {
   list-style: none;
+  margin: 4px 0;
   padding: 0;
-  font-size: 90%;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.docsbot-chat-bot-message .docsbot-sources:last-child {
+  margin-bottom: 0;
 }
 
 .docsbot-chat-bot-message .docsbot-sources li {
   color: inherit;
   display: flex-inline;
   align-items: center;
+  margin-bottom: 8px;
+}
+
+.docsbot-chat-bot-message .docsbot-sources li:last-child {
+  margin-bottom: 0;
 }
 
 .docsbot-chat-bot-message .docsbot-sources a {
