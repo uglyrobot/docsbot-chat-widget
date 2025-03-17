@@ -108,36 +108,53 @@
 
 
 .docsbot-chat-suggested-questions-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: right;
   position: absolute;
-  padding: 20px;
-  padding-right: 10px;
   bottom: 0;
+  left: 0;
   right: 0;
+  padding: 16px;
 }
 
 .docsbot-chat-suggested-questions-container span {
-  font-size: 13px;
+  display: block;
+  margin-bottom: 12px;
+  color: #4b4b4b;
+  font-size: 14px;
   font-weight: 500;
-  flex: 0 0 100%;
-  text-align: right;
+  text-align: center;
 }
 
 .docsbot-chat-suggested-questions-container button {
-  color: #4b4b4b;
-  font-size: 12.8px;
-  text-decoration: none;
-  padding: 5px 7px;
-  border-radius: 10px;
-  background: #ffffff;
-  border: 0.5px solid rgb(145, 145, 145);
-  text-align: justify;
-  overflow-wrap: break-word;
   cursor: pointer;
-  margin-top: 10px;
-  margin-left: 10px;
+  appearance: none;
+  overflow: hidden;
+  margin: 0 4px 8px;
+  padding: 8px;
+  border: 1px solid var(--docsbot-color-main, #1292EE);
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: color-mix(in srgb, var(--docsbot-color-main) 20%, white) 0px 4px 12px -4px;
+  color: #4b4b4b;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 14px;
+  text-decoration: none;
+  word-break: break-word;
+  transition: box-shadow 0.1s ease-in, transform 0.1s ease-in;
+}
+
+.docsbot-chat-suggested-questions-container button:hover {
+	box-shadow: color-mix(in srgb, var(--docsbot-color-main) 10%, white) 0px 4px 12px -4px;
+	transform: scale(1.05);
+}
+
+.docsbot-chat-suggested-questions-grid {
+	width: 100%;
+	display: flex;
+	flex-flow: row wrap;
+	justify-content: center;
+	-webkit-box-pack: center;
+	text-align: center;
 }
 
 .docsbot-chat-bot-message-meta {

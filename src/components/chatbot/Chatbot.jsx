@@ -511,6 +511,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                   >
                     {labels.suggestions}
                   </span>
+				  <div className="docsbot-chat-suggested-questions-grid">
                   {Object.keys(questions).map((index) => {
                     const question = questions[index];
                     return (
@@ -530,36 +531,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                           fetchAnswer(question);
                           setChatInput("");
                         }}
-                        style={{
-                          backgroundColor: getLighterColor(
-                            color || "#1292EE",
-                            0.95
-                          ),
-                          color: decideTextColor(
-                            getLighterColor(color || "#1292EE", 0.95)
-                          ),
-                        }}
-                        onMouseEnter={(e) => {
-                          e.target.style.backgroundColor = getLighterColor(
-                            color || "#1292EE"
-                          );
-                          e.target.style.border = `0.5px solid ${getLighterColor(
-                            color || "#1292EE"
-                          )}`;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.backgroundColor = getLighterColor(
-                            color || "#1292EE",
-                            0.95
-                          );
-                          e.target.style.border =
-                            "0.5px solid rgb(145, 145, 145)";
-                        }}
+                        {...(["#ffffff", "#FFFFFF", "rgb(255, 255, 255)"].includes(color) && {style: {borderColor: "#d8d8d8"}})}
                       >
                         {question}
                       </button>
                     );
                   })}
+				  </div>
                 </div>
               )}
             {branding && (
