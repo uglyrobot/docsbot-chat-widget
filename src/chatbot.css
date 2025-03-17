@@ -26,10 +26,9 @@
 
 .docsbot-user-chat-message {
   background-color: #fff;
-  padding: 10px;
+  padding: 12px 16px;
   border-radius: 8px;
   margin-left: 32px;
-  border: 0.5px solid rgb(197, 206, 214);
   font-size: 14.4px;
   line-height: 1.4;
   color: #585858;
@@ -51,12 +50,12 @@
 }
 
 .docsbot-chat-bot-avatar-container {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   font-size: 19.2px;
   margin-right: 8px;
-  background-color: #d8d8d8;
+  background-color: var(--docsbot-color-main, #d8d8d8);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -75,7 +74,7 @@
 
 .docsbot-chat-bot-message {
   background-color: #ffffff;
-  padding: 12px 18px 14px;
+  padding: 12px 16px;
   border-radius: 8px;
   font-size: 14px;
   line-height: 1.4;
