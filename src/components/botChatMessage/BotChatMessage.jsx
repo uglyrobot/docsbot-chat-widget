@@ -139,7 +139,7 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
 
   const bgColor = payload.error
     ? "#FEFCE8"
-    : "#FFFFFF";
+    : "#F1F3F5";
   const fontColor = payload.error ? "#713F12" : decideTextColor(bgColor);
   return (
     <>
