@@ -27,6 +27,7 @@ module.exports = (_, { mode }) => {
         directory: path.join(__dirname, "public"),
       },
       port: 3000,
+	  watchFiles: ["src/assets/scss/**/*.scss"],
     },
     module: {
       rules: [
