@@ -1,40 +1,43 @@
 .floating-button {
-  position: fixed;
-  min-width: 48px;
-  height: 48px;
-  bottom: 20px;
-  right: 20px;
-  color: #fff;
-  border-radius: 50px;
-  text-align: center;
-  box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 1px, rgba(0, 0, 0, 0.10) 0px 3px 5px 0px, rgba(0, 0, 0, 0.05) 0px 3px 3px 0px;
-  z-index: 99999997;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-decoration: none;
-  font-size: 14.4px;
-  font-weight: 500;
-  font-family: Verdana, Geneva, Tahoma, sans-serif;
-  cursor: pointer;
-  transition: transform 0.16s linear;
+	position: fixed;
+	min-width: 48px;
+	height: 48px;
+	bottom: 20px;
+	right: 20px;
+	color: #fff;
+	border-radius: 50px;
+	text-align: center;
+	box-shadow:
+		rgba(0, 0, 0, 0.05) 0px 0px 0px 1px,
+		rgba(0, 0, 0, 0.1) 0px 3px 5px 0px,
+		rgba(0, 0, 0, 0.05) 0px 3px 3px 0px;
+	z-index: 99999997;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	text-decoration: none;
+	font-size: 14.4px;
+	font-weight: 500;
+	font-family: Verdana, Geneva, Tahoma, sans-serif;
+	cursor: pointer;
+	transition: transform 0.16s linear;
 }
 
 .floating-button.has-label {
-  padding: 0 20px;
+	padding: 0 20px;
 }
 
 .floating-button.docsbot-left {
-  left: 20px;
-  right: unset;
+	left: 20px;
+	right: unset;
 }
 
 .floating-button span {
-  margin-left: 10px;
+	margin-left: 10px;
 }
 
 .floating-button:hover {
-  transform: scale(1.05);
+	transform: scale(1.05);
 }
 
 .floating-button:active {
@@ -42,7 +45,7 @@
 }
 
 .floating-button:active {
-  box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 2px;
+	box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 2px;
 }
 
 .floating-button-icon {
@@ -58,7 +61,9 @@
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	transition: transform 0.16s linear, opacity 0.08s linear;
+	transition:
+		transform 0.16s linear,
+		opacity 0.08s linear;
 }
 
 .floating-button-default-icon {
@@ -82,7 +87,7 @@
 }
 
 @media print {
-  .floating-button {
-    display: none !important;
-  }
+	.floating-button {
+		display: none !important;
+	}
 }
