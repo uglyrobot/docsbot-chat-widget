@@ -32,6 +32,9 @@ coverage
 # Bower dependency directory (https://bower.io/)
 bower_components
 
+# Ignore CSS build output
+src/assets/css/
+
 # node-waf configuration
 .lock-wscript
 
