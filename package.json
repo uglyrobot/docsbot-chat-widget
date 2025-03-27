@@ -3,7 +3,8 @@
     "build": "webpack --mode production",
     "start": "webpack serve --mode development --client-overlay --port=3005",
     "preview": "npm run build && serve build",
-    "prepare": "npm run build && rm build/index.html"
+    "prepare": "npm run build && rm build/index.html",
+	"prettier": "prettier **/*.scss --write"
   },
   "devDependencies": {
     "@babel/core": "^7.21.0",
@@ -14,6 +15,7 @@
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.7.3",
     "html-webpack-plugin": "^5.5.0",
+    "prettier": "3.5.3",
     "raw-loader": "^4.0.2",
     "serve": "^14.2.0",
     "style-loader": "^3.3.1",
