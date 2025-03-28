@@ -1,0 +1,28 @@
+// Spacing
+$spacing-xs: 4px;
+$spacing-sm: $spacing-xs * 2;
+$spacing-md: $spacing-sm * 2;
+$spacing-lg: $spacing-sm * 3;
+$spacing-xl: $spacing-sm * 4;
+
+// Colors
+// Palette: Primary
+$color-primary-100: #0B7FE7;
+$color-primary-200: #1292EE;
+$color-primary-300: #4DA1FF;
+
+// Palette: Secondary
+$color-secondary-100: #A6B3BF;
+$color-secondary-200: #C8D3DE;
+$color-secondary-300: #F1F3F5;
+
+// Palette: Neutral
+$color-neutral-100: #314351;
+$color-neutral-300: #FFFFFF;
+
+// Font
+$font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+
+// Transition
+$transition-duration-short: 0.08s;
+$transition-duration-default: 0.16s;

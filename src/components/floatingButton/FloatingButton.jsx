@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import {
   faComment,
@@ -28,6 +29,14 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
 
   const isIconInList = iconMap.hasOwnProperty(icon) || !icon // if empty string, use default icon
 
+  useEffect(() => {
+	const root = document.documentElement;
+	const primaryColor = color || "#1292EE";
+
+	root.style.setProperty('--docsbot-floating-button--bg', primaryColor);
+	root.style.setProperty('--docsbot-floating-button--color', decideTextColor(primaryColor));
+  }, []);
+
   return (
     <a
       role="button"
@@ -43,8 +52,6 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
         setIsOpen(!isOpen)
       }}
       style={{
-        backgroundColor: color,
-        color: decideTextColor(color || "#1292EE"),
         left: alignment === "left" ? horizontalMargin || 20 : "auto",
         right: alignment === "right" ? horizontalMargin || 20 : "auto",
         bottom: verticalMargin || 20,
@@ -52,9 +59,9 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
       sr-label="Open/close chat">
         <div className="floating-button-icon">
           { isIconInList
-            ? <FontAwesomeIcon size="xl" icon={iconMap[icon] || iconMap.default} className="floating-button-default-icon" />
-            : <img src={icon} alt="Icon" className="floating-button-default-icon" /> }
-          <FontAwesomeIcon size="xl" icon={faXmark} className="floating-button-minimize-icon" />
+            ? <FontAwesomeIcon size="xl" icon={iconMap[icon] || iconMap.default} className="floating-button-icon--open" />
+            : <img src={icon} alt="Icon" className="floating-button-icon--open" /> }
+          <FontAwesomeIcon size="xl" icon={faXmark} className="floating-button-icon--close" />
         </div>
       {showButtonLabel ? (
         <span className="floating-button-label">{labels.floatingButton}</span>
