@@ -1,5 +1,6 @@
 /**
  * Supported Packages
+ *
  * List here all dependencies necessary to run required tasks.
  */
 const gulp = require("gulp");
@@ -8,6 +9,7 @@ const sass = require("gulp-sass")(require("sass"));
 const cleanCSS = require("gulp-clean-css");
 const autoprefixer = require("gulp-autoprefixer");
 const header = require("gulp-header");
+const removeFiles = require("gulp-remove-files");
 
 /**
  * Paths & Files
@@ -64,6 +66,16 @@ gulp.task("styles", function () {
 });
 
 /**
+ * 🔥 Clean-up CSS
+ *
+ * Removes all compiled CSS files in order to avoid conflicts.
+ */
+gulp.task("clean", function () {
+	return gulp.src(srcOutput.css + '**/*')
+		.pipe(removeFiles());
+});
+
+/**
  * 🧑🏻‍💻 Watch Changes
  *
  * Task written for development mode.
@@ -77,4 +89,4 @@ gulp.task("watch", function () {
  *
  * Task written for production mode.
  */
-gulp.task("build", gulp.series(["styles"]));
+gulp.task("build", gulp.series(["clean", "styles"]));

@@ -2,7 +2,7 @@
   "scripts": {
     "build": "gulp build && webpack --mode production",
     "start": "webpack serve --mode development --client-overlay --port=3005",
-	"styles": "gulp build && gulp watch",
+    "styles": "gulp build && gulp watch",
     "preview": "npm run build && serve build",
     "prepare": "npm run build && rm build/index.html",
     "prettier": "prettier **/*.scss --write"
@@ -19,6 +19,7 @@
     "gulp-autoprefixer": "^8.0.0",
     "gulp-clean-css": "^4.3.0",
     "gulp-header": "^2.0.9",
+    "gulp-remove-files": "^0.0.3",
     "gulp-rename": "^2.0.0",
     "gulp-sass": "^6.0.1",
     "html-webpack-plugin": "^5.5.0",
