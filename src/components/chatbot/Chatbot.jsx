@@ -434,7 +434,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           <div
 			className={clsx(
 				"docsbot-chat-header",
-				(isEmbeddedBox && hideHeader) && "unbranded"
+				(isEmbeddedBox && hideHeader) && "unbranded",
+				!(Object.keys(state.messages).length <= 1 && Object.keys(questions).length >= 1) && "is-small"
 			)}
           >
             <div className="docsbot-chat-header-inner" style={{ width: "100%" }}>

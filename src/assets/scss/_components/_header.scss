@@ -170,6 +170,14 @@
 	}
 }
 
+// Embedded chat
+.docsbot-embedded .docsbot-chat-header {
+	// Modifier: .is-small
+	&.is-small {
+		@include resized-header;
+	}
+}
+
 // Embedded chat (Unbranded)
 .docsbot-embedded .unbranded {
 	&.docsbot-chat-header {
