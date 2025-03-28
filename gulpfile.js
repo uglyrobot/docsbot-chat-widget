@@ -9,7 +9,6 @@ const sass = require("gulp-sass")(require("sass"));
 const cleanCSS = require("gulp-clean-css");
 const autoprefixer = require("gulp-autoprefixer");
 const header = require("gulp-header");
-const removeFiles = require("gulp-remove-files");
 
 /**
  * Paths & Files
@@ -70,9 +69,11 @@ gulp.task("styles", function () {
  *
  * Removes all compiled CSS files in order to avoid conflicts.
  */
-gulp.task("clean", function () {
-	return gulp.src(srcOutput.css + '**/*')
-		.pipe(removeFiles());
+gulp.task("clean", async function () {
+	const del = await import('del');
+	console.log('🧹 Deleting files in:', srcOutput.css + '*');
+	const deletedPaths = await del.deleteAsync([srcOutput.css + '*']);
+	console.log('✅ Deleted:', deletedPaths);
 });
 
 /**
