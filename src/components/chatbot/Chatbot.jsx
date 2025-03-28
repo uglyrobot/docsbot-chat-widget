@@ -194,8 +194,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       );
     }
 
-	document.documentElement.style.setProperty('--docsbot-color-main', color || "#1292EE");
-  }, [state.chatHistory, color]);
+  }, [state.chatHistory]);
 
   function fetchAnswer(question) {
     const id = uuidv4();
@@ -383,11 +382,25 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     inputRef.current.focus();
   }
 
+  useEffect(() => {
+	const root = document.documentElement;
+	const primaryColor = color || "#1292EE";
+
+	root.style.setProperty('--docsbot-color-main', primaryColor);
+
+	root.style.setProperty('--docsbot-header--bg', primaryColor);
+	root.style.setProperty('--docsbot-header--color', decideTextColor(primaryColor));
+
+	root.style.setProperty('--docsbot-reset-button--bg', primaryColor);
+	root.style.setProperty('--docsbot-reset-button--color', decideTextColor(primaryColor));
+  }, [color]);
+
   return (
     <div
       className={clsx(
         alignment === "left" ? "docsbot-left" : "",
-        "docsbot-wrapper"
+        "docsbot-wrapper",
+		isEmbeddedBox ? "docsbot-embedded" : "docsbot-floating"
       )}
       style={
         mediaMatch.matches
@@ -419,28 +432,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             </a>
           )}
           <div
-            className="docsbot-chat-header"
-            style={
-              isEmbeddedBox && hideHeader
-                ? {
-                    backgroundColor: "transparent",
-                    color: "rgb(103, 58, 183)",
-                  }
-                : {
-                    backgroundColor: color,
-                    color: decideTextColor(color || "#1292EE"),
-                  }
-            }
+			className={clsx(
+				"docsbot-chat-header",
+				(isEmbeddedBox && hideHeader) && "unbranded"
+			)}
           >
-            <div style={{ width: "100%" }}>
+            <div className="docsbot-chat-header-inner" style={{ width: "100%" }}>
               <button
                 onClick={() => refreshChatHistory()}
-                title={labels?.resetChat}
-                style={
-                  isEmbeddedBox && hideHeader ? { top: "2px" } : { top: "5px" }
-                }
+				className="docsbot-chat-header-button"
               >
                 <FontAwesomeIcon icon={faRefresh} />
+				<span className="docsbot-screen-reader-only">{labels?.resetChat}</span>
               </button>
               <div
                 className="docsbot-chat-header-content"
@@ -448,31 +451,31 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                   textAlign: headerAlignment === "left" ? "left" : "center",
                 }}
               >
-                {isEmbeddedBox && hideHeader ? null : logo ? (
-                  <div
-                    className="docsbot-chat-header-branded"
-                    style={{
-                      justifyContent:
-                        headerAlignment === "left" ? "start" : "center",
-                    }}
-                  >
-                    <img src={logo} alt={botName} />
-                  </div>
-                ) : (
-                  <>
-                    <h1>{botName}</h1>
-                    <span>{description}</span>
-                  </>
-                )}
+				{!(isEmbeddedBox && hideHeader) && (
+					logo
+						? (
+							<div
+								className="docsbot-chat-header-branded"
+								style={{
+									justifyContent:
+										headerAlignment === "left" ? "start" : "center",
+								}}>
+									<img src={logo} alt={botName} />
+							</div>
+						)
+						: (
+							<>
+								<h1 className="docsbot-chat-header-title">{botName}</h1>
+								<span className="docsbot-chat-header-subtitle">{description}</span>
+							</>
+						)
+				)}
               </div>
-              <div className="docsbot-chat-header-background-wrapper">
-                <div
-                  className="docsbot-chat-header-background"
-                  style={{
-                    backgroundColor: isEmbeddedBox ? "transparent" : color,
-                  }}
-                ></div>
-              </div>
+			  {!isEmbeddedBox && (
+				<div className="docsbot-chat-header-background-wrapper">
+					<div className="docsbot-chat-header-background" />
+				</div>
+			  )}
             </div>
           </div>
 
