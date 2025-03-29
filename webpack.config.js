@@ -32,6 +32,27 @@ module.exports = (_, { mode }) => {
     module: {
       rules: [
         {
+			test: /\.svg$/i,
+			use: [{
+			  loader: '@svgr/webpack',
+			  options: {
+				svgoConfig: {
+					plugins: [
+					  {
+						name: 'preset-default',
+						params: {
+						  overrides: {
+							// disable plugins
+							removeViewBox: false,
+						  },
+						},
+					  },
+					],
+				  },
+			  }
+			}]
+        },
+        {
           test: /\.(js|jsx)$/,
           exclude: /node_modules/,
           use: ["babel-loader"],
