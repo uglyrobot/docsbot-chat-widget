@@ -18,6 +18,7 @@ import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
 import { Emitter } from "../../utils/event-emitter";
+import Logo from "../../assets/images/docsbot-logo.svg";
 
 export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const [chatInput, setChatInput] = useState("");
@@ -544,18 +545,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				  </div>
                 </div>
               )}
-            {branding && (
-              <div className="docsbot-chat-credits">
-                <a
-                  href="https://docsbot.ai?utm_source=chatbot&utm_medium=chatbot&utm_campaign=chatbot"
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  aria-label={labels.poweredBy + " DocsBot"}
-                >
-                  {labels.poweredBy} <DocsBotLogo />
-                </a>
-              </div>
-            )}
           </div>
           <div className="docsbot-chat-input-container">
             <form className="docsbot-chat-input-form" onSubmit={handleSubmit}>
@@ -614,6 +603,20 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               </button>
             </form>
           </div>
+
+		  {branding && (
+              <div className="docsbot-chat-credits">
+                <a
+                  href="https://docsbot.ai?utm_source=chatbot&utm_medium=chatbot&utm_campaign=chatbot"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  aria-label={labels.poweredBy + " DocsBot"}
+                >
+                  <span aria-hidden="true">{labels.poweredBy}</span>
+				  <Logo aria-hidden="true" className="docsbot-logo" />
+                </a>
+              </div>
+            )}
         </div>
       </div>
     </div>
