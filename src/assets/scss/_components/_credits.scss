@@ -1,4 +1,4 @@
-@use "../_utils/tokens" as *;
+@use '../_utils/tokens' as *;
 
 .docsbot-chat-credits {
 	padding: $spacing-sm 0 $spacing-lg;
@@ -18,7 +18,8 @@
 		text-decoration: none;
 		transition: color $transition-duration-short ease;
 
-		span, svg {
+		span,
+		svg {
 			display: block;
 		}
 

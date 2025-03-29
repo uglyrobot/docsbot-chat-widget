@@ -85,7 +85,10 @@
 
 		&:hover,
 		&:focus {
-			border-color: var(--docsbot-reset-button--color, $color-neutral-300);
+			border-color: var(
+				--docsbot-reset-button--color,
+				$color-neutral-300
+			);
 			outline: none;
 		}
 

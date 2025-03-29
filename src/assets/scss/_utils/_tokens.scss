@@ -7,21 +7,24 @@ $spacing-xl: $spacing-sm * 4;
 
 // Colors
 // Palette: Primary
-$color-primary-100: #0B7FE7;
-$color-primary-200: #1292EE;
-$color-primary-300: #4DA1FF;
+$color-primary-100: #1292ee;
+$color-primary-200: #1292ee;
+$color-primary-300: #1292ee;
 
 // Palette: Secondary
-$color-secondary-100: #A6B3BF;
-$color-secondary-200: #C8D3DE;
-$color-secondary-300: #F1F3F5;
+$color-secondary-100: #7e8e9e;
+$color-secondary-200: #a6b3bf;
+$color-secondary-300: #c8d3de;
+$color-secondary-400: #f1f3f5;
 
 // Palette: Neutral
 $color-neutral-100: #314351;
-$color-neutral-300: #FFFFFF;
+$color-neutral-300: #ffffff;
 
 // Font
-$font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+$font-family:
+	-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+	sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
 
 // Transition
 $transition-duration-short: 0.08s;
