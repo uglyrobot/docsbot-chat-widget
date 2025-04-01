@@ -10,15 +10,13 @@ import { useChatbot } from "../chatbotContext/ChatbotContext";
 import { useConfig } from "../configContext/ConfigContext";
 import { BotChatMessage } from "../botChatMessage/BotChatMessage";
 import { UserChatMessage } from "../userChatMessage/UserChatMessage";
-import { SendIcon } from "../icons/SendIcon";
 import { Options } from "../options/Options";
-import { DocsBotLogo } from "../icons/DocsBotLogo";
 import { getLighterColor, decideTextColor } from "../../utils/colors";
 import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
+import { faXmark, faRefresh, faPaperPlane } from "@fortawesome/free-solid-svg-icons";
 import { Emitter } from "../../utils/event-emitter";
-import Logo from "../../assets/images/docsbot-logo.svg";
+import DocsBotLogo from "../../assets/images/docsbot-logo.svg";
 
 export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const [chatInput, setChatInput] = useState("");
@@ -394,6 +392,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 	root.style.setProperty('--docsbot-reset-button--bg', primaryColor);
 	root.style.setProperty('--docsbot-reset-button--color', decideTextColor(primaryColor));
+
+	root.style.setProperty('--docsbot-submit-button--bg', primaryColor);
+	root.style.setProperty('--docsbot-submit-button--color', decideTextColor(primaryColor));
   }, [color]);
 
   return (
@@ -546,77 +547,82 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 </div>
               )}
           </div>
-          <div className="docsbot-chat-input-container">
-            <form className="docsbot-chat-input-form" onSubmit={handleSubmit}>
-              <textarea
-                className="docsbot-chat-input"
-                placeholder={labels.inputPlaceholder}
-                value={chatInput}
-				onFocus={(e) => {
-					const textarea = e.target;
-					const form = textarea.parentNode;
-					const container = form.parentNode;
 
-					container.classList.add("focused");
-				}}
-				onBlur={(e) => {
-					const textarea = e.target;
-					const form = textarea.parentNode;
-					const container = form.parentNode;
+		  <div className="docsbot-chat-footer">
+			<div className="docsbot-chat-footer-inner-wrapper">
+				<div className="docsbot-chat-input-container">
+					<form className="docsbot-chat-input-form" onSubmit={handleSubmit}>
+					<textarea
+						className="docsbot-chat-input"
+						placeholder={labels.inputPlaceholder}
+						value={chatInput}
+						onFocus={(e) => {
+							const textarea = e.target;
+							const form = textarea.parentNode;
+							const container = form.parentNode;
 
-					container.classList.remove("focused"); // remove focused class
-				}}
-                onChange={(e) => {
-                  setChatInput(e.target.value);
+							container.classList.add("focused");
+						}}
+						onBlur={(e) => {
+							const textarea = e.target;
+							const form = textarea.parentNode;
+							const container = form.parentNode;
 
-                  e.target.style.height = "auto";
+							container.classList.remove("focused"); // remove focused class
+						}}
+						onChange={(e) => {
+						setChatInput(e.target.value);
 
-				  // get the computed style of the textarea
-				  const computed = window.getComputedStyle(e.target);
-				  const padding = parseInt(computed.paddingTop) + parseInt(computed.paddingBottom);
+						e.target.style.height = "auto";
 
-				  if (e.target.scrollHeight > 54) {
-					e.target.style.height = e.target.scrollHeight - padding + "px";
-				  }
-                }}
-                onKeyDown={(e) => {
-                  //this detects if the user is typing in a IME session (ie Kanji autocomplete) to avoid premature submission
-                  if (e.isComposing || e.keyCode === 229) {
-                    return;
-                  }
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    handleSubmit(e);
-                    e.target.style.height = "auto";
-                  }
-                }}
-                ref={inputRef}
-                maxLength={inputLimit ? Math.min(inputLimit, 2000) : 500}
-                rows={1}
-              />
-              <button
-                type="submit"
-                className="docsbot-chat-btn-send"
-				{...(["#ffffff", "#FFFFFF", "rgb(255, 255, 255)"].includes(color) && {style: {fill: "inherit"}})}
-                disabled={chatInput.length < 2}
-              >
-                <SendIcon />
-              </button>
-            </form>
-          </div>
+						// get the computed style of the textarea
+						const computed = window.getComputedStyle(e.target);
+						const padding = parseInt(computed.paddingTop) + parseInt(computed.paddingBottom);
 
-		  {branding && (
-              <div className="docsbot-chat-credits">
-                <a
-                  href="https://docsbot.ai?utm_source=chatbot&utm_medium=chatbot&utm_campaign=chatbot"
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  aria-label={labels.poweredBy + " DocsBot"}
-                >
-                  <span aria-hidden="true">{labels.poweredBy}</span>
-				  <Logo aria-hidden="true" className="docsbot-logo" />
-                </a>
-              </div>
-            )}
+						if (e.target.scrollHeight > 54) {
+							e.target.style.height = e.target.scrollHeight - padding + "px";
+						}
+						}}
+						onKeyDown={(e) => {
+						//this detects if the user is typing in a IME session (ie Kanji autocomplete) to avoid premature submission
+						if (e.isComposing || e.keyCode === 229) {
+							return;
+						}
+						if (e.key === "Enter" && !e.shiftKey) {
+							handleSubmit(e);
+							e.target.style.height = "auto";
+						}
+						}}
+						ref={inputRef}
+						maxLength={inputLimit ? Math.min(inputLimit, 2000) : 500}
+						rows={1}
+					/>
+					<button
+						type="submit"
+						className="docsbot-chat-btn-send"
+						{...(["#ffffff", "#FFFFFF", "rgb(255, 255, 255)"].includes(color) && {style: {fill: "inherit"}})}
+						disabled={chatInput.length < 2}
+					>
+						<FontAwesomeIcon icon={faPaperPlane} className="docsbot-chat-btn-send-icon" />
+					</button>
+					</form>
+				</div>
+
+				{branding && (
+					<div className="docsbot-chat-credits">
+						<a
+						href="https://docsbot.ai?utm_source=chatbot&utm_medium=chatbot&utm_campaign=chatbot"
+						target="_blank"
+						rel="noreferrer noopener"
+						aria-label={labels.poweredBy + " DocsBot"}
+						>
+						<span aria-hidden="true">{labels.poweredBy}</span>
+						<DocsBotLogo aria-hidden="true" className="docsbot-logo" />
+						</a>
+					</div>
+				)}
+				</div>
+			</div>
         </div>
       </div>
     </div>

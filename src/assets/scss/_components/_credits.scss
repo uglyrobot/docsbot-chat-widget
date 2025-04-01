@@ -1,7 +1,7 @@
 @use '../_utils/tokens' as *;
 
 .docsbot-chat-credits {
-	padding: $spacing-sm 0 $spacing-lg;
+	padding: $spacing-sm 0 0;
 	text-align: center;
 
 	a {

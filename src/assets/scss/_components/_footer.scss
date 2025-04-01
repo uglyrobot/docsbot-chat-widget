@@ -1,0 +1,15 @@
+@use '../_utils/tokens' as *;
+
+.docsbot-chat-footer {
+	z-index: 1;
+	padding: 0 $spacing-lg;
+
+	&-inner-wrapper {
+		margin-top: -#{$spacing-md};
+		padding-bottom: $spacing-lg;
+	}
+}
+
+.docsbot-chat-message-container {
+	padding-bottom: $spacing-xl !important;
+}

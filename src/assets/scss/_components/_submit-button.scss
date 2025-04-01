@@ -1,0 +1,40 @@
+@use '../_utils/utils' as *;
+
+.docsbot-chat-btn-send {
+	cursor: pointer;
+	width: 40px;
+	height: 40px;
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 12px;
+	background: var(--docsbot-submit-button--bg, $color-primary-200);
+	color: var(--docsbot-submit-button--color, $color-neutral-300);
+	transition:
+		background $transition-duration-default linear,
+		color $transition-duration-default ease,
+		transform $transition-duration-short linear;
+
+	&:hover,
+	&:focus {
+		outline: none;
+		background: shade(var(--docsbot-submit-button--bg, $color-primary-200), 30%);
+	}
+
+	&:focus {
+		transform: scale(0.9);
+	}
+
+	&:disabled {
+		cursor: default;
+		pointer-events: none;
+		background: $color-neutral-300;
+		color: $color-secondary-300;
+	}
+}
