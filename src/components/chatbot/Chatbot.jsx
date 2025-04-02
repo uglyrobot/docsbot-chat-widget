@@ -505,16 +505,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 />
               );
             })}
+
             {Object.keys(state.messages).length <= 1 &&
               Object.keys(questions).length >= 1 && (
                 <div className="docsbot-chat-suggested-questions-container">
-                  <span
-                    style={{
-                      color: decideTextColor(
-                        getLighterColor(color || "#1292EE", 0.93)
-                      ),
-                    }}
-                  >
+                  <span className="docsbot-chat-suggested-questions-title">
                     {labels.suggestions}
                   </span>
 				  <div className="docsbot-chat-suggested-questions-grid">
@@ -537,6 +532,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                           fetchAnswer(question);
                           setChatInput("");
                         }}
+						className="docsbot-chat-suggested-questions-button"
                         {...(["#ffffff", "#FFFFFF", "rgb(255, 255, 255)"].includes(color) && {style: {borderColor: "#d8d8d8"}})}
                       >
                         {question}

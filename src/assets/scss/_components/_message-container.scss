@@ -1,0 +1,60 @@
+@use '../_utils/tokens' as *;
+
+.docsbot-chat-message-container {
+	height: 100%;
+	overflow-y: scroll;
+	padding: $spacing-lg $spacing-lg $spacing-xl;
+
+	// Note: Consider removing this styles in the future.
+	// Currently, these are not being used anywhere.
+	&-toggle {
+		display: flex;
+		justify-content: end;
+		margin-top: 10px;
+		color: rgb(97, 96, 99);
+		font-size: 13px;
+		font-weight: 500;
+
+		input[type='checkbox'] {
+			visibility: hidden;
+			height: 0;
+			width: 0;
+
+			&:checked + label {
+				background: grey;
+
+				&:after {
+					right: calc(100% - 2px);
+					transform: translateX(100%);
+				}
+			}
+		}
+
+		label {
+			cursor: pointer;
+			width: 35px;
+			height: 20px;
+			position: relative;
+			display: block;
+			border-radius: 100px;
+			background: #c2b0e2;
+			text-indent: -9999px;
+
+			&:after {
+				content: '';
+				width: 16px;
+				height: 16px;
+				position: absolute;
+				top: 2px;
+				right: 2px;
+				border-radius: 90px;
+				background: #fff;
+				transition: 0.3s;
+			}
+
+			&:active:after {
+				width: 20px;
+			}
+		}
+	}
+}

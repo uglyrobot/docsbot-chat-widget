@@ -1,0 +1,59 @@
+@use '../_utils/utils' as *;
+
+.docsbot-chat-suggested-questions {
+	&-container {
+		width: 100%;
+		display: block;
+		margin-top: $spacing-sm;
+	}
+
+	&-title {
+		display: inline-block;
+		padding: $spacing-md;
+		border-radius: $spacing-xs * 3;
+		border-top-left-radius: $spacing-xs;
+		background: $color-secondary-400;
+		color: $color-neutral-100;
+		font-family: $font-family;
+		font-weight: 400;
+		font-size: 14px;
+		line-height: 20px;
+	}
+
+	&-grid {
+		width: 100%;
+		display: flex;
+		flex-flow: row wrap;
+		margin-top: $spacing-sm;
+	}
+
+	&-button {
+		cursor: pointer;
+		appearance: none;
+		overflow: hidden;
+		margin: 0 4px 8px;
+		padding: 8px;
+		border: 1px solid var(--docsbot-color-main, $color-primary-200);
+		border-radius: 6px;
+		background: #ffffff;
+		box-shadow: color-mix(
+			in srgb,
+			var(--docsbot-color-main, $color-primary-200) 20%, white
+		) 0px 4px 12px -4px;
+		color: #4b4b4b;
+		font-weight: 400;
+		font-size: 14px;
+		line-height: 14px;
+		text-decoration: none;
+		word-break: break-word;
+		transition:
+			box-shadow 0.1s ease-in,
+			transform 0.1s ease-in;
+
+		&:hover {
+			box-shadow: color-mix(in srgb, var(--docsbot-color-main) 10%, white) 0px 4px
+				12px -4px;
+			transform: scale(1.05);
+		}
+	}
+}
