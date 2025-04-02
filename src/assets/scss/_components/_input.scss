@@ -25,11 +25,11 @@
 
 	&:hover,
 	&:focus {
-		border-color: var(--docsbot-color-main, $color-primary-200);
+		border-color: var(--docsbot-input--hover, $color-primary-200);
 	}
 
 	&:focus {
-		outline: 1px solid var(--docsbot-color-main, $color-primary-200);
+		outline: 1px solid var(--docsbot-input--hover, $color-primary-200);
 	}
 
 	// Element: .docsbot-chat-input-container

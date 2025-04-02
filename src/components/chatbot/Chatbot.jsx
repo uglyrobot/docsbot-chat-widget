@@ -383,9 +383,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
   useEffect(() => {
 	const root = document.documentElement;
-	const primaryColor = color || "#1292EE";
+	const defaultColor = "#1292EE";
+	const primaryColor = color || defaultColor;
+	const isWhite = ["#ffffff", "#FFFFFF", "rgb(255, 255, 255)"].includes(color);
 
-	root.style.setProperty('--docsbot-color-main', primaryColor);
+	root.style.setProperty('--docsbot-color-main', isWhite ? '#314351' : primaryColor);
 
 	root.style.setProperty('--docsbot-header--bg', primaryColor);
 	root.style.setProperty('--docsbot-header--color', decideTextColor(primaryColor));
@@ -393,11 +395,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	root.style.setProperty('--docsbot-reset-button--bg', primaryColor);
 	root.style.setProperty('--docsbot-reset-button--color', decideTextColor(primaryColor));
 
+	root.style.setProperty('--docsbot-user--bg', isWhite ? '#314351' : primaryColor);
+	root.style.setProperty('--docsbot-user--color', decideTextColor(isWhite ? '#314351' : primaryColor));
+
+	root.style.setProperty('--docsbot-input--hover', isWhite ? '#314351' : primaryColor);
+
 	root.style.setProperty('--docsbot-submit-button--bg', primaryColor);
 	root.style.setProperty('--docsbot-submit-button--color', decideTextColor(primaryColor));
 
-	root.style.setProperty('--docsbot-user--bg', primaryColor);
-	root.style.setProperty('--docsbot-user--color', decideTextColor(primaryColor));
+	root.style.setProperty('--docsbot-logo--color', isWhite ? '#314351' : primaryColor);
   }, [color]);
 
   return (
@@ -536,7 +542,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                           setChatInput("");
                         }}
 						className="docsbot-chat-suggested-questions-button"
-                        {...(["#ffffff", "#FFFFFF", "rgb(255, 255, 255)"].includes(color) && {style: {borderColor: "#d8d8d8"}})}
                       >
                         {question}
                       </button>

@@ -32,12 +32,12 @@
 			max-height: $spacing-sm;
 
 			path {
-				fill: var(--docsbot-color-main, $color-primary-200);
+				fill: var(--docsbot-logo--color, $color-primary-200);
 			}
 		}
 
 		&:hover {
-			color: var(--docsbot-color-main, $color-primary-200);
+			color: var(--docsbot-logo--color, $color-primary-200);
 		}
 	}
 }
