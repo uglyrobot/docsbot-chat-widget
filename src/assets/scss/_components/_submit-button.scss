@@ -24,7 +24,10 @@
 	&:hover,
 	&:focus {
 		outline: none;
-		background: shade(var(--docsbot-submit-button--bg, $color-primary-200), 30%);
+		background: shade(
+			var(--docsbot-submit-button--bg, $color-primary-200),
+			30%
+		);
 	}
 
 	&:focus {

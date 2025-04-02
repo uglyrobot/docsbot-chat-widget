@@ -6,8 +6,10 @@
 	width: 100%;
 	max-height: 80px;
 	resize: none;
-	padding: #{$spacing-md - $input-border-width} #{$spacing-lg - $input-border-width};
-	padding-right: #{($spacing-lg - $input-border-width) + (40px - $spacing-lg) + $spacing-md};
+	padding: #{$spacing-md - $input-border-width} #{$spacing-lg -
+		$input-border-width};
+	padding-right: #{($spacing-lg - $input-border-width) +
+		(40px - $spacing-lg) + $spacing-md};
 	border: $input-border-width solid $color-secondary-300;
 	border-radius: $spacing-md;
 	background: $color-neutral-300;

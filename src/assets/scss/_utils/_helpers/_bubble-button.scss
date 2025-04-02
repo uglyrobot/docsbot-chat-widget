@@ -19,7 +19,10 @@
 	@if $color != null {
 		box-shadow: tint($color, 80%) 0px 4px 12px -4px;
 	} @else {
-		box-shadow: tint(var(--docsbot-color-main, $color-primary-200), 80%) 0px 4px 12px -4px;
+		box-shadow: tint(var(--docsbot-color-main, $color-primary-200), 80%)
+			0px
+			4px
+			12px -4px;
 	}
 	color: $color-neutral-100;
 	font-weight: 400;
@@ -35,7 +38,10 @@
 		@if $color != null {
 			box-shadow: tint($color, 40%) 0px 4px 12px -4px;
 		} @else {
-			box-shadow: tint(var(--docsbot-color-main, $color-primary-200), 40%) 0px 4px 12px -4px;
+			box-shadow: tint(var(--docsbot-color-main, $color-primary-200), 40%)
+				0px
+				4px
+				12px -4px;
 		}
 		transform: scale(1.05);
 	}
