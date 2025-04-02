@@ -1,0 +1,20 @@
+@use '../tokens' as *;
+
+@mixin bubble-message($position: 'left', $background, $color) {
+	position: relative;
+	padding: $spacing-md;
+	border-radius: $spacing-xs * 3;
+	@if $position == 'left' {
+		border-top-left-radius: $spacing-xs;
+	} @else if $position == 'right' {
+		border-top-right-radius: $spacing-xs;
+	}
+	background: $background;
+	color: $color;
+	font-weight: 400;
+	font-size: 14px;
+	line-height: 20px;
+	text-align: left;
+	overflow-wrap: break-word;
+	overflow: hidden;
+}

@@ -5,6 +5,10 @@
 	overflow-y: scroll;
 	padding: $spacing-lg $spacing-lg $spacing-xl;
 
+	> div:not(:first-child) {
+		margin-top: $spacing-sm;
+	}
+
 	// Note: Consider removing this styles in the future.
 	// Currently, these are not being used anywhere.
 	&-toggle {

@@ -137,20 +137,13 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
     }
   };
 
-  const bgColor = payload.error
-    ? "#FEFCE8"
-    : "#F1F3F5";
-  const fontColor = payload.error ? "#713F12" : decideTextColor(bgColor);
   return (
     <>
       <div className="docsbot-chat-bot-message-container">
         <BotAvatar />
         <div
           className="docsbot-chat-bot-message"
-          style={{
-            backgroundColor: bgColor,
-            color: fontColor,
-          }}
+		  {...(payload.error && {style: {backgroundColor: '#FEFCE8', color: '#713F12'}})}
           ref={messageBoxRef}
         >
           {(() => {

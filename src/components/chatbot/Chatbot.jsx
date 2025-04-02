@@ -395,6 +395,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 	root.style.setProperty('--docsbot-submit-button--bg', primaryColor);
 	root.style.setProperty('--docsbot-submit-button--color', decideTextColor(primaryColor));
+
+	root.style.setProperty('--docsbot-user--bg', primaryColor);
+	root.style.setProperty('--docsbot-user--color', decideTextColor(primaryColor));
   }, [color]);
 
   return (

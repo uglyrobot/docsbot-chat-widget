@@ -2,9 +2,9 @@
 
 .docsbot-chat-suggested-questions {
 	&-container {
-		width: 100%;
 		display: block;
 		margin-top: $spacing-sm;
+		padding-right: $spacing-xl;
 	}
 
 	&-title {
