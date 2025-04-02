@@ -28,32 +28,6 @@
 	}
 
 	&-button {
-		cursor: pointer;
-		appearance: none;
-		overflow: hidden;
-		margin: 0 4px 8px;
-		padding: 8px;
-		border: 1px solid var(--docsbot-color-main, $color-primary-200);
-		border-radius: 6px;
-		background: #ffffff;
-		box-shadow: color-mix(
-			in srgb,
-			var(--docsbot-color-main, $color-primary-200) 20%, white
-		) 0px 4px 12px -4px;
-		color: #4b4b4b;
-		font-weight: 400;
-		font-size: 14px;
-		line-height: 14px;
-		text-decoration: none;
-		word-break: break-word;
-		transition:
-			box-shadow 0.1s ease-in,
-			transform 0.1s ease-in;
-
-		&:hover {
-			box-shadow: color-mix(in srgb, var(--docsbot-color-main) 10%, white) 0px 4px
-				12px -4px;
-			transform: scale(1.05);
-		}
+		@include bubble-button;
 	}
 }

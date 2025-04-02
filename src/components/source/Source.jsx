@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faLink, faFile } from "@fortawesome/free-solid-svg-icons";
+import { faLink, faFile, faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { useConfig } from "../configContext/ConfigContext";
 
 export const Source = ({ source }) => {
@@ -7,7 +7,7 @@ export const Source = ({ source }) => {
   const ALWAYS_HIDE_SOURCE_TYPES = [
     'helpscout',
     'freshdesk',
-    'zendesk-tickets', 
+    'zendesk-tickets',
     'intercom-tickets',
     'jira-issues'
   ];
@@ -23,19 +23,20 @@ export const Source = ({ source }) => {
   const page = source.page ? ` - Page ${source.page}` : "";
 
   return (
-    <li>
-      <FontAwesomeIcon icon={icon} />
-      {source.url && !shouldHideUrl ? (
-        <a href={source.url} target="_blank" rel="noopener norefferer">
-          {source.title}
-          {page}
-        </a>
-      ) : (
-        <span>
-          {source.title || source.url}
-          {page}
-        </span>
-      )}
+    <li {...(!(source.url && !shouldHideUrl) && {className: 'docsbot-sources-unlinked'})}>
+		{source.url && !shouldHideUrl
+		? (
+			<a href={source.url} target="_blank" rel="noopener norefferer">
+				<span>{source.title}{page}</span>
+				<FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+			</a>
+		)
+		: (
+			<>
+				<FontAwesomeIcon icon={icon} />
+				<span>{source.title}{page}</span>
+			</>
+		)}
     </li>
   );
 };

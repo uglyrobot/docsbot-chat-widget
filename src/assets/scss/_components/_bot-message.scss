@@ -16,6 +16,14 @@
 		}
 	}
 
+	p {
+		margin-top: 0;
+
+		&:last-child {
+			margin-bottom: 0;
+		}
+	}
+
 	pre {
 		overflow: hidden;
 		position: relative;
@@ -54,9 +62,21 @@
 		}
 	}
 
+	ol, ul {
+		padding-left: $spacing-lg;
+	}
+
 	&-container {
 		display: flex;
 		justify-content: flex-start;
 		padding-right: $spacing-xl;
+
+		&:not(:first-child) {
+			margin-top: $spacing-sm;
+		}
+
+		&.has-avatar {
+			padding-left: #{$spacing-lg + $spacing-sm};
+		}
 	}
 }

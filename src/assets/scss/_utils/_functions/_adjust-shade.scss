@@ -1,3 +1,4 @@
+@use "sass:meta";
 @use "sass:color";
 @use "sass:string";
 
@@ -15,9 +16,9 @@
 @function shade($color, $percentage) {
 	$base-color: #000000;
 
-	@if string.index($color + '', 'var') {
-		@return string.unquote("color-mix(in srgb, #{$base-color} #{$percentage}, #{$color})");
-	} @else {
+	@if meta.type-of($color) == 'color' {
 		@return color.mix($base-color, $color, $percentage);
+	} @else if meta.type-of($color) == 'string' and string.index($color + '', 'var') {
+		@return string.unquote("color-mix(in srgb, #{$base-color} #{$percentage}, #{$color})");
 	}
 }

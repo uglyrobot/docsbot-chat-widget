@@ -1,0 +1,23 @@
+@use '../_utils/utils' as *;
+
+.docbot-chat-bot-message-rate {
+	display: flex;
+	margin-top: $spacing-sm;
+
+	button {
+		@include bubble-button($color-secondary-300);
+
+		&.selected {
+			background: $color-secondary-300;
+		}
+
+		&[disabled] {
+			pointer-events: none;
+			box-shadow: none;
+		}
+	}
+
+	&.has-avatar {
+		padding-left: #{$spacing-lg + $spacing-sm};
+	}
+}

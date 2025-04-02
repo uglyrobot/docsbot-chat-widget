@@ -1,30 +1,19 @@
 import { useState, useEffect, useRef } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Loader } from "../loader/Loader";
-import {
-  faChevronDown,
-  faChevronUp,
-  faBullhorn,
-} from "@fortawesome/free-solid-svg-icons";
-import {
-  faThumbsDown as regularThumbsDown,
-  faThumbsUp as regularThumbsUp,
-} from "@fortawesome/free-regular-svg-icons";
 import { useConfig } from "../configContext/ConfigContext";
 import { BotAvatar } from "../botAvatar/BotAvatar";
 import { Source } from "../source/Source";
-import { getLighterColor, decideTextColor } from "../../utils/colors";
 import { useChatbot } from "../chatbotContext/ChatbotContext";
 import { getHighlightJs } from '../../utils/highlightjs';
+import clsx from 'clsx';
 
 export const BotChatMessage = ({ payload, messageBoxRef }) => {
-  const [showSources, setShowSources] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false);
   const [rating, setRating] = useState(payload.rating || 0);
   const {
-    color,
     teamId,
     botId,
+	botIcon,
     signature,
     hideSources,
     labels,
@@ -157,86 +146,85 @@ export const BotChatMessage = ({ payload, messageBoxRef }) => {
                   ref={contentRef}
                   dangerouslySetInnerHTML={{ __html: payload.message }}
                 />
-                {payload.sources && (
-                  <>
-                    <div className="docsbot-chat-bot-message-meta">
-                      {!hideSources && payload.sources.length ? (
-                        <button onClick={() => setShowSources(!showSources)}>
-                          {labels.sources}
-                          {showSources ? (
-                            <FontAwesomeIcon icon={faChevronUp} />
-                          ) : (
-                            <FontAwesomeIcon icon={faChevronDown} />
-                          )}
-                        </button>
-                      ) : null}
-                      <div className="docbot-chat-bot-message-rate">
-                        <button
-                          onClick={(e) => {
-                            saveRating(1);
-                          }}
-                          style={{ opacity: rating === 1 ? 1 : null }}
-                          title={labels.helpful}
-                        >
-                          <FontAwesomeIcon
-                            icon={regularThumbsUp}
-                            size="lg"
-                            style={{ color: rating === 1 ? "#037103" : null }}
-                          />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            saveRating(-1);
-                          }}
-                          style={{ opacity: rating === -1 ? 1 : null }}
-                          title={labels.unhelpful}
-                        >
-                          <FontAwesomeIcon
-                            icon={regularThumbsDown}
-                            size="lg"
-                            style={{ color: rating === -1 ? "#cc0000" : null }}
-                          />
-                        </button>
-                      </div>
-                    </div>
-                    {showSources && payload.sources.length ? (
-                      <ul className="docsbot-sources">
-                        {payload.sources?.map((source, index) => {
-                          if (source?.type?.toLowerCase() !== "qa") {
-                            return <Source key={index} source={source} />;
-                          }
-                        })}
-                      </ul>
-                    ) : null}
-                  </>
-                )}
+
+				{!hideSources && payload.sources?.length > 0 && (
+					<div className="docsbot-sources-container">
+						<h3 className="docsbot-sources-title">{labels.sources}</h3>
+
+						<ul className="docsbot-sources">
+							{payload.sources?.map((source, index) => {
+								if (source?.type?.toLowerCase() !== "qa") {
+									return <Source key={index} source={source} />;
+								}
+							})}
+						</ul>
+					</div>
+				)}
               </>
             );
           })()}
         </div>
       </div>
+
+	  {!payload.loading && payload.sources && (
+			<>
+				<div className={clsx(
+					'docsbot-chat-bot-message-container',
+					botIcon && 'has-avatar'
+				)}>
+					<div className="docsbot-chat-bot-message">Was it helpful?</div>
+				</div>
+
+				<div className={clsx(
+					'docbot-chat-bot-message-rate',
+					botIcon && 'has-avatar'
+				)}>
+                    <button
+                        onClick={(e) => {
+                            saveRating(1);
+                        }}
+                        title={labels.helpful}
+						className={clsx(
+							'doscbot-rate-good',
+							rating === 1 && 'selected'
+						)}
+						{...(rating === 1 && {disabled: true})}
+                    >
+						<span aria-hidden="true">👍 Yes</span>
+                    </button>
+
+                    <button
+                        onClick={(e) => {
+                        	saveRating(-1);
+                        }}
+						title={labels.unhelpful}
+                        className={clsx(
+							'doscbot-rate-bad',
+							rating === -1 && 'selected'
+						)}
+						{...(rating === -1 && {disabled: true})}
+                    >
+                        <span aria-hidden="true">👎 No</span>
+                    </button>
+                </div>
+			</>
+		)}
+
       {payload.isLast && supportLink && (payload.sources || payload.error) && (
-        <div className="docsbot-chat-bot-message-support">
-          <a
-            href={supportLink}
-            target="_blank"
-            onClick={(e) => runSupportCallback(e, state.chatHistory || [])}
-            style={{
-              color: decideTextColor(getLighterColor(color || "#1292EE", 0.93)),
-            }}
-          >
-            {labels.getSupport}
-            <FontAwesomeIcon
-              icon={faBullhorn}
-              style={{
-                color: decideTextColor(
-                  getLighterColor(color || "#1292EE", 0.93)
-                ),
-                marginLeft: 5,
-              }}
-            />
-          </a>
-        </div>
+		<div className={clsx(
+			'docsbot-chat-bot-message-container',
+			botIcon && 'has-avatar'
+		)}>
+			<div className="docsbot-chat-bot-message-support">
+			<a
+				href={supportLink}
+				target="_blank"
+				onClick={(e) => runSupportCallback(e, state.chatHistory || [])}
+			>
+				📢 {labels.getSupport}
+			</a>
+			</div>
+		</div>
       )}
     </>
   );

@@ -1,0 +1,15 @@
+@use '../_utils/utils' as *;
+
+.docsbot-chat-bot-message-support {
+	width: 100%;
+	display: flex;
+	flex-flow: row wrap;
+
+	a {
+		@include bubble-button;
+	}
+
+	&.has-avatar {
+		padding-left: #{$spacing-lg + $spacing-sm};
+	}
+}
