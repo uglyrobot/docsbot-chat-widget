@@ -14,7 +14,7 @@ import { Options } from "../options/Options";
 import { getLighterColor, decideTextColor } from "../../utils/colors";
 import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXmark, faRefresh, faPaperPlane } from "@fortawesome/free-solid-svg-icons";
+import { faXmark, faRefresh, faPaperPlane, faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import { Emitter } from "../../utils/event-emitter";
 import DocsBotLogo from "../../assets/images/docsbot-logo.svg";
 
@@ -45,6 +45,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const inputRef = useRef();
   const mediaMatch = window.matchMedia("(min-width: 480px)");
   const messagesRefs = useRef({});
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
   useEffect(() => {
     Emitter.on("docsbot_add_user_message", async ({ message, send }) => {
@@ -406,6 +407,29 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	root.style.setProperty('--docsbot-logo--color', isWhite ? '#314351' : primaryColor);
   }, [color]);
 
+  useEffect(() => {
+	const chatContainer = ref.current;
+
+	const handleScroll = () => {
+		const atBottom =
+			chatContainer.scrollTop + chatContainer.offsetHeight >= chatContainer.scrollHeight - 1; // small buffer
+		setIsAtBottom(atBottom);
+	};
+
+	if (chatContainer) {
+		chatContainer.addEventListener('scroll', handleScroll);
+		// Initial check
+		handleScroll();
+	}
+
+	// Clean up
+	return () => {
+		if (chatContainer) {
+			chatContainer.removeEventListener('scroll', handleScroll);
+		}
+	};
+  }, []);
+
   return (
     <div
       className={clsx(
@@ -553,6 +577,20 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           </div>
 
 		  <div className="docsbot-chat-footer">
+			{!isAtBottom && (
+				<button
+					className={clsx(
+					'docsbot-scroll-button',
+					isAtBottom && 'hide'
+					)}
+					onClick={() => {
+						ref.current.scrollTop = ref.current.scrollHeight;
+					}}>
+					<span className="docsbot-screen-reader-only">Scroll to the bottom of conversation</span>
+					<FontAwesomeIcon icon={faChevronDown} />
+				</button>
+			)}
+
 			<div className="docsbot-chat-footer-inner-wrapper">
 				<div className="docsbot-chat-input-container">
 					<form className="docsbot-chat-input-form" onSubmit={handleSubmit}>

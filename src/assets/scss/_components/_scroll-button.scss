@@ -1,0 +1,21 @@
+@use '../_utils/utils' as *;
+
+.docsbot-scroll-button {
+	cursor: pointer;
+	width: $spacing-xl;
+	height: $spacing-xl;
+	position: absolute;
+	z-index: 100;
+	top: -#{$spacing-md * 4};
+	left: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 0;
+	border-radius: $spacing-xs * 3;
+	box-shadow:
+		0 0 8px 0 rgba(0,0,0,0.15),
+		0 3px 3px 0 rgba(0,0,0,0.05);
+	background: $color-neutral-300;
+	transform: translateX(-50%);
+}

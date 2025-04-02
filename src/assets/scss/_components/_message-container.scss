@@ -3,6 +3,7 @@
 .docsbot-chat-message-container {
 	height: 100%;
 	overflow-y: scroll;
+	position: relative;
 	padding: $spacing-lg $spacing-lg $spacing-xl;
 
 	> div:not(:first-child) {
