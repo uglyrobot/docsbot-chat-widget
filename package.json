@@ -20,6 +20,7 @@
     "style-loader": "^3.3.1",
     "terser-webpack-plugin": "^5.3.6",
     "webpack": "^5.75.0",
+    "webpack-bundle-analyzer": "^4.10.2",
     "webpack-cli": "^5.0.1",
     "webpack-dev-server": "^4.11.1"
   },
@@ -31,7 +32,8 @@
     "@microsoft/fetch-event-source": "^2.0.1",
     "clsx": "^1.2.1",
     "eventemitter3": "^5.0.0",
-    "random": "^4.1.0",
+    "highlight.js": "^11.10.0",
+    "highlightjs-copy": "^1.0.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-shadow-root": "^6.2.0",

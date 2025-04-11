@@ -17,6 +17,7 @@ import { getLighterColor, decideTextColor } from "../../utils/colors";
 import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
+import { Emitter } from "../../utils/event-emitter";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 
 export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
@@ -56,6 +57,20 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const messagesRefs = useRef({});
 
   useEffect(() => {
+    Emitter.on("docsbot_add_user_message", async ({ message, send }) => {
+      await dispatch({
+        type: "add_message",
+        payload: {
+          variant: "user",
+          message: message,
+          loading: false,
+          timestamp: Date.now(),
+        },
+      });
+
+      if (send) {
+        fetchAnswer(message);
+
     const fetchData = async () => {
       if (refreshChat) {
         dispatch({ type: "clear_messages" });
@@ -81,6 +96,69 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           setShowSupportMessage(false)
         }
       }
+
+      Emitter.emit("docsbot_add_user_message_complete");
+    });
+
+    Emitter.on("docsbot_add_bot_message", async ({ message }) => {
+      await dispatch({
+        type: "add_message",
+        payload: {
+          id: uuidv4(),
+          variant: "chatbot",
+          message: await parseMarkdown(message),
+          loading: false,
+          timestamp: Date.now(),
+        },
+      });
+
+      Emitter.emit("docsbot_add_bot_message_complete");
+    });
+
+    Emitter.on("docsbot_clear_history", async () => {
+      await refreshChatHistory();
+      Emitter.emit("docsbot_clear_history_complete");
+    });
+
+    // Clean up event listeners
+    return () => {
+      Emitter.off("docsbot_add_user_message");
+      Emitter.off("docsbot_add_bot_message");
+      Emitter.off("docsbot_clear_history");
+    };
+  }, []);
+
+  const refreshChatHistory = async () => {
+    dispatch({ type: "clear_messages" });
+    localStorage.removeItem(`${botId}_docsbot_chat_history`);
+    localStorage.removeItem(`${botId}_chatHistory`);
+
+    const parsedMessage = await parseMarkdown(labels.firstMessage);
+
+    dispatch({
+      type: "add_message",
+      payload: {
+        id: uuidv4(),
+        variant: "chatbot",
+        message: parsedMessage,
+        timestamp: Date.now(),
+      },
+    });
+  };
+
+  useEffect(() => {
+    const addFistMessage = async () => {
+      const parsedMessage = await parseMarkdown(labels.firstMessage);
+
+      dispatch({
+        type: "add_message",
+        payload: {
+          id: uuidv4(),
+          variant: "chatbot",
+          message: parsedMessage,
+          timestamp: Date.now(),
+        },
+      });
     };
 
     fetchData();
@@ -92,6 +170,29 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       const savedConversation = JSON.parse(
         localStorage.getItem(`${botId}_docsbot_chat_history`)
       );
+
+      const chatHistory = JSON.parse(
+        localStorage.getItem(`${botId}_chatHistory`)
+      );
+      const currentTime = Date.now();
+      let lastMsgTimeStamp = 0;
+      if (savedConversation) {
+        const convo = Object.values(savedConversation);
+        // dont bother recreating the conversation if there is only one message (it's the first message)
+        if (convo?.length > 1) {
+          convo?.map((message, index) => {
+            if (message?.timestamp > lastMsgTimeStamp) {
+              lastMsgTimeStamp = message?.timestamp;
+            }
+          });
+          if (currentTime - lastMsgTimeStamp > 12 * 60 * 60 * 1000) {
+            refreshChatHistory();
+          } else {
+            dispatch({
+              type: "load_conversation",
+              payload: { savedConversation: savedConversation },
+            });
+
       const savedConversationArray = Object.values(savedConversation)
       const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
       if (userDetails) {
@@ -126,16 +227,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           if (message?.timestamp > lastMsgTimeStamp) {
             lastMsgTimeStamp = message?.timestamp
           }
-        });
-        if (currentTime - lastMsgTimeStamp > 12 * 60 * 60 * 1000) {
-          setRefreshChat(true);
         } else {
-          dispatch({
-            type: "load_conversation",
-            payload: { savedConversation: savedConversation },
-          });
+          await addFistMessage();
         }
+      } else if (labels.firstMessage) {
+        console.log(labels.firstMessage);
+        await addFistMessage();
       }
+
 
       if (savedConversation == null && labels.firstMessage) {
         const parsedMessage = await parseMarkdown(labels.firstMessage);
@@ -151,6 +250,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           },
         });
       }
+
       if (chatHistory) {
         dispatch({
           type: "save_history",
@@ -159,6 +259,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           },
         });
       }
+
       //only focus on input if not mobile
       if (mediaMatch.matches && !isEmbeddedBox) {
         inputRef.current.focus();
@@ -202,11 +303,30 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         timestamp: Date.now(),
       },
     });
+
+    // Change this to use native JS event
+    document.dispatchEvent(new CustomEvent("docsbot_fetching_answer", { detail: { question } }));
+
+    // Add null check before accessing scrollHeight
+    if (ref.current) {
+      ref.current.scrollTop = ref.current.scrollHeight;
+    }
+
     let currentHeight = 0;
     ref.current.scrollTop = ref.current.scrollHeight;
     let answer = "";
     let metadata = identify;
     metadata.referrer = window.location.href;
+
+    const history = state.chatHistory || [];
+    const req = {
+      question,
+      markdown: true,
+      history,
+      metadata,
+      context_items: contextItems || 5,
+    };
+
     const sse_req = {
       question,
       format: 'markdown',
@@ -215,9 +335,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       conversationId: id,
       context_items: contextItems || 5,
     }
+
     if (signature) {
       sse_req.auth = signature;
     }
+
     await fetchEventSource(`https://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat-agent`, {
       headers: {
         'Content-Type': 'application/json',
@@ -304,9 +426,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             payload: {
               chatHistory: newChatHistory,
             },
-          });
-          ref.current.scrollTop = ref.current.scrollHeight;
-          currentHeight = 0
+
+          currentHeight = 0;
+          if (ref.current) {
+            ref.current.scrollTop = ref.current.scrollHeight;
+          }
+          ws.close();
+          // Change this to use native JS event
+          document.dispatchEvent(new CustomEvent("docsbot_fetching_answer_complete", { detail: finalData }));
         } else if (data.event === "error") {
           dispatch({
             type: "update_message",
@@ -338,11 +465,19 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   }
 
   async function parseMarkdown(text) {
+    // Remove incomplete markdown images, but keep the alt text
+    let filteredText = text.replace(/!\[([^\]]*?)(?:\](?:\([^)]*)?)?$/gm, "$1");
+    // Remove incomplete markdown links, but keep the link text
+    filteredText = filteredText.replace(
+      /\[([^\]]*?)(?:\](?:\([^)"]*(?:"[^"]*")?[^)]*)?)?$/gm,
+      "$1"
+    );
+
     return await remark()
       .use(html)
       .use(remarkGfm)
       .use(externalLinks, { target: "_blank" })
-      .process(text)
+      .process(filteredText)
       .then((html) => {
         return html.toString();
       });
@@ -374,10 +509,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       style={
         mediaMatch.matches
           ? {
-            left: alignment === "left" ? horizontalMargin || 20 : "auto",
-            right: alignment === "right" ? horizontalMargin || 20 : "auto",
-            bottom: verticalMargin ? verticalMargin + 80 : 100,
-          }
+              left: alignment === "left" ? horizontalMargin || 20 : "auto",
+              right: alignment === "right" ? horizontalMargin || 20 : "auto",
+              bottom: verticalMargin ? verticalMargin + 80 : 100,
+            }
           : {}
       }
       part="wrapper"
@@ -403,22 +538,24 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           <div
             className="docsbot-chat-header"
             style={
-              (isEmbeddedBox && hideHeader)
+              isEmbeddedBox && hideHeader
                 ? {
-                  backgroundColor: "transparent",
-                  color: "rgb(103, 58, 183)",
-                }
+                    backgroundColor: "transparent",
+                    color: "rgb(103, 58, 183)",
+                  }
                 : {
-                  backgroundColor: color,
-                  color: decideTextColor(color || "#1292EE"),
-                }
+                    backgroundColor: color,
+                    color: decideTextColor(color || "#1292EE"),
+                  }
             }
           >
             <div style={{ width: "100%" }}>
               <button
-                onClick={() => setRefreshChat(!refreshChat)}
+                onClick={() => refreshChatHistory()}
                 title={labels?.resetChat}
-                style={(isEmbeddedBox && hideHeader) ? { top: "2px" } : { top: "5px" }}
+                style={
+                  isEmbeddedBox && hideHeader ? { top: "2px" } : { top: "5px" }
+                }
               >
                 <FontAwesomeIcon icon={faRefresh} />
               </button>
@@ -428,7 +565,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                   textAlign: headerAlignment === "left" ? "left" : "center",
                 }}
               >
-                {(isEmbeddedBox && hideHeader) ? null : logo ? (
+                {isEmbeddedBox && hideHeader ? null : logo ? (
                   <div
                     className="docsbot-chat-header-branded"
                     style={{
@@ -642,7 +779,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 type="submit"
                 className="docsbot-chat-btn-send"
                 style={{
-                  fill: ['#ffffff', '#FFFFFF', 'rgb(255, 255, 255)'].includes(color) ? 'inherit' : color,
+                  fill: ["#ffffff", "#FFFFFF", "rgb(255, 255, 255)"].includes(
+                    color
+                  )
+                    ? "inherit"
+                    : color,
                 }}
                 disabled={chatInput.length < 2 || showSupportMessage}
               >

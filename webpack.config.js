@@ -4,11 +4,13 @@ const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 
 module.exports = (_, { mode }) => {
+  const isProduction = mode === 'production';
+
   return {
     entry: "./src/components/embeddableWidget/EmbeddableWidget.jsx",
     output: {
       path: path.resolve(__dirname, "build"),
-      publicPath: "/",
+      publicPath: isProduction ? "https://widget.docsbot.ai/" : "/",
       filename: "chat.js",
       library: "DocsBotAI",
       libraryExport: "default",
@@ -27,7 +29,6 @@ module.exports = (_, { mode }) => {
       port: 3000,
     },
     module: {
-      // exclude node_modules
       rules: [
         {
           test: /\.(js|jsx)$/,

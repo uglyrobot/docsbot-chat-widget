@@ -33,9 +33,16 @@
 }
 
 .floating-button:hover {
-  opacity: 0.9;
+  transform: scale(1.05);
+  transition: transform 0.2s ease-in-out;
 }
 
 .floating-button:active {
   box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 2px;
+}
+
+@media print {
+  .floating-button {
+    display: none !important;
+  }
 }

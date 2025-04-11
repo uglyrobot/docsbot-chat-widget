@@ -11,35 +11,23 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Use Node.js 18.x
+    - name: Use Node.js 20.x
       uses: actions/setup-node@v3
       with:
-        node-version: 18.x
+        node-version: 20.x
 
     - name: Build
       run: |
         npm install
         npm run build
-        
-    - name: Deploy to BunnyCDN
-      uses: ayeressian/bunnycdn-storage-deploy@v2.1.0
-      with:
-        source: "build"
-        storageZoneName: "${{ secrets.STORAGE_NAME }}"
-        storagePassword: "${{ secrets.STORAGE_PASSWORD }}"
-        accessKey: "${{ secrets.STORAGE_KEY }}"
-        pullZoneId: "${{ secrets.ZONE_ID }}"
-        upload: "true"
-        remove: "true"
-        purgePullZone: "true"
     
-    - name: Release
-      uses: ncipollo/release-action@v1
+    - name: Deploy to R2 Storage
+      uses: ryand56/r2-upload-action@latest # Can be any release
       with:
-        token: ${{ secrets.TOKEN }}
-        tag: latest
-        name: Latest Release
-        allowUpdates: true
-        makeLatest: true
-        artifacts: build/chat.js
-        artifactContentType: text/javascript
+        r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
+        r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+        r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        r2-bucket: ${{ secrets.R2_BUCKET }}
+        source-dir: build
+        destination-dir: ./
+        keep-file-fresh: true
