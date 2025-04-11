@@ -655,7 +655,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						<a
 						href="https://docsbot.ai?utm_source=chatbot&utm_medium=chatbot&utm_campaign=chatbot"
 						target="_blank"
-						rel="noreferrer noopener"
+						rel="noopener"
 						aria-label={labels.poweredBy + " DocsBot"}
 						>
 						<span aria-hidden="true">{labels.poweredBy}</span>
