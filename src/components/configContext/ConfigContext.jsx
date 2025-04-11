@@ -38,6 +38,18 @@ export function ConfigProvider(props = {}) {
   const { id, supportCallback, identify, options, signature, children } = props;
   const [config, setConfig] = useState(null);
 
+  const updateIdentify = (data) => {
+    setConfig((prevConfig) => {
+      return {
+        ...prevConfig,
+        identify: {
+          ...prevConfig.identify,
+          ...data
+        }
+      }
+    })
+  }
+
   useEffect(() => {
     if (id && !config) {
       const apiUrl = `https://docsbot.ai/api/widget/${id}`;
@@ -78,6 +90,6 @@ export function ConfigProvider(props = {}) {
   if (!config) return null;
 
   return (
-    <ConfigContext.Provider value={config}>{children}</ConfigContext.Provider>
+    <ConfigContext.Provider value={{ ...config, updateIdentify: updateIdentify }}>{children}</ConfigContext.Provider>
   );
 }

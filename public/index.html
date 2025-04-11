@@ -35,12 +35,16 @@
       window.DocsBotAI=window.DocsBotAI||{},DocsBotAI.init=function(e){return new Promise((t,r)=>{var n=document.createElement("script");n.type="text/javascript",n.async=!0,n.src="/chat.js";let o=document.getElementsByTagName("script")[0];o.parentNode.insertBefore(n,o),n.addEventListener("load",()=>{let n;Promise.all([new Promise((t,r)=>{window.DocsBotAI.mount(Object.assign({}, e)).then(t).catch(r)}),(n=function e(t){return new Promise(e=>{if(document.querySelector(t))return e(document.querySelector(t));let r=new MutationObserver(n=>{if(document.querySelector(t))return e(document.querySelector(t)),r.disconnect()});r.observe(document.body,{childList:!0,subtree:!0})})})("#docsbotai-root"),]).then(()=>t()).catch(r)}),n.addEventListener("error",e=>{r(e.message)})})};
     </script>
     <script>
+      const leadCollectionOptions = {
+             immediately: "immediately",
+             ask: "ask",
+             escalation: "escalation" 
+          }
       DocsBotAI.init({
         id: "ZrbLG98bbxZ9EFqiPvyl/N2mWls8WYE6VxTmObjr3",
-        supportCallback: function (event, history) {
-          event.preventDefault();
-          console.log(history, DocsBotAI);
-          DocsBotAI.unmount();
+        supportCallback: function (event, history, metadata) {
+          //event.preventDefault();
+          console.log(history, DocsBotAI, metadata);
         },
         identify: {
           name: 'Steve Aoki',
@@ -62,6 +66,21 @@
           //headerAlignment: "left",
           //logo: "https://docsbot.ai/branding/docsbot-logo-lg.png",
           //hideHeader: true,
+          collectLead: leadCollectionOptions.ask,
+          leadFields:[
+            {
+              name: "Name",
+              type: "text",
+              key: "name",
+              required: false
+            },
+            {
+              name: "Email",
+              type: "email",
+              key: "email",
+              required: true
+            },
+          ],
           customCSS: `.docsbot-chat-credits a { color: red; }`,
           //inputLimit: 2000,
           //noURLSourceTypes: ['crawler', 'confluence', 'salesforce', 'gitbook', 'guru', 'google_docs', 'dropbox', 'onedrive', 'box', 'sharepoint', 'zotero', 'zendesk', 'intercom', 'freshdesk', 'servicenow', 'slack', 'gong', 'gmail', 'outlook', 'github', 's3', 'gcs'],
@@ -95,9 +114,9 @@
         reinitBtn.addEventListener("click", () => {
           DocsBotAI.mount({
             id: "ZrbLG98bbxZ9EFqiPvyl/N2mWls8WYE6VxTmObjr3",
-            supportCallback: function (event, history) {
+            supportCallback: function (event, history, metadata) {
               event.preventDefault();
-              console.log(history, DocsBotAI);
+              console.log(history, DocsBotAI, metadata);
             },
           });
         });

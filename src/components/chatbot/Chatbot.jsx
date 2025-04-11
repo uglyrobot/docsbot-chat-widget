@@ -1,6 +1,6 @@
 /** @format */
 
-import { useEffect, useRef, useState, createRef } from "react";
+import { createRef, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { remark } from "remark";
 import html from "remark-html";
@@ -18,9 +18,15 @@ import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faRefresh } from "@fortawesome/free-solid-svg-icons";
 import { Emitter } from "../../utils/event-emitter";
+import { fetchEventSource } from "@microsoft/fetch-event-source";
 
 export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   const [chatInput, setChatInput] = useState("");
+  const [refreshChat, setRefreshChat] = useState(false);
+  const [showSupportMessage, setShowSupportMessage] = useState(false)
+  const [showFeedbackButton, setShowFeedbackButton] = useState(false)
+  const [showHumanButton, setShowHumanButton] = useState(false)
+  const [timeoutLoader, setTimeoutLoader] = useState(false)
   const { dispatch, state } = useChatbot();
   const {
     color,
@@ -39,11 +45,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     logo,
     headerAlignment,
     hideHeader,
+    updateIdentify,
+    collectLead,
     inputLimit,
     contextItems,
   } = useConfig();
   const ref = useRef();
   const inputRef = useRef();
+  const suppportTabRef = useRef()
   const mediaMatch = window.matchMedia("(min-width: 480px)");
   const messagesRefs = useRef({});
 
@@ -61,6 +70,31 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
       if (send) {
         fetchAnswer(message);
+
+    const fetchData = async () => {
+      if (refreshChat) {
+        dispatch({ type: "clear_messages" });
+        localStorage.removeItem("docsbot_chat_history");
+        localStorage.removeItem("chatHistory");
+        setRefreshChat((prevState) => !prevState);
+        const parsedMessage = await parseMarkdown(labels.firstMessage);
+        dispatch({
+          type: "add_message",
+          payload: {
+            id: uuidv4(),
+            variant: "chatbot",
+            message: parsedMessage,
+            timestamp: Date.now(),
+            isFirstMessage: true
+          },
+        });
+        const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+        if (!userDetails && collectLead === "immediately") {
+          setShowSupportMessage(true)
+        }
+        else {
+          setShowSupportMessage(false)
+        }
       }
 
       Emitter.emit("docsbot_add_user_message_complete");
@@ -127,10 +161,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       });
     };
 
+    fetchData();
+  }, [refreshChat]);
+
+  useEffect(() => {
+    let supportbtnTimout = null
     const fetchData = async () => {
       const savedConversation = JSON.parse(
         localStorage.getItem(`${botId}_docsbot_chat_history`)
       );
+
       const chatHistory = JSON.parse(
         localStorage.getItem(`${botId}_chatHistory`)
       );
@@ -152,6 +192,40 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               type: "load_conversation",
               payload: { savedConversation: savedConversation },
             });
+
+      const savedConversationArray = Object.values(savedConversation)
+      const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+      if (userDetails) {
+        updateIdentify(userDetails)
+      }
+      if (!userDetails) {
+        if (collectLead === "immediately" && savedConversationArray?.length === 1) {
+          setTimeoutLoader(true)
+          supportbtnTimout = setTimeout(() => {
+            setShowSupportMessage(true)
+            setTimeoutLoader(false)
+          }, 1000)
+        }
+        else {
+          setShowSupportMessage(false)
+        }
+      }
+      const chatHistory = JSON.parse(localStorage.getItem('chatHistory'))
+      const currentTime = Date.now()
+      let lastMsgTimeStamp = 0
+      if (savedConversation) {
+        if (savedConversationArray) {
+          const lastConversation = savedConversationArray[savedConversationArray.length - 1]
+          if (lastConversation?.isFeedback && !lastConversation?.isFirstMessage && !lastConversation?.isHumanSupport) {
+            setShowFeedbackButton(true)
+          }
+          if (!lastConversation?.isFeedback && !lastConversation?.isFirstMessage && lastConversation?.isHumanSupport) {
+            setShowHumanButton(true)
+          }
+        }
+        savedConversationArray?.map(message => {
+          if (message?.timestamp > lastMsgTimeStamp) {
+            lastMsgTimeStamp = message?.timestamp
           }
         } else {
           await addFistMessage();
@@ -159,6 +233,22 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       } else if (labels.firstMessage) {
         console.log(labels.firstMessage);
         await addFistMessage();
+      }
+
+
+      if (savedConversation == null && labels.firstMessage) {
+        const parsedMessage = await parseMarkdown(labels.firstMessage);
+
+        dispatch({
+          type: "add_message",
+          payload: {
+            id: uuidv4(),
+            variant: "chatbot",
+            message: parsedMessage,
+            timestamp: Date.now(),
+            isFirstMessage: true
+          },
+        });
       }
 
       if (chatHistory) {
@@ -177,6 +267,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     };
 
     fetchData();
+    return () => {
+      clearTimeout(supportbtnTimout)
+    }
   }, [labels.firstMessage]);
 
   useEffect(() => {
@@ -187,7 +280,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
   }, [state.messages]);
 
   useEffect(() => {
-    if (state.chatHistory) {
+    if (state.chatHistory?.length) {
       localStorage.setItem(
         `${botId}_chatHistory`,
         JSON.stringify(state?.chatHistory)
@@ -195,9 +288,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     }
   }, [state.chatHistory]);
 
-  function fetchAnswer(question) {
+  async function fetchAnswer(question) {
+    setShowSupportMessage(false)
+    setShowFeedbackButton(false)
+    setShowHumanButton(false)
     const id = uuidv4();
-
     dispatch({
       type: "add_message",
       payload: {
@@ -218,9 +313,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
     }
 
     let currentHeight = 0;
+    ref.current.scrollTop = ref.current.scrollHeight;
     let answer = "";
     let metadata = identify;
     metadata.referrer = window.location.href;
+
     const history = state.chatHistory || [];
     const req = {
       question,
@@ -229,66 +326,66 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       metadata,
       context_items: contextItems || 5,
     };
-    if (signature) {
-      req.auth = signature;
+
+    const sse_req = {
+      question,
+      format: 'markdown',
+      full_source: false,
+      metadata,
+      conversationId: id,
+      context_items: contextItems || 5,
     }
 
-    const apiUrl = `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
-    //const apiUrl = `ws://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat`;
-    const ws = new WebSocket(apiUrl);
+    if (signature) {
+      sse_req.auth = signature;
+    }
 
-    // Send message to server when connection is established
-    ws.onopen = function (event) {
-      ws.send(JSON.stringify(req));
-    };
-
-    ws.onerror = function (event) {
-      console.error("DOCSBOT: WebSocket error", event);
-      dispatch({
-        type: "update_message",
-        payload: {
-          id,
-          variant: "chatbot",
-          message: "There was a connection error. Please try again.",
-          loading: false,
-          error: true,
-        },
-      });
-    };
-
-    ws.onclose = function (event) {
-      if (!event.wasClean) {
-        dispatch({
-          type: "update_message",
-          payload: {
-            id,
-            message: "There was a network error. Please try again.",
-            loading: false,
-            error: true,
-          },
-        });
-      }
-    };
-
-    // Receive message from server word by word. Display the words as they are received.
-    ws.onmessage = async function (event) {
-      const currentReplyHeight =
-        messagesRefs?.current[id]?.current?.clientHeight;
-      const data = JSON.parse(event.data);
-      if (data.sender === "bot") {
-        if (currentReplyHeight - currentHeight >= 80) {
-          currentHeight = currentReplyHeight;
-          if (ref.current) {
-            ref.current.scrollTop = ref.current.scrollHeight;
-          }
+    await fetchEventSource(`https://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat-agent`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': 'application/json',
+      },
+      method: 'POST',
+      body: JSON.stringify(sse_req),
+      async onmessage(event) {
+        const currentReplyHeight = messagesRefs?.current[id]?.current?.clientHeight
+        const data = event;
+        console.log(data.event)
+        if (data.event === "support_escalation") {
+          setShowHumanButton(true)
+          const finalData = JSON.parse(data.data);
+          console.log(finalData)
+          dispatch({
+            type: "add_message",
+            payload: {
+              id,
+              variant: "chatbot",
+              message: await parseMarkdown(finalData.answer),
+              sources: null,
+              loading: false,
+              isHumanSupport: true
+            },
+          });
         }
-        if (data.type === "start") {
-          if (ref.current) {
-            ref.current.scrollTop = ref.current.scrollHeight;
-          }
-        } else if (data.type === "stream") {
+        else if (data.event === "is_resolved_question") {
+          setShowFeedbackButton(true)
+          const finalData = JSON.parse(data.data);
+          console.log(finalData)
+          dispatch({
+            type: "add_message",
+            payload: {
+              variant: "chatbot",
+              message: await parseMarkdown(finalData.answer),
+              sources: null,
+              loading: false,
+              isHumanSupport: false,
+              isFeedback: finalData.option,
+            },
+          });
+        }
+        else if (data.event === "stream") {
           //append to answer
-          answer += data.message;
+          answer += data.data;
           dispatch({
             type: "update_message",
             payload: {
@@ -299,9 +396,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               loading: false,
             },
           });
-        } else if (data.type === "info") {
-        } else if (data.type === "end") {
-          const finalData = JSON.parse(data.message);
+          if (currentReplyHeight - currentHeight >= 20) {
+            currentHeight = currentReplyHeight
+            ref.current.scrollTop = ref.current.scrollHeight;
+          }
+        } else if (data.event === "lookup_answer") {
+          const finalData = JSON.parse(data.data);
+          console.log(finalData)
           dispatch({
             type: "update_message",
             payload: {
@@ -310,16 +411,22 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               message: await parseMarkdown(finalData.answer),
               sources: finalData.sources,
               answerId: finalData.id,
-              rating: finalData.rating,
               loading: false,
             },
           });
+          let newChatHistory = []
+          if (state.chatHistory?.length) {
+            newChatHistory = [...state?.chatHistory, finalData.history[0]]
+          }
+          else {
+            newChatHistory = finalData.history
+          }
           dispatch({
             type: "save_history",
             payload: {
-              chatHistory: finalData.history,
+              chatHistory: newChatHistory,
             },
-          });
+
           currentHeight = 0;
           if (ref.current) {
             ref.current.scrollTop = ref.current.scrollHeight;
@@ -327,21 +434,34 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
           ws.close();
           // Change this to use native JS event
           document.dispatchEvent(new CustomEvent("docsbot_fetching_answer_complete", { detail: finalData }));
-        } else if (data.type === "error") {
+        } else if (data.event === "error") {
           dispatch({
             type: "update_message",
             payload: {
               id,
               variant: "chatbot",
-              message: data.message,
+              message: data.data,
               loading: false,
               error: true,
             },
           });
-          ws.close();
         }
-      }
-    };
+      },
+      onerror() {
+        dispatch({
+          type: "update_message",
+          payload: {
+            id,
+            variant: "chatbot",
+            message: "There was a connection error. Please try again.",
+            loading: false,
+            error: true,
+          },
+        });
+      },
+    }
+    )
+
   }
 
   async function parseMarkdown(text) {
@@ -365,7 +485,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
   async function handleSubmit(event) {
     event.preventDefault();
-
     dispatch({
       type: "add_message",
       payload: {
@@ -479,23 +598,34 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               const message = state.messages[key];
               message.isLast = key === Object.keys(state.messages).pop();
               messagesRefs.current[message.id] = createRef();
+              messagesRefs.current[message.id] = createRef();
               return message.variant === "chatbot" ? (
+
                 <div key={key}>
                   <BotChatMessage
                     payload={message}
+                    showSupportMessage={showSupportMessage}
+                    setShowSupportMessage={setShowSupportMessage}
+                    fetchAnswer={fetchAnswer}
+                    showFeedbackButton={showFeedbackButton}
+                    showHumanButton={showHumanButton}
+                    suppportTabRef={suppportTabRef}
+                    timeoutLoader={timeoutLoader}
+                    setTimeoutLoader={setTimeoutLoader}
                     messageBoxRef={messagesRefs.current[message.id]}
                   />
                   {message?.options ? (
                     <Options key={key + "opts"} options={message.options} />
                   ) : null}
                 </div>
-              ) : (
-                <UserChatMessage
-                  key={key}
-                  loading={message.loading}
-                  message={message.message}
-                />
-              );
+              )
+                : (
+                  <UserChatMessage
+                    key={key}
+                    loading={message.loading}
+                    message={message.message}
+                  />
+                );
             })}
             {Object.keys(state.messages).length <= 1 &&
               Object.keys(questions).length >= 1 && (
@@ -515,18 +645,29 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                       <button
                         key={"question" + index}
                         type="button"
+                        disabled={showSupportMessage}
                         onClick={() => {
-                          dispatch({
-                            type: "add_message",
-                            payload: {
-                              variant: "user",
-                              message: question,
-                              loading: false,
-                              timestamp: Date.now(),
-                            },
-                          });
-                          fetchAnswer(question);
-                          setChatInput("");
+                          const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+                          if (collectLead === "ask" && !userDetails) {
+                            setTimeoutLoader(true)
+                            setTimeout(() => {
+                              setShowSupportMessage(true)
+                              setTimeoutLoader(false)
+                            }, 1000)
+                          }
+                          else {
+                            dispatch({
+                              type: "add_message",
+                              payload: {
+                                variant: "user",
+                                message: question,
+                                loading: false,
+                                timestamp: Date.now(),
+                              },
+                            });
+                            fetchAnswer(question);
+                            setChatInput("");
+                          }
                         }}
                         style={{
                           backgroundColor: getLighterColor(
@@ -574,7 +715,26 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             )}
           </div>
           <div className="docsbot-chat-input-container">
-            <form className="docsbot-chat-input-form" onSubmit={handleSubmit}>
+            <form className="docsbot-chat-input-form" onSubmit={(e) => {
+              if (showSupportMessage) {
+                e.preventDefault()
+                suppportTabRef.current?.scrollIntoView({ behavior: 'smooth' })
+              }
+              else {
+                const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+                if (collectLead === "ask" && !userDetails) {
+                  e.preventDefault()
+                  setTimeoutLoader(true)
+                  setTimeout(() => {
+                    setShowSupportMessage(true)
+                    setTimeoutLoader(false)
+                  }, 1000)
+                }
+                else {
+                  handleSubmit(e)
+                }
+              }
+            }}>
               <textarea
                 className="docsbot-chat-input"
                 placeholder={labels.inputPlaceholder}
@@ -591,8 +751,24 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                     return;
                   }
                   if (e.key === "Enter" && !e.shiftKey) {
-                    handleSubmit(e);
-                    e.target.style.height = "auto";
+                    if (showSupportMessage) {
+                      e.preventDefault()
+                      suppportTabRef.current?.scrollIntoView({ behavior: 'smooth' })
+                    }
+                    else {
+                      const userDetails = JSON.parse(localStorage.getItem('userContactDetails'))
+                      if (collectLead === "ask" && !userDetails) {
+                        setTimeoutLoader(true)
+                        setTimeout(() => {
+                          setShowSupportMessage(true)
+                          setTimeoutLoader(false)
+                        }, 1000)
+                      }
+                      else {
+                        handleSubmit(e);
+                        e.target.style.height = "auto";
+                      }
+                    }
                   }
                 }}
                 ref={inputRef}
@@ -609,7 +785,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                     ? "inherit"
                     : color,
                 }}
-                disabled={chatInput.length < 2}
+                disabled={chatInput.length < 2 || showSupportMessage}
               >
                 <SendIcon />
               </button>
