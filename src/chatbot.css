@@ -91,21 +91,6 @@
   overflow: hidden;
 }
 
-.docsbot-chat-bot-message pre {
-  position: relative;
-  border: 0.5px #d8d8d8 solid;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.docsbot-chat-bot-message pre code {
-  padding: 0.75em;
-  font-size: 12px;
-  line-height: 1.25;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-
 .docsbot-chat-suggested-questions-container {
   display: flex;
   flex-wrap: wrap;
@@ -157,11 +142,6 @@
 }
 
 .docbot-chat-bot-message-rate button:hover {
-  opacity: 1;
-  color: #037103;
-}
-
-.docbot-chat-bot-message-rate button:last-child:hover {
   opacity: 1;
   color: #cc0000;
 }
@@ -440,6 +420,10 @@
   margin: 0 auto;
 }
 
+.docsbot-chat-bot-message pre {
+  overflow: scroll;
+}
+
 .docsbot-chat-bot-message p {
   margin-top: 0;
 }
@@ -589,10 +573,4 @@
 .floating-button img {
   width: 25px;
   height: auto;
-}
-
-@media print {
-  .docsbot-wrapper {
-    display: none !important;
-  }
 }

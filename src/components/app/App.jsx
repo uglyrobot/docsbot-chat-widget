@@ -8,8 +8,6 @@ import appStyles from "!raw-loader!./App.css";
 import floatingButtonStyles from "!raw-loader!../floatingButton/FloatingButton.css";
 import optionsStyles from "!raw-loader!../options/Options.css";
 import linkListStyles from "!raw-loader!../linkList/LinkList.css";
-import highlightJSStyles from "!raw-loader!highlight.js/styles/github.min.css";
-import hljsCopyStyles from "!raw-loader!highlightjs-copy/dist/highlightjs-copy.min.css";
 import { Chatbot } from "../chatbot/Chatbot";
 import { ChatbotProvider } from "../chatbotContext/ChatbotContext";
 import { Emitter } from "../../utils/event-emitter";
@@ -22,47 +20,22 @@ function App() {
   const { customCSS } = useConfig();
 
   useEffect(() => {
-    const handleOpen = async () => {
-      await setIsOpen(true);
-      Emitter.emit("docsbot_open_complete");
-    };
+    Emitter.on("OPEN_CHATBOT", () => {
+      setIsOpen(true);
+    });
 
-    const handleClose = async () => {
-      await setIsOpen(false);
-      Emitter.emit("docsbot_close_complete");
-    };
+    Emitter.on("CLOSE_CHATBOT", () => {
+      setIsOpen(false);
+    });
 
-    const handleToggle = async ({ isChatbotOpen }) => {
-      await setIsOpen(isChatbotOpen);
-      Emitter.emit("docsbot_toggle_complete");
-    };
-
-    Emitter.on("docsbot_open", handleOpen);
-    Emitter.on("docsbot_close", handleClose);
-    Emitter.on("docsbot_toggle", handleToggle);
-
-    return () => {
-      Emitter.off("docsbot_open", handleOpen);
-      Emitter.off("docsbot_close", handleClose);
-      Emitter.off("docsbot_toggle", handleToggle);
-    };
-  }, []);
-
-  useEffect(() => {
-    // Emit mount complete event when the component is fully mounted
-    Emitter.emit("docsbot_mount_complete");
-
-    return () => {
-      // Emit unmount complete event when the component is about to unmount
-      Emitter.emit("docsbot_unmount_complete");
-    };
+    Emitter.on("TOGGLE_CHATBOT", ({ isChatbotOpen }) => {
+      setIsOpen(isChatbotOpen);
+    });
   }, []);
 
   return (
     <ReactShadowRoot>
       <style type="text/css">{fontAwesomeStyles}</style>
-      <style type="text/css">{highlightJSStyles}</style>
-      <style type="text/css">{hljsCopyStyles}</style>
       <style type="text/css">{reactChatbotStyles}</style>
       <style type="text/css">{appStyles}</style>
       <style type="text/css">{floatingButtonStyles}</style>

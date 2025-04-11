@@ -93,9 +93,3 @@
     border-radius: 5px;
   }
 }
-
-@media print {
-  .docsbot-wrapper {
-    display: block !important;
-  }
-}
