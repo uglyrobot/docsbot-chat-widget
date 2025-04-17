@@ -50,6 +50,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		hideHeader,
 		inputLimit,
 		contextItems,
+		footerText,
 		isAgent, // If new agent api is enabled
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
@@ -1002,24 +1003,32 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								</form>
 							</div>
 
-							{branding && (
+							{(branding || footerText) && (
 								<div className="docsbot-chat-credits">
-									<a
-										href="https://docsbot.ai?utm_source=chatbot&utm_medium=chatbot&utm_campaign=chatbot"
-										target="_blank"
-										rel="noopener"
-										aria-label={
-											labels.poweredBy + ' DocsBot'
-										}
-									>
-										<span aria-hidden="true">
-											{labels.poweredBy}
-										</span>
-										<DocsBotLogo
-											aria-hidden="true"
-											className="docsbot-logo"
-										/>
-									</a>
+									{footerText && (
+										<div
+											className="docsbot-chat-credits--policy"
+											dangerouslySetInnerHTML={{ __html: footerText }} />
+									)}
+
+									{branding && (
+										<a
+											href="https://docsbot.ai?utm_source=chatbot&utm_medium=chatbot&utm_campaign=chatbot"
+											target="_blank"
+											rel="noopener"
+											aria-label={
+												labels.poweredBy + ' DocsBot'
+											}
+										>
+											<span aria-hidden="true">
+												{labels.poweredBy}
+											</span>
+											<DocsBotLogo
+												aria-hidden="true"
+												className="docsbot-logo"
+											/>
+										</a>
+									)}
 								</div>
 							)}
 						</div>
