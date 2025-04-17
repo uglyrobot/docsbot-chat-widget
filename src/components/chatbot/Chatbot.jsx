@@ -1005,7 +1005,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 							{(branding || footerText) && (
 								<div className="docsbot-chat-credits">
-									{footerText && (
+									{(footerText && Object.keys(state.messages).length <= 1) && (
 										<div
 											className="docsbot-chat-credits--policy"
 											dangerouslySetInnerHTML={{ __html: footerText }} />
