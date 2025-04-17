@@ -38,6 +38,19 @@ export function ConfigProvider(props = {}) {
   const { id, supportCallback, identify, options, signature, children } = props;
   const [config, setConfig] = useState(null);
 
+  // update the identify object metadata in the config context. Called from lead collection tool response
+  const updateIdentity = (data) => {
+    setConfig((prevConfig) => {
+      return {
+        ...prevConfig,
+        identify: {
+          ...prevConfig.identify,
+          ...data
+        }
+      }
+    })
+  }
+
   useEffect(() => {
     if (id && !config) {
       const apiUrl = `https://docsbot.ai/api/widget/${id}`;
@@ -78,6 +91,6 @@ export function ConfigProvider(props = {}) {
   if (!config) return null;
 
   return (
-    <ConfigContext.Provider value={config}>{children}</ConfigContext.Provider>
+    <ConfigContext.Provider value={{ ...config, updateIdentity }}>{children}</ConfigContext.Provider>
   );
 }

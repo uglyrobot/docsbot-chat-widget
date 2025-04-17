@@ -9,7 +9,8 @@ export const Source = ({ source }) => {
     'freshdesk',
     'zendesk-tickets',
     'intercom-tickets',
-    'jira-issues'
+    'jira-issues',
+    'qa'
   ];
 
   // Check if source type matches hideSourceTypes or is in ALWAYS_HIDE_SOURCE_TYPES
