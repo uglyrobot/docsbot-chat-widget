@@ -137,7 +137,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	};
 
 	useEffect(() => {
-		const addFistMessage = async () => {
+		const addFirstMessage = async () => {
 			const parsedMessage = await parseMarkdown(labels.firstMessage);
 
 			dispatch({
@@ -152,12 +152,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		};
 
 		const fetchData = async () => {
-			const savedConversation = JSON.parse(
-				localStorage.getItem(`DocsBot_${botId}_chatHistory`)
-			);
-			const chatHistory = JSON.parse(
-				localStorage.getItem(`DocsBot_${botId}_localChatHistory`)
-			);
+			const savedConversationRaw = localStorage.getItem(`DocsBot_${botId}_chatHistory`);
+			const savedConversation = savedConversationRaw ? JSON.parse(savedConversationRaw) : null;
+
+			const chatHistoryRaw = localStorage.getItem(`DocsBot_${botId}_localChatHistory`);
+			const chatHistory = chatHistoryRaw ? JSON.parse(chatHistoryRaw) : null;
+
 			const currentTime = Date.now();
 			let lastMsgTimeStamp = 0;
 			if (savedConversation) {
@@ -178,11 +178,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						});
 					}
 				} else {
-					await addFistMessage();
+					await addFirstMessage();
 				}
 			} else if (labels.firstMessage) {
 				console.log(labels.firstMessage);
-				await addFistMessage();
+				await addFirstMessage();
 			}
 
 			if (chatHistory) {
@@ -269,11 +269,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
       if (signature) {
         sse_req.auth = signature;
       }
-      
+
       // Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
       let retryCount = 0;
       const MAX_RETRIES = 2;
-      
+
       try {
         console.log(sse_req)
         const apiUrl = localDev ? `http://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat-agent` : `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat-agent`;
@@ -291,12 +291,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             } else if (response.status >= 400 && response.status < 500) {
               // All client-side errors (including 429) are not retriable
               let errorMessage = `HTTP error ${response.status}`;
-              
+
               // Try to extract error message from response body
               try {
                 const responseBody = await response.text();
                 const parsedBody = JSON.parse(responseBody);
-                
+
                 if (parsedBody && parsedBody.error) {
                   errorMessage = parsedBody.error;
                 }
@@ -304,7 +304,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 // If we can't parse the body, just use the default error message
                 console.error("DOCSBOT: Failed to parse error response:", e);
               }
-              
+
               throw new FatalError(errorMessage);
             } else {
               // Server errors or network issues should be retried
@@ -315,7 +315,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             const currentReplyHeight = messagesRefs?.current[id]?.current?.clientHeight
             const data = event;
             console.log(data.event)
-            
+
             // If server sends an error event, handle accordingly
             if (data.event === "error") {
               dispatch({
@@ -331,7 +331,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
               });
               throw new FatalError(data.data);
             }
-            
+
             if (data.event === "stream") {
               //append to answer
               answer += data.data;
@@ -350,41 +350,49 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 ref.current.scrollTop = ref.current.scrollHeight;
               }
             } else {
-              const finalData = JSON.parse(data.data);
-              console.log(finalData)
-              dispatch({
-                type: data.event === "is_resolved_question" ? "add_message" : "update_message",
-                payload: {
-                  id,
-                  variant: "chatbot",
-                  type: data.event,
-                  message: await parseMarkdown(finalData.answer),
-                  sources: finalData.sources || null,
-                  answerId: answerId || finalData.id || null, // use saved prev id for feedback button
-                  conversationId: getConversationId(),
-                  loading: false,
-                  responses: finalData.options || null
-                },
-              });
-              answerId = finalData.id || null; // save the answer id for the feedback button
-              let newChatHistory = []
-              if (state.chatHistory?.length) {
-                newChatHistory = [...state?.chatHistory, finalData.history[0]]
-              }
-              else {
-                newChatHistory = finalData.history
-              }
-              dispatch({
-                type: "save_history",
-                payload: {
-                  chatHistory: newChatHistory,
-                },
-              });
-              ref.current.scrollTop = ref.current.scrollHeight;
-              currentHeight = 0
-              
-              // Change this to use native JS event
-              document.dispatchEvent(new CustomEvent("docsbot_fetching_answer_complete", { detail: finalData }));
+				if (data.data) {
+					const finalData = JSON.parse(data.data);
+					console.log(finalData)
+
+					dispatch({
+						type: data.event === "is_resolved_question" ? "add_message" : "update_message",
+						payload: {
+						id,
+						variant: "chatbot",
+						type: data.event,
+						message: await parseMarkdown(finalData.answer),
+						sources: finalData.sources || null,
+						answerId: answerId || finalData.id || null, // use saved prev id for feedback button
+						conversationId: getConversationId(),
+						loading: false,
+						responses: finalData.options || null
+						},
+					});
+
+					answerId = finalData.id || null; // save the answer id for the feedback button
+					let newChatHistory = []
+
+					if (state.chatHistory?.length) {
+						newChatHistory = [...state?.chatHistory, finalData.history[0]]
+					} else {
+						newChatHistory = finalData.history
+					}
+
+					dispatch({
+						type: "save_history",
+						payload: {
+						chatHistory: newChatHistory,
+						},
+					});
+
+					ref.current.scrollTop = ref.current.scrollHeight;
+					currentHeight = 0
+
+					// Change this to use native JS event
+					document.dispatchEvent(new CustomEvent("docsbot_fetching_answer_complete", { detail: finalData }));
+				} else {
+					console.warn("DOCSBOT: Received empty data on message event", event);
+				}
             }
           },
           onerror(err) {
@@ -405,7 +413,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             } else if (err instanceof RetriableError) {
               // Handle retriable errors
               retryCount++;
-              
+
               if (retryCount > MAX_RETRIES) {
                 // Too many retries, give up
                 dispatch({
@@ -420,9 +428,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 });
                 throw new FatalError('Max retries exceeded');
               }
-              
+
               console.log(`DOCSBOT: Retrying connection... Attempt ${retryCount}/${MAX_RETRIES}`);
-              
+
               // Return delay with exponential backoff (in ms)
               return Math.min(1000 * 2 ** retryCount, 10000);
             }
