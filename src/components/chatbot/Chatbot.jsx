@@ -50,7 +50,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		hideHeader,
 		inputLimit,
 		contextItems,
-		footerText,
 		isAgent, // If new agent api is enabled
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
@@ -715,6 +714,19 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		};
 	}, []);
 
+	const [parsedFooterText, setParsedFooterText] = useState(null);
+
+	useEffect(() => {
+		async function parseFooter() {
+		  if (labels.footerMessage) {
+			const parsed = await parseMarkdown(labels.footerMessage);
+			setParsedFooterText(parsed);
+		  }
+		}
+
+		parseFooter();
+	  }, [labels.footerMessage]);
+
 	return (
 		<div
 			className={clsx(
@@ -1003,12 +1015,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								</form>
 							</div>
 
-							{(branding || footerText) && (
+							{(branding || parsedFooterText?.trim()) && (
 								<div className="docsbot-chat-credits">
-									{(footerText && Object.keys(state.messages).length <= 1) && (
+									{(parsedFooterText?.trim() && Object.keys(state.messages).length <= 1) && (
 										<div
 											className="docsbot-chat-credits--policy"
-											dangerouslySetInnerHTML={{ __html: footerText }} />
+											dangerouslySetInnerHTML={{ __html: parsedFooterText }} />
 									)}
 
 									{branding && (
