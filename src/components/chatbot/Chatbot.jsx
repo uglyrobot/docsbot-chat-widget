@@ -312,10 +312,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
             }
           },
           async onmessage(event) {
-            const currentReplyHeight = messagesRefs?.current[id]?.current?.clientHeight;
+            const currentReplyHeight = messagesRefs?.current[id]?.current?.clientHeight
             const data = event;
-
-            console.log(data.event);
+            console.log(data.event)
 
             // If server sends an error event, handle accordingly
             if (data.event === "error") {
@@ -330,14 +329,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                   error: true,
                 },
               });
-
               throw new FatalError(data.data);
             }
 
             if (data.event === "stream") {
               //append to answer
               answer += data.data;
-
               dispatch({
                 type: "update_message",
                 payload: {
@@ -348,69 +345,55 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                   loading: false,
                 },
               });
-
               if (currentReplyHeight - currentHeight >= 60) {
                 currentHeight = currentReplyHeight
                 ref.current.scrollTop = ref.current.scrollHeight;
               }
-			} else if (data.data) {
-				const finalData = JSON.parse(data.data);
-				console.log(finalData);
+            } else {
+				if (data.data) {
+					const finalData = JSON.parse(data.data);
+					console.log(finalData)
 
-				if (data.event === "is_resolved_question") {
 					dispatch({
-						type: "add_message",
+						type: data.event === "is_resolved_question" ? "add_message" : "update_message",
 						payload: {
-						id: uuidv4(),
+						id,
 						variant: "chatbot",
 						type: data.event,
 						message: await parseMarkdown(finalData.answer),
 						sources: finalData.sources || null,
-						answerId: finalData.id || null,
+						answerId: answerId || finalData.id || null, // use saved prev id for feedback button
 						conversationId: getConversationId(),
 						loading: false,
-						responses: finalData.options || null,
+						responses: finalData.options || null
 						},
 					});
-				} else {
+
+					answerId = finalData.id || null; // save the answer id for the feedback button
+					let newChatHistory = []
+
+					if (state.chatHistory?.length) {
+						newChatHistory = [...state?.chatHistory, finalData.history[0]]
+					} else {
+						newChatHistory = finalData.history
+					}
+
 					dispatch({
-						type: "update_message",
+						type: "save_history",
 						payload: {
-						  id,
-						  variant: "chatbot",
-						  message: await parseMarkdown(finalData.answer),
-						  sources: finalData.sources || null,
-						  answerId: answerId || finalData.id || null,
-						  conversationId: getConversationId(),
-						  loading: false,
+						chatHistory: newChatHistory,
 						},
 					});
-				}
 
-				answerId = finalData.id || null; // save the answer id for the feedback button
-				let newChatHistory = [];
+					ref.current.scrollTop = ref.current.scrollHeight;
+					currentHeight = 0
 
-				if (state.chatHistory?.length) {
-					newChatHistory = [...state?.chatHistory, finalData.history[0]];
+					// Change this to use native JS event
+					document.dispatchEvent(new CustomEvent("docsbot_fetching_answer_complete", { detail: finalData }));
 				} else {
-					newChatHistory = finalData.history;
+					console.warn("DOCSBOT: Received empty data on message event", event);
 				}
-
-				dispatch({
-					type: "save_history",
-					payload: {
-					  chatHistory: newChatHistory,
-					},
-				});
-
-				ref.current.scrollTop = ref.current.scrollHeight;
-				currentHeight = 0;
-
-				// Change this to use native JS event
-				document.dispatchEvent(new CustomEvent("docsbot_fetching_answer_complete", { detail: finalData }));
-			} else {
-				console.warn("DOCSBOT: Received empty data on message event", event);
-			}
+            }
           },
           onerror(err) {
             if (err instanceof FatalError) {
