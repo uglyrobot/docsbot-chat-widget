@@ -345,10 +345,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                   loading: false,
                 },
               });
-              if (currentReplyHeight - currentHeight >= 60) {
-                currentHeight = currentReplyHeight
-                ref.current.scrollTop = ref.current.scrollHeight;
-              }
             } else {
 				if (data.data) {
 					const finalData = JSON.parse(data.data);
@@ -385,15 +381,17 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						},
 					});
 
-					ref.current.scrollTop = ref.current.scrollHeight;
-					currentHeight = 0
-
 					// Change this to use native JS event
 					document.dispatchEvent(new CustomEvent("docsbot_fetching_answer_complete", { detail: finalData }));
 				} else {
 					console.warn("DOCSBOT: Received empty data on message event", event);
 				}
             }
+
+			if (currentReplyHeight - currentHeight >= 60) {
+                currentHeight = currentReplyHeight
+                ref.current.scrollTop = ref.current.scrollHeight;
+              }
           },
           onerror(err) {
             if (err instanceof FatalError) {
