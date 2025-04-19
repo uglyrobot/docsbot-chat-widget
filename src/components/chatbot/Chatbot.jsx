@@ -360,7 +360,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						id,
 						variant: "chatbot",
 						type: data.event,
-						message: await parseMarkdown(finalData.answer),
+						message: data.event === "is_resolved_question" ? await parseMarkdown(answer) : await parseMarkdown(finalData.answer),
 						sources: finalData.sources || null,
 						answerId: answerId || finalData.id || null, // use saved prev id for feedback button
 						conversationId: getConversationId(),
