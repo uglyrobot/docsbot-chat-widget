@@ -44,7 +44,7 @@
 	transition: padding $transition-duration-short linear;
 
 	&[data-shadow="true"] {
-		border-bottom: 1px solid var(--docsbot-header--color, $color-neutral-100);
+		border-bottom: 1px solid $color-secondary-200;
 	}
 
 	// Element: .docsbot-chat-header-inner
@@ -164,7 +164,7 @@
 		background-color: var(--docsbot-header--bg, $color-primary-200);
 
 		&[data-shadow="true"] {
-			border-bottom: 1px solid var(--docsbot-header--color, $color-neutral-100);
+			border-bottom: 1px solid $color-secondary-200;
 		}
 	}
 }
