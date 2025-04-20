@@ -43,6 +43,10 @@
 	text-align: center;
 	transition: padding $transition-duration-short linear;
 
+	&[data-shadow="true"] {
+		border-bottom: 1px solid var(--docsbot-header--color, $color-neutral-100);
+	}
+
 	// Element: .docsbot-chat-header-inner
 	&-inner {
 		position: relative;
@@ -157,7 +161,11 @@
 		left: 50%;
 		border-radius: 50%;
 		transform: translateX(-3000px);
-		background-color: var(--docsbot-color-main, $color-primary-200);
+		background-color: var(--docsbot-header--bg, $color-primary-200);
+
+		&[data-shadow="true"] {
+			border-bottom: 1px solid var(--docsbot-header--color, $color-neutral-100);
+		}
 	}
 }
 

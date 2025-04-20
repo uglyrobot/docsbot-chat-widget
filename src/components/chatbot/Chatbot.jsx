@@ -708,6 +708,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		parseFooter();
 	  }, [labels.footerMessage]);
 
+	  const isWhite = ['#ffffff', '#FFFFFF', 'rgb(255, 255, 255)'].includes(color);
+	  const isFloatingSmall = !isEmbeddedBox && hideHeader;
+
 	return (
 		<div
 			className={clsx(
@@ -759,6 +762,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								Object.keys(questions).length >= 1
 							) && 'is-small'
 						)}
+						data-shadow={isWhite && (isFloatingSmall || !isEmbeddedBox || isEmbeddedBox)}
 					>
 						<div
 							className="docsbot-chat-header-inner"
@@ -808,7 +812,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							</div>
 							{!isEmbeddedBox && (
 								<div className="docsbot-chat-header-background-wrapper">
-									<div className="docsbot-chat-header-background" />
+									<div
+										className="docsbot-chat-header-background"
+										data-shadow="true" />
 								</div>
 							)}
 						</div>
