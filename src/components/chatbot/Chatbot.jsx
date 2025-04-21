@@ -874,6 +874,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										messageBoxRef={
 											messagesRefs.current[message.id]
 										}
+										chatContainerRef={ref}
 										fetchAnswer={fetchAnswer}
 									/>
 									{message?.options ? (

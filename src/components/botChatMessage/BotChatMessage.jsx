@@ -4,10 +4,10 @@ import { useConfig } from '../configContext/ConfigContext';
 import { BotAvatar } from '../botAvatar/BotAvatar';
 import { Source } from '../source/Source';
 import { useChatbot } from '../chatbotContext/ChatbotContext';
-import { getHighlightJs } from '../../utils/highlightjs';
+import { scrollToBottom, getHighlightJs } from '../../utils/utils';
 import clsx from 'clsx';
 
-export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer }) => {
+export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer, chatContainerRef }) => {
 	const [rating, setRating] = useState(payload.rating || 0);
 	const {
 		teamId,
@@ -175,6 +175,18 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer }) => {
 			setRating(0);
 		}
 	};
+
+	// Scroll to bottom when showing the fallback support link (old support link for non-agent bots)
+	useEffect(() => {
+		if (
+			payload.isLast &&
+			supportLink &&
+			!isAgent &&
+			(payload.sources || payload.error)
+		) {
+			scrollToBottom(chatContainerRef);
+		}
+	}, [payload.isLast, supportLink, isAgent, payload.sources, payload.error, chatContainerRef]);
 
 	return (
 		<>
