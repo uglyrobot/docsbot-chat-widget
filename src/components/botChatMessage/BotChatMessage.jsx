@@ -34,6 +34,7 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer }) => {
 	}
 	const contentRef = useRef(null);
 	const [hljs, setHljs] = useState(null);
+	const [isSupportLoading, setIsSupportLoading] = useState(false);
 
 	useEffect(() => {
 		getHighlightJs().then(setHljs);
@@ -49,6 +50,8 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer }) => {
 	}, [payload.message, hljs]);
 
 	const runSupportCallback = (e, history) => {
+		setIsSupportLoading(true);
+
 		// Store the original URL we want to navigate to
 		const targetUrl = e && e.target && e.target.href;
 
@@ -77,6 +80,8 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer }) => {
 			.finally(() => {
 				// Create a flag to track if we should open the link
 				let shouldOpenLink = true;
+
+				setIsSupportLoading(false);
 
 				// run callback if provided
 				if (supportCallback && typeof supportCallback === 'function') {
@@ -225,7 +230,7 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer }) => {
 				</div>
 			</div>
 
-      {/* 
+      {/*
         This section handles feedback for agent-based responses.
         It shows a custom thumbs up/down button for the user to rate the answer.
         The saveRating function makes an API call to store the user's feedback.
@@ -269,14 +274,14 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer }) => {
 				</>
 			)}
 
-      {/* 
+      {/*
         This section handles feedback for agent-based responses.
-        
+
         Each feedback section includes:
         1. An optional message explaining the feedback purpose
         2. Thumbs up/down buttons for user rating
         3. Visual indication of selected rating
-        
+
         The saveRating function makes an API call to store the user's feedback.
       */}
       {useFeedback && !isAgent && payload.isLast && !payload.loading && payload.sources && (
@@ -329,7 +334,7 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer }) => {
 				</>
 			)}
 
-      {/* 
+      {/*
         This section handles feedback for agent-based responses.
         It shows a custom thumbs up/down button for the user to rate the answer.
         The saveRating function makes an API call to store the user's feedback.
@@ -343,6 +348,7 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer }) => {
 						)}
 					>
 						<button
+							disabled={isSupportLoading}
 							onClick={(e) =>
                 runSupportCallback(
                   e,
@@ -350,7 +356,10 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer }) => {
                 )
               }
 						>
-							<span aria-hidden="true">{payload.responses?.yes || labels.getSupport}</span>
+							{isSupportLoading
+								? <Loader />
+								: <span aria-hidden="true">{payload.responses?.yes || labels.getSupport}</span>
+							}
 						</button>
 
 						<button
@@ -375,7 +384,7 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer }) => {
 				</>
 			)}
 
-      {/* 
+      {/*
         Show old support link if it's not an agent and there are sources or an error
         This is the old support link that was used in the previous version of the chatbot
       */}
