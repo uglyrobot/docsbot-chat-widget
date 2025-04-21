@@ -86,16 +86,40 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer }) => {
 						shouldOpenLink = false;
 					};
 
-					// Check the number of parameters the callback expects
+					// Check the number of parameters the callback expects, don't run slow api call if it's not needed
 					const paramCount = supportCallback.length;
-					if (paramCount === 2) {
+					if (paramCount <= 2) {
 						supportCallback(syntheticEvent, history);
 					} else {
-						supportCallback(
-							syntheticEvent,
-							history,
-							identify.metadata || {}
-						);
+            if (payload.conversationId) {
+              // make api call to get summary
+              fetch(`${apiBase}/teams/${teamId}/bots/${botId}/conversations/${payload.conversationId}/ticket`)
+                .then(response => response.json())
+                .then(ticket => {
+                  supportCallback(
+                    syntheticEvent,
+                    history,
+                    identify.metadata || {},
+                    ticket,
+                  );
+                })
+                .catch(error => {
+                  console.error('DOCSBOT: Error generating AI summary ticket:', error);
+                  supportCallback(
+                    syntheticEvent,
+                    history,
+                    identify.metadata || {},
+                    null,
+                  );
+                });
+              } else {
+                supportCallback(
+                  syntheticEvent,
+                  history,
+                  identify.metadata || {},
+                  null,
+                );
+              }
 					}
 				}
 
