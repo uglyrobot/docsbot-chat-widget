@@ -1016,7 +1016,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										].includes(color) && {
 											style: { fill: 'inherit' }
 										})}
-										disabled={chatInput.length < 2 || isFetching}
+										disabled={chatInput.trim().length < 2 || isFetching}
 									>
 										<FontAwesomeIcon
 											icon={faPaperPlane}
