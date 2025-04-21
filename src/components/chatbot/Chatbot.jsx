@@ -59,6 +59,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const inputRef = useRef();
 	const mediaMatch = window.matchMedia('(min-width: 480px)');
 	const messagesRefs = useRef({});
+	const [isFetching, setIsFetching] = useState(false);
 	const [isAtBottom, setIsAtBottom] = useState(true);
 
 	useEffect(() => {
@@ -221,7 +222,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 	async function fetchAnswer(question) {
 		const id = uuidv4();
-    let answerId = null;
+
+		setIsFetching(true);
+
+    	let answerId = null;
 
 		dispatch({
 			type: 'add_message',
@@ -383,6 +387,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 					// Change this to use native JS event
 					document.dispatchEvent(new CustomEvent("docsbot_fetching_answer_complete", { detail: finalData }));
+					setIsFetching(false);
 				} else {
 					console.warn("DOCSBOT: Received empty data on message event", event);
 				}
@@ -407,6 +412,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                   error: true,
                 },
               });
+			  setIsFetching(false);
               throw err; // Re-throw to stop the operation
             } else if (err instanceof RetriableError) {
               // Handle retriable errors
@@ -424,6 +430,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                     error: true,
                   },
                 });
+				setIsFetching(false);
                 throw new FatalError('Max retries exceeded');
               }
 
@@ -993,7 +1000,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										].includes(color) && {
 											style: { fill: 'inherit' }
 										})}
-										disabled={chatInput.length < 2}
+										disabled={chatInput.length < 2 || isFetching}
 									>
 										<FontAwesomeIcon
 											icon={faPaperPlane}
