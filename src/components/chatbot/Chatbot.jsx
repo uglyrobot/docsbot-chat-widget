@@ -878,6 +878,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 														});
 														fetchAnswer(question);
 														setChatInput('');
+														inputRef.current.focus();
 													}}
 													className="docsbot-chat-suggested-questions-button"
 												>
