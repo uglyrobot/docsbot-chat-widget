@@ -76,6 +76,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				}
 			});
 
+			scrollToBottom();
+
 			if (send) {
 				fetchAnswer(message);
 			}
@@ -147,6 +149,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				timestamp: Date.now()
 			}
 		});
+	};
+
+	const scrollToBottom = () => {
+		if (ref.current) {
+			ref.current.scrollTop = ref.current.scrollHeight;
+		}
 	};
 
 	useEffect(() => {
@@ -259,10 +267,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 		// Scroll to the bottom of the chat container
 		// This ensures the latest message is visible to the user
-		if (ref.current) {
-			// Set scrollTop to scrollHeight to scroll all the way to the bottom
-			ref.current.scrollTop = ref.current.scrollHeight;
-		}
+		scrollToBottom();
 
 		let currentHeight = 0;
 		let answer = '';
@@ -348,6 +353,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                   error: true,
                 },
               });
+			  scrollToBottom();
               throw new FatalError(data.data);
             }
 
@@ -364,6 +370,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                   loading: false,
                 },
               });
+
+			  scrollToBottom();
             } else {
 				if (data.data) {
 					const finalData = JSON.parse(data.data);
@@ -384,6 +392,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						},
 					});
 
+					scrollToBottom();
+
 					answerId = finalData.id || null; // save the answer id for the feedback button
 					let newChatHistory = []
 
@@ -399,6 +409,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						chatHistory: newChatHistory,
 						},
 					});
+
+					scrollToBottom();
+
+					// Scroll after full bot message and options if escalation
+					if (data.event === 'support_escalation') {
+						setTimeout(() => scrollToBottom(), 0);
+					}
 
 					// Change this to use native JS event
 					document.dispatchEvent(new CustomEvent("docsbot_fetching_answer_complete", { detail: finalData }));
@@ -428,6 +445,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                 },
               });
 			  setIsFetching(false);
+			  scrollToBottom();
               throw err; // Re-throw to stop the operation
             } else if (err instanceof RetriableError) {
               // Handle retriable errors
@@ -446,6 +464,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                   },
                 });
 				setIsFetching(false);
+				scrollToBottom();
                 throw new FatalError('Max retries exceeded');
               }
 
@@ -531,14 +550,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				if (data.sender === 'bot') {
 					if (currentReplyHeight - currentHeight >= 80) {
 						currentHeight = currentReplyHeight;
-						if (ref.current) {
-							ref.current.scrollTop = ref.current.scrollHeight;
-						}
+						scrollToBottom();
 					}
 					if (data.type === 'start') {
-						if (ref.current) {
-							ref.current.scrollTop = ref.current.scrollHeight;
-						}
+						scrollToBottom();
 					} else if (data.type === 'stream') {
 						//append to answer
 						answer += data.message;
@@ -574,9 +589,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							}
 						});
 						currentHeight = 0;
-						if (ref.current) {
-							ref.current.scrollTop = ref.current.scrollHeight;
-						}
+						scrollToBottom();
 						ws.close();
 						// Change this to use native JS event
 						document.dispatchEvent(
@@ -640,6 +653,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 		fetchAnswer(chatInput);
 		setChatInput('');
+
+		// Wait for DOM update, then scroll
+		setTimeout(() => {
+			scrollToBottom();
+		}, 0);
+
 		inputRef.current.focus();
 	}
 
@@ -733,6 +752,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 	  const isWhite = ['#ffffff', '#FFFFFF', 'rgb(255, 255, 255)'].includes(color);
 	  const isFloatingSmall = !isEmbeddedBox && hideHeader;
+
+	useEffect(() => {
+		if (isOpen) {
+			setTimeout(() => scrollToBottom(), 0);
+		}
+	}, [isOpen]);
 
 	return (
 		<div
@@ -921,10 +946,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									'docsbot-scroll-button',
 									isAtBottom && 'hide'
 								)}
-								onClick={() => {
-									ref.current.scrollTop =
-										ref.current.scrollHeight;
-								}}
+								onClick={() => scrollToBottom()}
 							>
 								<span className="docsbot-screen-reader-only">
 									Scroll to the bottom of conversation
