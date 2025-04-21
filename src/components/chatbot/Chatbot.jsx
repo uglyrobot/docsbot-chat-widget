@@ -61,6 +61,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const messagesRefs = useRef({});
 	const [isFetching, setIsFetching] = useState(false);
 	const [isAtBottom, setIsAtBottom] = useState(true);
+	const [streamController, setStreamController] = useState(null);
+
 
 	useEffect(() => {
 		Emitter.on('docsbot_add_user_message', async ({ message, send }) => {
@@ -119,6 +121,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	};
 
 	const refreshChatHistory = async () => {
+		if (streamController) {
+			if (streamController.abort) {
+				streamController.abort(); // If it's a fetch AbortController
+			} else if (streamController.close) {
+				streamController.close(); // If it's a WebSocket
+			}
+
+			setStreamController(null); // Clear the controller after aborting/closing
+		}
+
 		dispatch({ type: 'clear_messages' });
 		localStorage.removeItem(`DocsBot_${botId}_chatHistory`);
 		localStorage.removeItem(`DocsBot_${botId}_localChatHistory`);
@@ -222,10 +234,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 	async function fetchAnswer(question) {
 		const id = uuidv4();
-
 		setIsFetching(true);
-
     	let answerId = null;
+
+		const abortController = new AbortController();
+		setStreamController(abortController);
+
 
 		dispatch({
 			type: 'add_message',
@@ -282,6 +296,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         console.log(sse_req)
         const apiUrl = localDev ? `http://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat-agent` : `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat-agent`;
         await fetchEventSource(apiUrl, {
+		  signal: abortController.signal,
           headers: {
             'Content-Type': 'application/json',
             'accept': 'application/json',
@@ -471,6 +486,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 			const apiUrl = localDev ? `ws://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat` : `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
 			const ws = new WebSocket(apiUrl);
+			setStreamController(ws);
 
 			// Send message to server when connection is established
 			ws.onopen = function (event) {
