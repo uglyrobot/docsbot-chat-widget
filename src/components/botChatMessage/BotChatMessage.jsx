@@ -7,8 +7,15 @@ import { useChatbot } from '../chatbotContext/ChatbotContext';
 import { scrollToBottom, getHighlightJs } from '../../utils/utils';
 import clsx from 'clsx';
 
-export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer, chatContainerRef }) => {
+export const BotChatMessage = ({
+	payload,
+	messageBoxRef,
+	fetchAnswer,
+	chatContainerRef,
+	inputRef
+}) => {
 	const [rating, setRating] = useState(payload.rating || 0);
+	const [ratingSubmitted, setRatingSubmitted] = useState(false);
 	const {
 		teamId,
 		botId,
@@ -22,7 +29,7 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer, chatContai
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
 		identify,
-    localDev
+		localDev
 	} = useConfig();
 	const { dispatch, state } = useChatbot();
 	const headers = {
@@ -49,7 +56,7 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer, chatContai
 		}
 	}, [payload.message, hljs]);
 
-	const runSupportCallback = (e, history) => {
+	const runSupportCallback = async (e, history) => {
 		setIsSupportLoading(true);
 
 		// Store the original URL we want to navigate to
@@ -61,87 +68,78 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer, chatContai
 		}
 
 		// post to api endpoint
-    const apiBase = localDev ? `http://127.0.0.1:9000` : `https://api.docsbot.ai`;
-		const apiUrl = isAgent
-			? `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${payload.conversationId}/escalate`
-			: `${apiBase}/teams/${teamId}/bots/${botId}/support/${payload.answerId}`;
+		const apiBase = localDev
+			? `http://127.0.0.1:9000`
+			: `https://api.docsbot.ai`;
+		const apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/support/${payload.answerId}`;
 
-		// Return a promise to ensure the request completes
-		return fetch(apiUrl, {
-			method: 'PUT',
-			body: JSON.stringify({
-				answer_id: payload.answerId || null // only used for agent
-			}),
-			headers
-		})
-			.catch((err) => {
-				console.warn(`DOCSBOT: Error recording support click: ${err}`);
-			})
-			.finally(() => {
-				// Create a flag to track if we should open the link
-				let shouldOpenLink = true;
+		try {
+			// Make the API call
+			await fetch(apiUrl, {
+				method: 'PUT',
+				headers
+			});
 
-				setIsSupportLoading(false);
+			// Create a flag to track if we should open the link
+			let shouldOpenLink = true;
 
-				// run callback if provided
-				if (supportCallback && typeof supportCallback === 'function') {
-					// Create a synthetic event with its own preventDefault method
-					const syntheticEvent = e ? { ...e } : {};
-					syntheticEvent.preventDefault = () => {
-						shouldOpenLink = false;
-					};
+			// run callback if provided
+			if (supportCallback && typeof supportCallback === 'function') {
+				// Create a synthetic event with its own preventDefault method
+				const syntheticEvent = e ? { ...e } : {};
+				syntheticEvent.preventDefault = () => {
+					shouldOpenLink = false;
+				};
 
-					// Check the number of parameters the callback expects, don't run slow api call if it's not needed
-					const paramCount = supportCallback.length;
-					if (paramCount <= 2) {
-						supportCallback(syntheticEvent, history);
+				// Check the number of parameters the callback expects, don't run slow api call if it's not needed
+				const paramCount = supportCallback.length;
+				if (paramCount <= 2) {
+					await supportCallback(syntheticEvent, history);
+				} else {
+					if (payload.conversationId) {
+						// make api call to get summary
+						const ticketResponse = await fetch(
+							`${apiBase}/teams/${teamId}/bots/${botId}/conversations/${payload.conversationId}/ticket`
+						);
+						const ticket = await ticketResponse.json();
+						await supportCallback(
+							syntheticEvent,
+							history,
+							identify.metadata || {},
+							ticket
+						);
 					} else {
-            if (payload.conversationId) {
-              // make api call to get summary
-              fetch(`${apiBase}/teams/${teamId}/bots/${botId}/conversations/${payload.conversationId}/ticket`)
-                .then(response => response.json())
-                .then(ticket => {
-                  supportCallback(
-                    syntheticEvent,
-                    history,
-                    identify.metadata || {},
-                    ticket,
-                  );
-                })
-                .catch(error => {
-                  console.error('DOCSBOT: Error generating AI summary ticket:', error);
-                  supportCallback(
-                    syntheticEvent,
-                    history,
-                    identify.metadata || {},
-                    null,
-                  );
-                });
-              } else {
-                supportCallback(
-                  syntheticEvent,
-                  history,
-                  identify.metadata || {},
-                  null,
-                );
-              }
+						await supportCallback(
+							syntheticEvent,
+							history,
+							identify.metadata || {},
+							null
+						);
 					}
 				}
+			}
 
-				// Open the link if it exists and shouldOpenLink is still true
-				if (shouldOpenLink && targetUrl && targetUrl !== '#') {
-					window.open(targetUrl, '_blank');
-				}
-			});
+			// Open the link if it exists and shouldOpenLink is still true
+			if (shouldOpenLink && targetUrl && targetUrl !== '#') {
+				window.open(targetUrl, '_blank');
+			}
+		} catch (err) {
+			console.warn(`DOCSBOT: Error recording support click: ${err}`);
+		} finally {
+			setIsSupportLoading(false);
+		}
 	};
 
 	// make api call to rate
 	const saveRating = async (newRating = 0) => {
 		setRating(newRating);
+		setRatingSubmitted(true);
 
 		const data = { rating: newRating };
 
-		const apiUrl = localDev ? `http://127.0.0.1:9000/teams/${teamId}/bots/${botId}/rate/${payload.answerId}` : `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/rate/${payload.answerId}`;
+		const apiUrl = localDev
+			? `http://127.0.0.1:9000/teams/${teamId}/bots/${botId}/rate/${payload.answerId}`
+			: `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/rate/${payload.answerId}`;
 		try {
 			const response = await fetch(apiUrl, {
 				method: 'PUT',
@@ -156,6 +154,33 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer, chatContai
 						rating: newRating
 					}
 				});
+
+				// If it's an agent and we have a rating response, send it as a new message
+				if (isAgent && payload.responses) {
+					const ratingMessage =
+						newRating === 1
+							? payload.responses.yes
+							: payload.responses.no;
+					if (ratingMessage) {
+						dispatch({
+							type: 'add_message',
+							payload: {
+								variant: 'user',
+								message: ratingMessage,
+								loading: false,
+								timestamp: Date.now()
+							}
+						});
+						scrollToBottom(chatContainerRef);
+						fetchAnswer(ratingMessage);
+					}
+				}
+
+				// Scroll to bottom and focus input after rating
+				scrollToBottom(chatContainerRef);
+				if (inputRef?.current) {
+					inputRef.current.focus();
+				}
 			} else {
 				setRating(0);
 				try {
@@ -186,7 +211,23 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer, chatContai
 		) {
 			scrollToBottom(chatContainerRef);
 		}
-	}, [payload.isLast, supportLink, isAgent, payload.sources, payload.error, chatContainerRef]);
+	}, [
+		payload.isLast,
+		supportLink,
+		isAgent,
+		payload.sources,
+		payload.error,
+		chatContainerRef
+	]);
+
+	// Check if this message has been replied to by looking for the next message
+	const hasNextMessage = () => {
+		const messageIds = Object.keys(state.messages);
+		const currentIndex = messageIds.findIndex(
+			(id) => state.messages[id].id === payload.id
+		);
+		return currentIndex < messageIds.length - 1;
+	};
 
 	return (
 		<>
@@ -223,14 +264,12 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer, chatContai
 											<ul className="docsbot-sources">
 												{payload.sources?.map(
 													(source, index) => {
-                            return (
-                              <Source
-                                key={index}
-                                source={
-                                  source
-                                }
-                              />
-                            );
+														return (
+															<Source
+																key={index}
+																source={source}
+															/>
+														);
 													}
 												)}
 											</ul>
@@ -242,161 +281,203 @@ export const BotChatMessage = ({ payload, messageBoxRef, fetchAnswer, chatContai
 				</div>
 			</div>
 
-      {/*
+			{/*
+				This section handles feedback for agent-based responses.
+				It shows a custom thumbs up/down button for the user to rate the answer.
+				The saveRating function makes an API call to store the user's feedback.
+			*/}
+			{useFeedback &&
+				isAgent &&
+				payload.type == 'is_resolved_question' &&
+				!ratingSubmitted &&
+				!hasNextMessage() && (
+					<>
+						<div
+							className={clsx(
+								'docbot-chat-bot-message-rate',
+								botIcon && 'has-avatar'
+							)}
+						>
+							<button
+								onClick={(e) => {
+									saveRating(1);
+								}}
+								title={labels.helpful}
+								className={clsx(
+									'doscbot-rate-good',
+									rating === 1 && 'selected'
+								)}
+								{...(rating === 1 && { disabled: true })}
+							>
+								<span aria-hidden="true">
+									{payload.responses?.yes ||
+										labels.feedbackYes ||
+										'👍'}
+								</span>
+							</button>
+
+							<button
+								onClick={(e) => {
+									saveRating(-1);
+								}}
+								title={labels.unhelpful}
+								className={clsx(
+									'doscbot-rate-bad',
+									rating === -1 && 'selected'
+								)}
+								{...(rating === -1 && { disabled: true })}
+							>
+								<span aria-hidden="true">
+									{payload.responses?.no ||
+										labels.feedbackNo ||
+										'👎'}
+								</span>
+							</button>
+						</div>
+					</>
+				)}
+
+			{/*
+				This section handles feedback for old non-agent-based responses.
+
+				Each feedback section includes:
+				1. An optional message explaining the feedback purpose
+				2. Thumbs up/down buttons for user rating
+				3. Visual indication of selected rating
+
+				The saveRating function makes an API call to store the user's feedback.
+			*/}
+			{useFeedback &&
+				!isAgent &&
+				payload.isLast &&
+				!payload.loading &&
+				payload.sources && (
+					<>
+						<div
+							className={clsx(
+								'docsbot-chat-bot-message-container',
+								botIcon && 'has-avatar'
+							)}
+						>
+							<div className="docsbot-chat-bot-message">
+								{labels.feedbackMessage}
+							</div>
+						</div>
+
+						<div
+							className={clsx(
+								'docbot-chat-bot-message-rate',
+								botIcon && 'has-avatar'
+							)}
+						>
+							<button
+								onClick={(e) => {
+									saveRating(1);
+								}}
+								title={labels.helpful}
+								className={clsx(
+									'doscbot-rate-good',
+									rating === 1 && 'selected'
+								)}
+								{...(rating === 1 && { disabled: true })}
+							>
+								<span aria-hidden="true">
+									{labels.feedbackYes || '👍'}
+								</span>
+							</button>
+
+							<button
+								onClick={(e) => {
+									saveRating(-1);
+								}}
+								title={labels.unhelpful}
+								className={clsx(
+									'doscbot-rate-bad',
+									rating === -1 && 'selected'
+								)}
+								{...(rating === -1 && { disabled: true })}
+							>
+								<span aria-hidden="true">
+									{labels.feedbackNo || '👎'}
+								</span>
+							</button>
+						</div>
+					</>
+				)}
+
+			{/*
         This section handles feedback for agent-based responses.
         It shows a custom thumbs up/down button for the user to rate the answer.
         The saveRating function makes an API call to store the user's feedback.
       */}
-			{useFeedback && isAgent && payload.type == "is_resolved_question" && (
-				<>
-					<div
-						className={clsx(
-							'docbot-chat-bot-message-rate',
-							botIcon && 'has-avatar'
-						)}
-					>
-						<button
-							onClick={(e) => {
-								saveRating(1);
-							}}
-							title={labels.helpful}
+			{useEscalation &&
+				isAgent &&
+				payload.isLast &&
+				payload.type == 'support_escalation' &&
+				(supportLink ||
+					(supportCallback &&
+						typeof supportCallback === 'function')) && (
+					<>
+						<div
 							className={clsx(
-								'doscbot-rate-good',
-								rating === 1 && 'selected'
+								'docbot-chat-bot-message-rate',
+								botIcon && 'has-avatar'
 							)}
-							{...(rating === 1 && { disabled: true })}
 						>
-							<span aria-hidden="true">{payload.responses?.yes || labels.feedbackYes || '👍'}</span>
-						</button>
+							<button
+								disabled={isSupportLoading}
+								onClick={(e) =>
+									runSupportCallback(
+										e,
+										state.chatHistory || []
+									)
+								}
+							>
+								{isSupportLoading ? (
+									<Loader />
+								) : (
+									<span aria-hidden="true">
+										{payload.responses?.yes ||
+											labels.getSupport}
+									</span>
+								)}
+							</button>
 
-						<button
-							onClick={(e) => {
-								saveRating(-1);
-							}}
-							title={labels.unhelpful}
-							className={clsx(
-								'doscbot-rate-bad',
-								rating === -1 && 'selected'
-							)}
-							{...(rating === -1 && { disabled: true })}
-						>
-							<span aria-hidden="true">{payload.responses?.no || labels.feedbackNo || '👎'}</span>
-						</button>
-					</div>
-				</>
-			)}
+							<button
+								onClick={(e) => {
+									const message =
+										payload.responses?.no ||
+										labels.feedbackNo ||
+										'👎';
+									dispatch({
+										type: 'add_message',
+										payload: {
+											variant: 'user',
+											message: message,
+											loading: false,
+											timestamp: Date.now()
+										}
+									});
+									fetchAnswer(message);
+									// Scroll to bottom and focus input after clicking no
+									scrollToBottom(chatContainerRef);
+									if (inputRef?.current) {
+										inputRef.current.focus();
+									}
+								}}
+								className=""
+							>
+								<span aria-hidden="true">
+									{payload.responses?.no ||
+										labels.feedbackNo ||
+										'👎'}
+								</span>
+							</button>
+						</div>
+					</>
+				)}
 
-      {/*
-        This section handles feedback for agent-based responses.
-
-        Each feedback section includes:
-        1. An optional message explaining the feedback purpose
-        2. Thumbs up/down buttons for user rating
-        3. Visual indication of selected rating
-
-        The saveRating function makes an API call to store the user's feedback.
-      */}
-      {useFeedback && !isAgent && payload.isLast && !payload.loading && payload.sources && (
-				<>
-          <div
-            className={clsx(
-              'docsbot-chat-bot-message-container',
-              botIcon && 'has-avatar'
-            )}
-          >
-            <div className="docsbot-chat-bot-message">
-              {labels.feedbackMessage}
-            </div>
-          </div>
-
-					<div
-						className={clsx(
-							'docbot-chat-bot-message-rate',
-							botIcon && 'has-avatar'
-						)}
-					>
-						<button
-							onClick={(e) => {
-								saveRating(1);
-							}}
-							title={labels.helpful}
-							className={clsx(
-								'doscbot-rate-good',
-								rating === 1 && 'selected'
-							)}
-							{...(rating === 1 && { disabled: true })}
-						>
-							<span aria-hidden="true">{labels.feedbackYes || '👍'}</span>
-						</button>
-
-						<button
-							onClick={(e) => {
-								saveRating(-1);
-							}}
-							title={labels.unhelpful}
-							className={clsx(
-								'doscbot-rate-bad',
-								rating === -1 && 'selected'
-							)}
-							{...(rating === -1 && { disabled: true })}
-						>
-							<span aria-hidden="true">{labels.feedbackNo || '👎'}</span>
-						</button>
-					</div>
-				</>
-			)}
-
-      {/*
-        This section handles feedback for agent-based responses.
-        It shows a custom thumbs up/down button for the user to rate the answer.
-        The saveRating function makes an API call to store the user's feedback.
-      */}
-      {useEscalation && isAgent && payload.isLast && payload.type == "support_escalation" && ( supportLink || (supportCallback && typeof supportCallback === 'function') ) && (
-				<>
-					<div
-						className={clsx(
-							'docbot-chat-bot-message-rate',
-							botIcon && 'has-avatar'
-						)}
-					>
-						<button
-							disabled={isSupportLoading}
-							onClick={(e) =>
-                runSupportCallback(
-                  e,
-                  state.chatHistory || []
-                )
-              }
-						>
-							{isSupportLoading
-								? <Loader />
-								: <span aria-hidden="true">{payload.responses?.yes || labels.getSupport}</span>
-							}
-						</button>
-
-						<button
-							onClick={(e) => {
-                const message = payload.responses?.no || labels.feedbackNo || '👎';
-                dispatch({
-                  type: "add_message",
-                  payload: {
-                    variant: "user",
-                    message: message,
-                    loading: false,
-                    timestamp: Date.now(),
-                  },
-                });
-								fetchAnswer(message);
-							}}
-							className=""
-						>
-							<span aria-hidden="true">{payload.responses?.no || labels.feedbackNo || '👎'}</span>
-						</button>
-					</div>
-				</>
-			)}
-
-      {/*
+			{/*
         Show old support link if it's not an agent and there are sources or an error
         This is the old support link that was used in the previous version of the chatbot
       */}

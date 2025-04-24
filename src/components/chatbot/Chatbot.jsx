@@ -24,8 +24,8 @@ import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 
 // Define error classes for fetchEventSource
-class RetriableError extends Error { }
-class FatalError extends Error { }
+class RetriableError extends Error {}
+class FatalError extends Error {}
 
 export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const [chatInput, setChatInput] = useState('');
@@ -52,7 +52,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		isAgent, // If new agent api is enabled
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
-    localDev
+		localDev
 	} = useConfig();
 	const ref = useRef();
 	const inputRef = useRef();
@@ -61,7 +61,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const [isFetching, setIsFetching] = useState(false);
 	const [isAtBottom, setIsAtBottom] = useState(true);
 	const [streamController, setStreamController] = useState(null);
-
 
 	useEffect(() => {
 		Emitter.on('docsbot_add_user_message', async ({ message, send }) => {
@@ -113,10 +112,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	}, []);
 
 	const getConversationId = () => {
-		let conversationId = localStorage.getItem(`DocsBot_${botId}_conversationId`);
+		let conversationId = localStorage.getItem(
+			`DocsBot_${botId}_conversationId`
+		);
 		if (!conversationId) {
 			conversationId = uuidv4();
-			localStorage.setItem(`DocsBot_${botId}_conversationId`, conversationId);
+			localStorage.setItem(
+				`DocsBot_${botId}_conversationId`,
+				conversationId
+			);
 		}
 		return conversationId;
 	};
@@ -166,11 +170,19 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		};
 
 		const fetchData = async () => {
-			const savedConversationRaw = localStorage.getItem(`DocsBot_${botId}_chatHistory`);
-			const savedConversation = savedConversationRaw ? JSON.parse(savedConversationRaw) : null;
+			const savedConversationRaw = localStorage.getItem(
+				`DocsBot_${botId}_chatHistory`
+			);
+			const savedConversation = savedConversationRaw
+				? JSON.parse(savedConversationRaw)
+				: null;
 
-			const chatHistoryRaw = localStorage.getItem(`DocsBot_${botId}_localChatHistory`);
-			const chatHistory = chatHistoryRaw ? JSON.parse(chatHistoryRaw) : null;
+			const chatHistoryRaw = localStorage.getItem(
+				`DocsBot_${botId}_localChatHistory`
+			);
+			const chatHistory = chatHistoryRaw
+				? JSON.parse(chatHistoryRaw)
+				: null;
 
 			const currentTime = Date.now();
 			let lastMsgTimeStamp = 0;
@@ -236,11 +248,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	async function fetchAnswer(question) {
 		const id = uuidv4();
 		setIsFetching(true);
-    	let answerId = null;
+		let answerId = null;
 
 		const abortController = new AbortController();
 		setStreamController(abortController);
-
 
 		dispatch({
 			type: 'add_message',
@@ -268,220 +279,248 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		metadata.referrer = window.location.href;
 
 		if (isAgent) {
+			const sse_req = {
+				stream: true,
+				question,
+				format: 'markdown',
+				human_escalation: useEscalation ? true : false,
+				followup_rating: useFeedback ? true : false,
+				document_retriever: true,
+				full_source: false,
+				metadata,
+				conversationId: getConversationId(),
+				context_items: contextItems || 6,
+				autocut: 2
+			};
+			if (signature) {
+				sse_req.auth = signature;
+			}
 
-      const sse_req = {
-        stream: true,
-        question,
-        format: 'markdown',
-        human_escalation: useEscalation ? true : false,
-        followup_rating: useFeedback ? true : false,
-        document_retriever: true,
-        full_source: false,
-        metadata,
-        conversationId: getConversationId(),
-        context_items: contextItems || 6,
-        autocut: 2
-      }
-      if (signature) {
-        sse_req.auth = signature;
-      }
+			// Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
+			let retryCount = 0;
+			const MAX_RETRIES = 2;
 
-      // Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
-      let retryCount = 0;
-      const MAX_RETRIES = 2;
+			try {
+				console.log(sse_req);
+				const apiUrl = localDev
+					? `http://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat-agent`
+					: `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat-agent`;
+				await fetchEventSource(apiUrl, {
+					signal: abortController.signal,
+					headers: {
+						'Content-Type': 'application/json',
+						accept: 'application/json'
+					},
+					method: 'POST',
+					body: JSON.stringify(sse_req),
+					async onopen(response) {
+						// Check if the response is valid
+						if (response.ok) {
+							return; // Connection established successfully
+						} else if (
+							response.status >= 400 &&
+							response.status < 500
+						) {
+							// All client-side errors (including 429) are not retriable
+							let errorMessage = `HTTP error ${response.status}`;
 
-      try {
-        console.log(sse_req)
-        const apiUrl = localDev ? `http://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat-agent` : `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat-agent`;
-        await fetchEventSource(apiUrl, {
-		  signal: abortController.signal,
-          headers: {
-            'Content-Type': 'application/json',
-            'accept': 'application/json',
-          },
-          method: 'POST',
-          body: JSON.stringify(sse_req),
-          async onopen(response) {
-            // Check if the response is valid
-            if (response.ok) {
-              return; // Connection established successfully
-            } else if (response.status >= 400 && response.status < 500) {
-              // All client-side errors (including 429) are not retriable
-              let errorMessage = `HTTP error ${response.status}`;
+							// Try to extract error message from response body
+							try {
+								const responseBody = await response.text();
+								const parsedBody = JSON.parse(responseBody);
 
-              // Try to extract error message from response body
-              try {
-                const responseBody = await response.text();
-                const parsedBody = JSON.parse(responseBody);
+								if (parsedBody && parsedBody.error) {
+									errorMessage = parsedBody.error;
+								}
+							} catch (e) {
+								// If we can't parse the body, just use the default error message
+								console.error(
+									'DOCSBOT: Failed to parse error response:',
+									e
+								);
+							}
 
-                if (parsedBody && parsedBody.error) {
-                  errorMessage = parsedBody.error;
-                }
-              } catch (e) {
-                // If we can't parse the body, just use the default error message
-                console.error("DOCSBOT: Failed to parse error response:", e);
-              }
+							throw new FatalError(errorMessage);
+						} else {
+							// Server errors or network issues should be retried
+							throw new RetriableError(
+								`HTTP error ${response.status}`
+							);
+						}
+					},
+					async onmessage(event) {
+						const currentReplyHeight =
+							messagesRefs?.current[id]?.current?.clientHeight;
+						const data = event;
+						console.log(data.event);
 
-              throw new FatalError(errorMessage);
-            } else {
-              // Server errors or network issues should be retried
-              throw new RetriableError(`HTTP error ${response.status}`);
-            }
-          },
-          async onmessage(event) {
-            const currentReplyHeight = messagesRefs?.current[id]?.current?.clientHeight
-            const data = event;
-            console.log(data.event)
+						// If server sends an error event, handle accordingly
+						if (data.event === 'error') {
+							dispatch({
+								type: 'update_message',
+								payload: {
+									id,
+									variant: 'chatbot',
+									type: data.event,
+									message: data.data,
+									loading: false,
+									error: true
+								}
+							});
+							scrollToBottom(ref);
+							throw new FatalError(data.data);
+						}
 
-            // If server sends an error event, handle accordingly
-            if (data.event === "error") {
-              dispatch({
-                type: "update_message",
-                payload: {
-                  id,
-                  variant: "chatbot",
-                  type: data.event,
-                  message: data.data,
-                  loading: false,
-                  error: true,
-                },
-              });
-			  scrollToBottom(ref);
-              throw new FatalError(data.data);
-            }
+						if (data.event === 'stream') {
+							//append to answer
+							answer += data.data;
+							dispatch({
+								type: 'update_message',
+								payload: {
+									id,
+									variant: 'chatbot',
+									message: await parseMarkdown(answer),
+									sources: null,
+									loading: false
+								}
+							});
 
-            if (data.event === "stream") {
-              //append to answer
-              answer += data.data;
-              dispatch({
-                type: "update_message",
-                payload: {
-                  id,
-                  variant: "chatbot",
-                  message: await parseMarkdown(answer),
-                  sources: null,
-                  loading: false,
-                },
-              });
+							scrollToBottom(ref);
+						} else {
+							if (data.data) {
+								const finalData = JSON.parse(data.data);
+								console.log(finalData);
 
-			  scrollToBottom(ref);
-            } else {
-				if (data.data) {
-					const finalData = JSON.parse(data.data);
-					console.log(finalData)
+								dispatch({
+									type:
+										data.event === 'is_resolved_question'
+											? 'add_message'
+											: 'update_message',
+									payload: {
+										id: data.event === 'is_resolved_question' ? uuidv4() : id,
+										variant: 'chatbot',
+										type: data.event,
+										message: await parseMarkdown(finalData.answer),
+										sources: finalData.sources || null,
+										answerId: answerId || finalData.id || null, // use saved prev id for feedback button
+										conversationId: getConversationId(),
+										loading: false,
+										responses: finalData.options || null
+									}
+								});
 
-					dispatch({
-						type: data.event === "is_resolved_question" ? "add_message" : "update_message",
-						payload: {
+								scrollToBottom(ref);
+
+								answerId = finalData.id || null; // save the answer id for the feedback button
+								let newChatHistory = [];
+
+								if (state.chatHistory?.length) {
+									newChatHistory = [
+										...state?.chatHistory,
+										finalData.history[0]
+									];
+								} else {
+									newChatHistory = finalData.history;
+								}
+
+								dispatch({
+									type: 'save_history',
+									payload: {
+										chatHistory: newChatHistory
+									}
+								});
+
+								scrollToBottom(ref);
+
+								// Scroll after full bot message and options if escalation
+								if (data.event === 'support_escalation') {
+									setTimeout(() => scrollToBottom(ref), 0);
+								}
+
+								// Change this to use native JS event
+								document.dispatchEvent(
+									new CustomEvent(
+										'docsbot_fetching_answer_complete',
+										{ detail: finalData }
+									)
+								);
+								setIsFetching(false);
+							} else {
+								console.warn(
+									'DOCSBOT: Received empty data on message event',
+									event
+								);
+							}
+						}
+
+						if (currentReplyHeight - currentHeight >= 60) {
+							currentHeight = currentReplyHeight;
+							ref.current.scrollTop = ref.current.scrollHeight;
+						}
+					},
+					onerror(err) {
+						if (err instanceof FatalError) {
+							// For fatal errors (4xx), don't retry and show error
+							dispatch({
+								type: 'update_message',
+								payload: {
+									id,
+									variant: 'chatbot',
+									// Use the error message from the server if available
+									message:
+										err.message ||
+										'There was an error with your request. Please try again.',
+									loading: false,
+									error: true
+								}
+							});
+							setIsFetching(false);
+							scrollToBottom(ref);
+							throw err; // Re-throw to stop the operation
+						} else if (err instanceof RetriableError) {
+							// Handle retriable errors
+							retryCount++;
+
+							if (retryCount > MAX_RETRIES) {
+								// Too many retries, give up
+								dispatch({
+									type: 'update_message',
+									payload: {
+										id,
+										variant: 'chatbot',
+										message:
+											'Failed to connect after several attempts. Please try again later.',
+										loading: false,
+										error: true
+									}
+								});
+								setIsFetching(false);
+								scrollToBottom(ref);
+								throw new FatalError('Max retries exceeded');
+							}
+
+							console.log(
+								`DOCSBOT: Retrying connection... Attempt ${retryCount}/${MAX_RETRIES}`
+							);
+
+							// Return delay with exponential backoff (in ms)
+							return Math.min(1000 * 2 ** retryCount, 10000);
+						}
+					}
+				});
+			} catch (error) {
+				console.error('DOCSBOT: Failed to fetch answer:', error);
+				dispatch({
+					type: 'update_message',
+					payload: {
 						id,
-						variant: "chatbot",
-						type: data.event,
-						message: data.event === "is_resolved_question" ? await parseMarkdown(answer) : await parseMarkdown(finalData.answer),
-						sources: finalData.sources || null,
-						answerId: answerId || finalData.id || null, // use saved prev id for feedback button
-						conversationId: getConversationId(),
+						variant: 'chatbot',
+						message: 'Unknown error. Please try again later.',
 						loading: false,
-						responses: finalData.options || null
-						},
-					});
-
-					scrollToBottom(ref);
-
-					answerId = finalData.id || null; // save the answer id for the feedback button
-					let newChatHistory = []
-
-					if (state.chatHistory?.length) {
-						newChatHistory = [...state?.chatHistory, finalData.history[0]]
-					} else {
-						newChatHistory = finalData.history
+						error: true
 					}
-
-					dispatch({
-						type: "save_history",
-						payload: {
-						chatHistory: newChatHistory,
-						},
-					});
-
-					scrollToBottom(ref);
-
-					// Scroll after full bot message and options if escalation
-					if (data.event === 'support_escalation') {
-						setTimeout(() => scrollToBottom(ref), 0);
-					}
-
-					// Change this to use native JS event
-					document.dispatchEvent(new CustomEvent("docsbot_fetching_answer_complete", { detail: finalData }));
-					setIsFetching(false);
-				} else {
-					console.warn("DOCSBOT: Received empty data on message event", event);
-				}
-            }
-
-			if (currentReplyHeight - currentHeight >= 60) {
-                currentHeight = currentReplyHeight
-                ref.current.scrollTop = ref.current.scrollHeight;
-              }
-          },
-          onerror(err) {
-            if (err instanceof FatalError) {
-              // For fatal errors (4xx), don't retry and show error
-              dispatch({
-                type: "update_message",
-                payload: {
-                  id,
-                  variant: "chatbot",
-                  // Use the error message from the server if available
-                  message: err.message || "There was an error with your request. Please try again.",
-                  loading: false,
-                  error: true,
-                },
-              });
-			  setIsFetching(false);
-			  scrollToBottom(ref);
-              throw err; // Re-throw to stop the operation
-            } else if (err instanceof RetriableError) {
-              // Handle retriable errors
-              retryCount++;
-
-              if (retryCount > MAX_RETRIES) {
-                // Too many retries, give up
-                dispatch({
-                  type: "update_message",
-                  payload: {
-                    id,
-                    variant: "chatbot",
-                    message: "Failed to connect after several attempts. Please try again later.",
-                    loading: false,
-                    error: true,
-                  },
-                });
-				setIsFetching(false);
-				scrollToBottom(ref);
-                throw new FatalError('Max retries exceeded');
-              }
-
-              console.log(`DOCSBOT: Retrying connection... Attempt ${retryCount}/${MAX_RETRIES}`);
-
-              // Return delay with exponential backoff (in ms)
-              return Math.min(1000 * 2 ** retryCount, 10000);
-            }
-          }
-        });
-      } catch (error) {
-        console.error("DOCSBOT: Failed to fetch answer:", error);
-        dispatch({
-          type: "update_message",
-          payload: {
-            id,
-            variant: "chatbot",
-            message: "Unknown error. Please try again later.",
-            loading: false,
-            error: true,
-          },
-        });
-      }
-
+				});
+			}
 		} else {
 			const history = state.chatHistory || [];
 			const req = {
@@ -496,7 +535,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				req.auth = signature;
 			}
 
-			const apiUrl = localDev ? `ws://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat` : `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
+			const apiUrl = localDev
+				? `ws://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat`
+				: `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
 			const ws = new WebSocket(apiUrl);
 			setStreamController(ws);
 
@@ -734,17 +775,19 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 	useEffect(() => {
 		async function parseFooter() {
-		  if (labels.footerMessage) {
-			const parsed = await parseMarkdown(labels.footerMessage);
-			setParsedFooterText(parsed);
-		  }
+			if (labels.footerMessage) {
+				const parsed = await parseMarkdown(labels.footerMessage);
+				setParsedFooterText(parsed);
+			}
 		}
 
 		parseFooter();
-	  }, [labels.footerMessage]);
+	}, [labels.footerMessage]);
 
-	  const isWhite = ['#ffffff', '#FFFFFF', 'rgb(255, 255, 255)'].includes(color);
-	  const isFloatingSmall = !isEmbeddedBox && hideHeader;
+	const isWhite = ['#ffffff', '#FFFFFF', 'rgb(255, 255, 255)'].includes(
+		color
+	);
+	const isFloatingSmall = !isEmbeddedBox && hideHeader;
 
 	useEffect(() => {
 		if (isOpen) {
@@ -803,7 +846,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								Object.keys(questions).length >= 1
 							) && 'is-small'
 						)}
-						data-shadow={isWhite && (isFloatingSmall || !isEmbeddedBox || isEmbeddedBox)}
+						data-shadow={
+							isWhite &&
+							(isFloatingSmall || !isEmbeddedBox || isEmbeddedBox)
+						}
 					>
 						<div
 							className="docsbot-chat-header-inner"
@@ -855,7 +901,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								<div className="docsbot-chat-header-background-wrapper">
 									<div
 										className="docsbot-chat-header-background"
-										data-shadow="true" />
+										data-shadow="true"
+									/>
 								</div>
 							)}
 						</div>
@@ -871,11 +918,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								<div key={key}>
 									<BotChatMessage
 										payload={message}
-										messageBoxRef={
-											messagesRefs.current[message.id]
-										}
+										messageBoxRef={messagesRefs.current[message.id]}
 										chatContainerRef={ref}
 										fetchAnswer={fetchAnswer}
+										inputRef={inputRef}
 									/>
 									{message?.options ? (
 										<Options
@@ -1032,7 +1078,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										].includes(color) && {
 											style: { fill: 'inherit' }
 										})}
-										disabled={chatInput.trim().length < 2 || isFetching}
+										disabled={
+											chatInput.trim().length < 2 ||
+											isFetching
+										}
 									>
 										<FontAwesomeIcon
 											icon={faPaperPlane}
@@ -1044,11 +1093,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 							{(branding || parsedFooterText?.trim()) && (
 								<div className="docsbot-chat-credits">
-									{(parsedFooterText?.trim() && Object.keys(state.messages).length <= 1) && (
-										<div
-											className="docsbot-chat-credits--policy"
-											dangerouslySetInnerHTML={{ __html: parsedFooterText }} />
-									)}
+									{parsedFooterText?.trim() &&
+										Object.keys(state.messages).length <=
+											1 && (
+											<div
+												className="docsbot-chat-credits--policy"
+												dangerouslySetInnerHTML={{
+													__html: parsedFooterText
+												}}
+											/>
+										)}
 
 									{branding && (
 										<a

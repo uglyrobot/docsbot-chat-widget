@@ -37,13 +37,14 @@
     <script>
       DocsBotAI.init({
         id: "ZrbLG98bbxZ9EFqiPvyl/N2mWls8WYE6VxTmObjr3",
-        supportCallback: function (event, history, metadata) {
+        supportCallback: function (event, history, metadata, ticket) {
           event.preventDefault();
           // Alert the details for debugging
-          alert("Support callback triggered with:\nHistory: " + JSON.stringify(history) + "\nMetadata: " + JSON.stringify(metadata));
+          alert("Support callback triggered with:\nHistory: " + JSON.stringify(history) + "\nMetadata: " + JSON.stringify(metadata) + "\nTicket: " + JSON.stringify(ticket));
           console.log("Support callback details:", {
             history: history,
-            metadata: metadata
+            metadata: metadata,
+            ticket: ticket
           });
 
           //DocsBotAI.unmount();
