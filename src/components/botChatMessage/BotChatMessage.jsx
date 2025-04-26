@@ -495,6 +495,7 @@ export const BotChatMessage = ({
 							<a
 								href={supportLink}
 								target="_blank"
+								disabled={isSupportLoading}
 								onClick={(e) =>
 									runSupportCallback(
 										e,
@@ -502,7 +503,7 @@ export const BotChatMessage = ({
 									)
 								}
 							>
-								{labels.getSupport}
+								{isSupportLoading ? <Loader /> : labels.getSupport}
 							</a>
 						</div>
 					</div>

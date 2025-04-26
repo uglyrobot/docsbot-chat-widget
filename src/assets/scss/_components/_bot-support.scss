@@ -7,6 +7,23 @@
 
 	a {
 		@include bubble-button;
+
+		&[disabled] {
+			cursor: default;
+			pointer-events: none;
+			border-color: $color-secondary-300;
+			box-shadow: none;
+
+			.chatbot-loader-container {
+				svg {
+					width: 40px;
+
+					circle {
+						fill: $color-secondary-300;
+					}
+				}
+			}
+		}
 	}
 
 	&.has-avatar {
