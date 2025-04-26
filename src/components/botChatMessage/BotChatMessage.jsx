@@ -478,36 +478,33 @@ export const BotChatMessage = ({
 				)}
 
 			{/*
-        Show old support link if it's not an agent and there are sources or an error
-        This is the old support link that was used in the previous version of the chatbot
-      */}
-			{payload.isLast &&
-				supportLink &&
-				!isAgent &&
-				(payload.sources || payload.error) && (
-					<div
-						className={clsx(
-							'docsbot-chat-bot-message-container',
-							botIcon && 'has-avatar'
-						)}
-					>
-						<div className="docsbot-chat-bot-message-support">
-							<a
-								href={supportLink}
-								target="_blank"
-								disabled={isSupportLoading}
-								onClick={(e) =>
-									runSupportCallback(
-										e,
-										state.chatHistory || []
-									)
-								}
-							>
-								{isSupportLoading ? <Loader /> : labels.getSupport}
-							</a>
-						</div>
+				Show old support link if it's not an agent and there are sources or an error
+				This is the old support link that was used in the previous version of the chatbot
+			*/}
+			{payload.isLast && supportLink && !isAgent && ((payload.sources && payload.sources.length > 0) || payload.error) && (
+				<div
+					className={clsx(
+						'docsbot-chat-bot-message-container',
+						botIcon && 'has-avatar'
+					)}
+				>
+					<div className="docsbot-chat-bot-message-support">
+						<a
+							href={supportLink}
+							target="_blank"
+							disabled={isSupportLoading}
+							onClick={(e) =>
+								runSupportCallback(
+									e,
+									state.chatHistory || []
+								)
+							}
+						>
+							{isSupportLoading ? <Loader /> : labels.getSupport}
+						</a>
 					</div>
-				)}
+				</div>
+			)}
 		</>
 	);
 };
