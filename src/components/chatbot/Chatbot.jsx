@@ -141,17 +141,19 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		localStorage.removeItem(`DocsBot_${botId}_localChatHistory`);
 		localStorage.removeItem(`DocsBot_${botId}_conversationId`);
 
-		const parsedMessage = await parseMarkdown(labels.firstMessage);
+		if (labels.firstMessage?.trim()) {
+			const parsedMessage = await parseMarkdown(labels.firstMessage);
 
-		dispatch({
-			type: 'add_message',
-			payload: {
-				id: uuidv4(),
-				variant: 'chatbot',
-				message: parsedMessage,
-				timestamp: Date.now()
-			}
-		});
+			dispatch({
+				type: 'add_message',
+				payload: {
+					id: uuidv4(),
+					variant: 'chatbot',
+					message: parsedMessage,
+					timestamp: Date.now()
+				}
+			});
+		}
 	};
 
 	useEffect(() => {
