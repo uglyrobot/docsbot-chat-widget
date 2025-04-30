@@ -71,7 +71,13 @@ export const BotChatMessage = ({
 		const apiBase = localDev
 			? `http://127.0.0.1:9000`
 			: `https://api.docsbot.ai`;
-		const apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/support/${payload.answerId}`;
+
+		let apiUrl;
+		if (payload.answerId) {
+			apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/support/${payload.answerId}`;
+		} else {
+			apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${payload.conversationId}/escalate`;
+		}
 
 		try {
 			// Make the API call
@@ -174,7 +180,7 @@ export const BotChatMessage = ({
 			if (inputRef?.current) {
 				inputRef.current.focus();
 			}
-			
+
 			const response = await fetch(apiUrl, {
 				method: 'PUT',
 				headers,
@@ -452,36 +458,38 @@ export const BotChatMessage = ({
 								)}
 							</button>
 
-							<button
-								onClick={(e) => {
-									const message =
-										payload.responses?.no ||
-										labels.feedbackNo ||
-										'👎';
-									dispatch({
-										type: 'add_message',
-										payload: {
-											variant: 'user',
-											message: message,
-											loading: false,
-											timestamp: Date.now()
+							{!isSupportLoading && (
+								<button
+									onClick={(e) => {
+										const message =
+											payload.responses?.no ||
+											labels.feedbackNo ||
+											'👎';
+										dispatch({
+											type: 'add_message',
+											payload: {
+												variant: 'user',
+												message: message,
+												loading: false,
+												timestamp: Date.now()
+											}
+										});
+										fetchAnswer(message);
+										// Scroll to bottom and focus input after clicking no
+										scrollToBottom(chatContainerRef);
+										if (inputRef?.current) {
+											inputRef.current.focus();
 										}
-									});
-									fetchAnswer(message);
-									// Scroll to bottom and focus input after clicking no
-									scrollToBottom(chatContainerRef);
-									if (inputRef?.current) {
-										inputRef.current.focus();
-									}
-								}}
-								className=""
-							>
-								<span aria-hidden="true">
-									{payload.responses?.no ||
-										labels.feedbackNo ||
-										'👎'}
-								</span>
-							</button>
+									}}
+									className=""
+								>
+									<span aria-hidden="true">
+										{payload.responses?.no ||
+											labels.feedbackNo ||
+											'👎'}
+									</span>
+								</button>
+							)}
 						</div>
 					</>
 				)}
@@ -501,37 +509,30 @@ export const BotChatMessage = ({
 				payload.sources &&
 				(payload.sources.length > 0 ||
 					payload.couldAnswer === false)) ||
-				(payload.error &&
-					(supportLink ||
-						(supportCallback &&
-							typeof supportCallback === 'function'))) ? (
-						<div
-							className={clsx(
-								'docsbot-chat-bot-message-container',
-								botIcon && 'has-avatar'
-							)}
+			(payload.error &&
+				(supportLink ||
+					(supportCallback &&
+						typeof supportCallback === 'function'))) ? (
+				<div
+					className={clsx(
+						'docsbot-chat-bot-message-container',
+						botIcon && 'has-avatar'
+					)}
+				>
+					<div className="docsbot-chat-bot-message-support">
+						<a
+							href={supportLink}
+							target="_blank"
+							disabled={isSupportLoading}
+							onClick={(e) =>
+								runSupportCallback(e, state.chatHistory || [])
+							}
 						>
-							<div className="docsbot-chat-bot-message-support">
-								<a
-									href={supportLink}
-									target="_blank"
-									disabled={isSupportLoading}
-									onClick={(e) =>
-										runSupportCallback(
-											e,
-											state.chatHistory || []
-										)
-									}
-								>
-									{isSupportLoading ? (
-										<Loader />
-									) : (
-										labels.getSupport
-									)}
-								</a>
-							</div>
-						</div>
-					) : null}
+							{isSupportLoading ? <Loader /> : labels.getSupport}
+						</a>
+					</div>
+				</div>
+			) : null}
 		</>
 	);
 };

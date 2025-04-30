@@ -195,7 +195,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					await addFirstMessage();
 				}
 			} else if (labels.firstMessage) {
-				console.log(labels.firstMessage);
+				//console.log(labels.firstMessage);
 				await addFirstMessage();
 			}
 
@@ -289,7 +289,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			const MAX_RETRIES = 2;
 
 			try {
-				console.log(sse_req);
+				//console.log(sse_req);
 				const apiUrl = localDev
 					? `http://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat-agent`
 					: `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat-agent`;
@@ -340,7 +340,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						const currentReplyHeight =
 							messagesRefs?.current[id]?.current?.clientHeight;
 						const data = event;
-						console.log(data.event);
+						//console.log(data.event);
 
 						// If server sends an error event, handle accordingly
 						if (data.event === 'error') {
@@ -377,7 +377,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						} else {
 							if (data.data) {
 								const finalData = JSON.parse(data.data);
-								console.log(finalData);
+								//console.log(finalData);
 
 								dispatch({
 									type:
@@ -905,7 +905,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							return message.variant === 'chatbot' ? (
 								<div key={key}>
 									<BotChatMessage
-										payload={message}
+										payload={{
+											...message,
+											conversationId: getConversationId() //lets us escalate historic conversations
+										}}
 										messageBoxRef={messagesRefs.current[message.id]}
 										chatContainerRef={ref}
 										fetchAnswer={fetchAnswer}
