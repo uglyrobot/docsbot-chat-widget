@@ -95,7 +95,14 @@ export const BotChatMessage = ({
 				const paramCount = supportCallback.length;
 				if (paramCount <= 2) {
 					await supportCallback(syntheticEvent, history);
+				} else if (paramCount === 3) {
+					await supportCallback(
+						syntheticEvent,
+						history,
+						identify.metadata || {}
+					);
 				} else {
+					// only create a ticket if the callback expects 4 parameters
 					if (payload.conversationId) {
 						// make api call to get summary
 						const ticketResponse = await fetch(
@@ -351,7 +358,9 @@ export const BotChatMessage = ({
 				!isAgent &&
 				payload.isLast &&
 				!payload.loading &&
-				payload.sources && (
+				payload.sources &&
+				(payload.sources.length > 0 || payload.couldAnswer === false) &&
+				rating === 0 && (
 					<>
 						<div
 							className={clsx(
@@ -480,31 +489,49 @@ export const BotChatMessage = ({
 			{/*
 				Show old support link if it's not an agent and there are sources or an error
 				This is the old support link that was used in the previous version of the chatbot
+
 			*/}
-			{payload.isLast && supportLink && !isAgent && ((payload.sources && payload.sources.length > 0) || payload.error) && (
-				<div
-					className={clsx(
-						'docsbot-chat-bot-message-container',
-						botIcon && 'has-avatar'
-					)}
-				>
-					<div className="docsbot-chat-bot-message-support">
-						<a
-							href={supportLink}
-							target="_blank"
-							disabled={isSupportLoading}
-							onClick={(e) =>
-								runSupportCallback(
-									e,
-									state.chatHistory || []
-								)
-							}
+			{(payload.isLast &&
+				(supportLink ||
+					(supportCallback &&
+						typeof supportCallback === 'function')) &&
+				!isAgent &&
+				useEscalation &&
+				(!useFeedback || rating === -1) &&
+				payload.sources &&
+				(payload.sources.length > 0 ||
+					payload.couldAnswer === false)) ||
+				(payload.error &&
+					(supportLink ||
+						(supportCallback &&
+							typeof supportCallback === 'function'))) ? (
+						<div
+							className={clsx(
+								'docsbot-chat-bot-message-container',
+								botIcon && 'has-avatar'
+							)}
 						>
-							{isSupportLoading ? <Loader /> : labels.getSupport}
-						</a>
-					</div>
-				</div>
-			)}
+							<div className="docsbot-chat-bot-message-support">
+								<a
+									href={supportLink}
+									target="_blank"
+									disabled={isSupportLoading}
+									onClick={(e) =>
+										runSupportCallback(
+											e,
+											state.chatHistory || []
+										)
+									}
+								>
+									{isSupportLoading ? (
+										<Loader />
+									) : (
+										labels.getSupport
+									)}
+								</a>
+							</div>
+						</div>
+					) : null}
 		</>
 	);
 };
