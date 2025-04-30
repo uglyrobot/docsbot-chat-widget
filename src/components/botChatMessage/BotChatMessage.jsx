@@ -148,6 +148,33 @@ export const BotChatMessage = ({
 			? `http://127.0.0.1:9000/teams/${teamId}/bots/${botId}/rate/${payload.answerId}`
 			: `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/rate/${payload.answerId}`;
 		try {
+			// If it's an agent and we have a rating response, send it as a new message
+			if (isAgent && payload.responses) {
+				const ratingMessage =
+					newRating === 1
+						? payload.responses.yes
+						: payload.responses.no;
+				if (ratingMessage) {
+					dispatch({
+						type: 'add_message',
+						payload: {
+							variant: 'user',
+							message: ratingMessage,
+							loading: false,
+							timestamp: Date.now()
+						}
+					});
+					scrollToBottom(chatContainerRef);
+					fetchAnswer(ratingMessage);
+				}
+			}
+
+			// Scroll to bottom and focus input after rating
+			scrollToBottom(chatContainerRef);
+			if (inputRef?.current) {
+				inputRef.current.focus();
+			}
+			
 			const response = await fetch(apiUrl, {
 				method: 'PUT',
 				headers,
@@ -161,33 +188,6 @@ export const BotChatMessage = ({
 						rating: newRating
 					}
 				});
-
-				// If it's an agent and we have a rating response, send it as a new message
-				if (isAgent && payload.responses) {
-					const ratingMessage =
-						newRating === 1
-							? payload.responses.yes
-							: payload.responses.no;
-					if (ratingMessage) {
-						dispatch({
-							type: 'add_message',
-							payload: {
-								variant: 'user',
-								message: ratingMessage,
-								loading: false,
-								timestamp: Date.now()
-							}
-						});
-						scrollToBottom(chatContainerRef);
-						fetchAnswer(ratingMessage);
-					}
-				}
-
-				// Scroll to bottom and focus input after rating
-				scrollToBottom(chatContainerRef);
-				if (inputRef?.current) {
-					inputRef.current.focus();
-				}
 			} else {
 				setRating(0);
 				try {
