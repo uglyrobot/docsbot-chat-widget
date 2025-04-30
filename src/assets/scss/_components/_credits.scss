@@ -1,0 +1,58 @@
+@use '../_utils/tokens' as *;
+
+.docsbot-chat-credits {
+	padding: $spacing-sm 0 0;
+	color: $color-secondary-100;
+	font-family: $font-family;
+	font-weight: 400;
+	font-size: 11px;
+	line-height: 14px;
+	text-align: center;
+
+	a {
+		width: auto;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		margin: 0;
+		color: $color-neutral-100;
+		font-weight: 600;
+		text-decoration: none;
+		transition: color $transition-duration-short ease;
+
+		span,
+		svg {
+			display: block;
+		}
+
+		svg {
+			margin-left: $spacing-xs;
+		}
+
+		.docsbot-logo {
+			width: auto;
+			max-height: $spacing-sm;
+
+			path {
+				fill: var(--docsbot-logo--color, $color-primary-200);
+			}
+		}
+
+		&:hover {
+			color: var(--docsbot-logo--color, $color-primary-200);
+		}
+	}
+
+	p {
+		margin: 0;
+
+		&:not(:first-child) {
+			margin-top: $spacing-xs;
+		}
+	}
+
+	&--policy {
+		display: block;
+		margin-bottom: $spacing-xs;
+	}
+}

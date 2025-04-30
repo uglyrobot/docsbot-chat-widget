@@ -1,0 +1,52 @@
+@use '../_functions/adjust-tint' as *;
+@use '../tokens' as *;
+
+@mixin bubble-button($color: null) {
+	cursor: pointer;
+	appearance: none;
+	overflow: hidden;
+	margin: 0 4px 8px;
+	padding: $spacing-sm;
+	border-width: 1px;
+	border-style: solid;
+	@if $color != null {
+		border-color: $color;
+	} @else {
+		border-color: var(--docsbot-color-main, $color-primary-200);
+	}
+	border-radius: 6px;
+	background: $color-neutral-300;
+	@if $color != null {
+		box-shadow: tint($color, 80%) 0px 4px 12px -4px;
+	} @else {
+		box-shadow: tint(var(--docsbot-color-main, $color-primary-200), 80%)
+			0px
+			4px
+			12px -4px;
+	}
+	color: $color-neutral-100;
+	font-weight: 400;
+	font-size: 14px;
+	line-height: 14px;
+	text-decoration: none;
+	word-break: break-word;
+	transition:
+		box-shadow 0.1s ease-in,
+		transform 0.1s ease-in;
+
+	&:hover {
+		@if $color != null {
+			box-shadow: tint($color, 40%) 0px 4px 12px -4px;
+		} @else {
+			box-shadow: tint(var(--docsbot-color-main, $color-primary-200), 40%)
+				0px
+				4px
+				12px -4px;
+		}
+		transform: scale(1.05);
+	}
+
+	&:focus {
+		outline: none;
+	}
+}

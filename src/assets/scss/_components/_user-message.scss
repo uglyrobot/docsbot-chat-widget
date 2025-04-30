@@ -1,0 +1,19 @@
+@use '../_utils/utils' as *;
+
+.docsbot-user-chat-message {
+	@include bubble-message(
+		'right',
+		var(--docsbot-user--bg, $color-primary-200),
+		var(--docsbot-user--color, $color-neutral-100)
+	);
+
+	p {
+		margin: 0;
+	}
+
+	&-container {
+		display: flex;
+		justify-content: flex-end;
+		padding-left: $spacing-xl;
+	}
+}

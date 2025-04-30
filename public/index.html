@@ -37,10 +37,17 @@
     <script>
       DocsBotAI.init({
         id: "ZrbLG98bbxZ9EFqiPvyl/N2mWls8WYE6VxTmObjr3",
-        supportCallback: function (event, history) {
+        supportCallback: function (event, history, metadata, ticket) {
           event.preventDefault();
-          console.log(history, DocsBotAI);
-          DocsBotAI.unmount();
+          // Alert the details for debugging
+          alert("Support callback triggered with:\nHistory: " + JSON.stringify(history) + "\nMetadata: " + JSON.stringify(metadata) + "\nTicket: " + JSON.stringify(ticket));
+          console.log("Support callback details:", {
+            history: history,
+            metadata: metadata,
+            ticket: ticket
+          });
+
+          //DocsBotAI.unmount();
         },
         identify: {
           name: 'Steve Aoki',
@@ -51,21 +58,47 @@
         },
         //signature: 'hmachash:expiry',
         options: {
+          localDev: false,
           alignment: 'left',
-          horizontalMargin: 20, 
+          horizontalMargin: 20,
           verticalMargin: 20,
           //hideSources: true,
           //color: "#0891b8",
           //botIcon: "https://webstockreview.net/images/user-icon-png-4.png",
-          //icon: "http://clipart-library.com/new_gallery/150581_white-question-mark-png.png"
+          //icon: "http://clipart-library.com/new_gallery/150581_white-question-mark-png.png",
           logo: "https://docsbot.ai/branding/docsbot-logo-white.png",
           //headerAlignment: "left",
           //logo: "https://docsbot.ai/branding/docsbot-logo-lg.png",
           //hideHeader: true,
-          customCSS: `.docsbot-chat-credits a { color: red; }`,
+          //customCSS: `.docsbot-chat-credits a { color: red; }`,
           //inputLimit: 2000,
           //noURLSourceTypes: ['crawler', 'confluence', 'salesforce', 'gitbook', 'guru', 'google_docs', 'dropbox', 'onedrive', 'box', 'sharepoint', 'zotero', 'zendesk', 'intercom', 'freshdesk', 'servicenow', 'slack', 'gong', 'gmail', 'outlook', 'github', 's3', 'gcs'],
           supportLink: "https://docsbot.ai/support",
+          useFeedback: true,
+          useEscalation: true,
+          isAgent: true, //false to test old websocket API
+          labels: {
+            poweredBy: 'Powered by',
+            inputPlaceholder: 'Send a message...',
+            firstMessage: 'What can I help you with?',
+            sources: 'Sources',
+            helpful: 'Rate as helpful',
+            unhelpful: 'Rate as unhelpful',
+            getSupport: 'Contact support',
+            floatingButton: 'Help',
+            suggestions: 'Not sure what to ask?',
+            close: 'Close',
+            create: 'Create your own!',
+            thinking: 'Thinking...',
+            rateLimitMessage: 'You are sending messages too fast. Please slow down.',
+            leadCollectMessage: "Let us know how to contact you?",
+            leadCollectConfirmation: "Your details has been saved successfully!",
+            feedbackMessage: "Was this answer helpful?",
+            feedbackYes: "Yes",
+            feedbackNo: "No",
+            resetChat: "Reset conversation",
+            footerMessage: "By starting a conversation, you agree to our [Privacy Policy](/legal/privacy-policy).", //supports markdown. If empty/missing, the footer will not be shown.
+          }, // Override all the default labels for your own language.
         }
       }).then(() => {
         //DocsBotAI.open();
@@ -154,6 +187,7 @@
       quis, accumsan porttitor, facilisis luctus, metus
     </p>
 
+    <!-- Change the id to test the different embeddable widget -->
     <div id="1docsbot-widget-embed" style="max-width:600px;height:650px;margin: 20px auto;">
     </div>
 

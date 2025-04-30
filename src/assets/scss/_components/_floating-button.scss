@@ -1,0 +1,101 @@
+@use '../_utils/tokens' as *;
+
+$floating-button-bg: $color-primary-200;
+$floating-button-color: $color-neutral-300;
+
+.floating-button {
+	cursor: pointer;
+	min-width: 24px;
+	position: fixed;
+	z-index: 99999997;
+	right: $spacing-lg;
+	bottom: $spacing-lg;
+	display: flex;
+	align-items: center;
+	padding: $spacing-md;
+	border-radius: 22px;
+	background: var(--docsbot-floating-button--bg, $floating-button-bg);
+	box-shadow:
+		rgba(0, 0, 0, 0.05) 0px 0px 0px 1px,
+		rgba(0, 0, 0, 0.1) 0px 3px 5px 0px,
+		rgba(0, 0, 0, 0.05) 0px 3px 3px 0px;
+	color: var(--docsbot-floating-button--color, $floating-button-color);
+	font-family: $font-family;
+	font-weight: 600;
+	font-size: 14px;
+	line-height: 14px;
+	text-decoration: none;
+	transition: transform $transition-duration-default linear;
+
+	&:hover {
+		transform: scale(1.05);
+	}
+
+	&:active {
+		transform: scale(0.95);
+		box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 2px;
+	}
+
+	// .floating-button-icon
+	&-icon {
+		width: 24px;
+		height: 24px;
+		user-select: none;
+		position: relative;
+
+		&--open,
+		&--close {
+			max-width: 24px;
+			max-height: 24px;
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			transition:
+				transform $transition-duration-default linear,
+				opacity $transition-duration-short linear;
+		}
+
+		&--open {
+			opacity: 1;
+			transform: translate(-50%, -50%) rotate(0) scale(1);
+		}
+
+		&--close {
+			opacity: 0;
+			transform: translate(-50%, -50%) rotate(-60deg) scale(0);
+		}
+	}
+
+	// .floating-button-label
+	&-label {
+		margin-left: $spacing-sm;
+	}
+
+	&.has-label {
+		min-width: 1px;
+		padding: ($spacing-xs * 3) $spacing-lg;
+		border-radius: $spacing-md;
+	}
+
+	&.is-open {
+		.floating-button-icon--open {
+			opacity: 0;
+			transform: translate(-50%, -50%) rotate(-60deg) scale(0);
+		}
+
+		.floating-button-icon--close {
+			opacity: 1;
+			transform: translate(-50%, -50%) rotate(0) scale(1);
+		}
+	}
+
+	&.docsbot-left {
+		left: $spacing-lg;
+		right: unset;
+	}
+
+	@media print {
+		display: none !important;
+	}
+}

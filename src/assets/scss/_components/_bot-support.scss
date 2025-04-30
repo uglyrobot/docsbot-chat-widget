@@ -1,0 +1,32 @@
+@use '../_utils/utils' as *;
+
+.docsbot-chat-bot-message-support {
+	width: 100%;
+	display: flex;
+	flex-flow: row wrap;
+
+	a {
+		@include bubble-button;
+
+		&[disabled] {
+			cursor: default;
+			pointer-events: none;
+			border-color: $color-secondary-300;
+			box-shadow: none;
+
+			.chatbot-loader-container {
+				svg {
+					height: 14px;
+
+					circle {
+						fill: $color-secondary-300;
+					}
+				}
+			}
+		}
+	}
+
+	&.has-avatar {
+		padding-left: #{$spacing-lg + $spacing-sm};
+	}
+}

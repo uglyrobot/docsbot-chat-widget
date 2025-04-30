@@ -1,0 +1,50 @@
+@use '../_utils/utils' as *;
+
+.docsbot-chat-bot-message .docsbot-sources {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: 13px;
+
+	li {
+		&:not(:last-child) {
+			margin-bottom: $spacing-xs;
+		}
+
+		a {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			font-weight: 400;
+			text-decoration: none;
+
+			&:hover {
+				text-decoration: underline;
+			}
+		}
+
+		&.docsbot-sources-unlinked {
+			display: flex;
+			align-items: center;
+
+			svg {
+				margin-right: $spacing-sm;
+			}
+		}
+	}
+
+	&-container {
+		margin-top: $spacing-md;
+		padding-top: $spacing-md;
+		border-top: 1px solid $color-secondary-300;
+	}
+
+	&-title {
+		margin: 0 0 $spacing-xs;
+		color: $color-neutral-100;
+		font-family: $font-family;
+		font-weight: 600;
+		font-size: 14px;
+		line-height: 20px;
+	}
+}

@@ -40,7 +40,7 @@ export default class EmbeddableWidget {
   static addUserMessage(message, send = false) {
     return new Promise(async (resolve) => {
       if (!this._root) {
-        console.warn("EmbeddableWidget is not mounted, mount first");
+        console.warn("DOCSBOT: EmbeddableWidget is not mounted, mount first");
         resolve(false);
         return;
       }
@@ -57,7 +57,7 @@ export default class EmbeddableWidget {
   static addBotMessage(message) {
     return new Promise((resolve) => {
       if (!this._root) {
-        console.warn("EmbeddableWidget is not mounted, mount first");
+        console.warn("DOCSBOT: EmbeddableWidget is not mounted, mount first");
         resolve(false);
         return;
       }
@@ -91,7 +91,7 @@ export default class EmbeddableWidget {
 
       const doRender = () => {
         if (EmbeddableWidget.el) {
-          console.warn("EmbeddableWidget is already mounted, unmount first");
+          console.warn("DOCSBOT: EmbeddableWidget is already mounted, unmount first");
           resolve(false);
           return;
         }
@@ -157,7 +157,7 @@ export default class EmbeddableWidget {
   static clearChatHistory() {
     return new Promise((resolve) => {
       if (!this._root) {
-        console.warn("EmbeddableWidget is not mounted, mount first");
+        console.warn("DOCSBOT: EmbeddableWidget is not mounted, mount first");
         resolve(false);
         return;
       }
@@ -165,9 +165,9 @@ export default class EmbeddableWidget {
       if (this.botId) {
         localStorage.removeItem(`${this.botId}_docsbot_chat_history`);
         localStorage.removeItem(`${this.botId}_chatHistory`);
-        console.log(`Cleared chat history for bot ID: ${this.botId}`);
+        //console.log(`Cleared chat history for bot ID: ${this.botId}`);
       } else {
-        console.warn("No bot ID found, cannot clear chat history");
+        console.warn("DOCSBOT: No bot ID found, cannot clear chat history");
         resolve(false);
         return;
       }

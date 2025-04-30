@@ -4,17 +4,17 @@ import { ChatbotProvider } from "../chatbotContext/ChatbotContext";
 import { useConfig } from "../configContext/ConfigContext";
 import ReactShadowRoot from "react-shadow-root";
 import fontAwesomeStyles from "!raw-loader!@fortawesome/fontawesome-svg-core/styles.css";
-import highlightJSStyles from "!raw-loader!highlight.js/styles/github.min.css";
-import hljsCopyStyles from "!raw-loader!highlightjs-copy/dist/highlightjs-copy.min.css";
-import reactChatbotStyles from "!raw-loader!../../chatbot.css";
-import floatingButtonStyles from "!raw-loader!../floatingButton/FloatingButton.css";
-import optionsStyles from "!raw-loader!../options/Options.css";
-import linkListStyles from "!raw-loader!../linkList/LinkList.css";
-import embeddedChatStyles from "!raw-loader!./embeddedChat.css";
+import highlightJSStyles from "!highlight.js/styles/github.min.css?raw";
+import hljsCopyStyles from "!highlightjs-copy/dist/highlightjs-copy.min.css?raw";
+import reactChatbotStyles from "!../../assets/css/chatbot.min.css?raw";
+import floatingButtonStyles from "!../../assets/css/FloatingButton.min.css?raw";
+import optionsStyles from "!../../assets/css/Options.min.css?raw";
+import linkListStyles from "!../../assets/css/LinkList.min.css?raw";
+import embeddedChatStyles from "!../../assets/css/embeddedChat.min.css?raw";
 
 const EmbeddedChat = () => {
   const { customCSS } = useConfig();
-  
+
   return (
     <ReactShadowRoot>
       <style type="text/css">{fontAwesomeStyles}</style>

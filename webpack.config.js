@@ -27,9 +27,31 @@ module.exports = (_, { mode }) => {
         directory: path.join(__dirname, "public"),
       },
       port: 3000,
+	  watchFiles: ["src/assets/scss/**/*.scss"],
     },
     module: {
       rules: [
+        {
+			test: /\.svg$/i,
+			use: [{
+			  loader: '@svgr/webpack',
+			  options: {
+				svgoConfig: {
+					plugins: [
+					  {
+						name: 'preset-default',
+						params: {
+						  overrides: {
+							// disable plugins
+							removeViewBox: false,
+						  },
+						},
+					  },
+					],
+				  },
+			  }
+			}]
+        },
         {
           test: /\.(js|jsx)$/,
           exclude: /node_modules/,

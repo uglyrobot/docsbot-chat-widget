@@ -1,0 +1,79 @@
+@use '../_utils/utils' as *;
+
+.docsbot-chat-bot-message {
+	@include bubble-message('left', $color-secondary-400, $color-neutral-100);
+
+	a {
+		color: inherit;
+		font-weight: 500;
+
+		&:hover {
+			text-decoration: none;
+		}
+	}
+
+	p {
+		margin-top: 0;
+
+		&:last-child {
+			margin-bottom: 0;
+		}
+	}
+
+	pre {
+		overflow: hidden;
+		position: relative;
+		margin: $spacing-xs 0;
+		border: 1px solid $color-secondary-200;
+		border-radius: $spacing-xs;
+		box-shadow: none;
+
+		code {
+			padding: $spacing-sm;
+			box-shadow: none;
+			font-size: 12px;
+			line-height: 16px;
+		}
+
+		button {
+			cursor: pointer;
+			border: 1px solid $color-secondary-200;
+			background: $color-secondary-200;
+			color: $color-neutral-100;
+			transition:
+				border-color $transition-duration-short linear,
+				background $transition-duration-short ease,
+				color $transition-duration-short ease;
+
+			&:hover {
+				border-color: $color-neutral-100;
+				background: $color-neutral-100;
+				color: $color-neutral-300;
+			}
+
+			&:focus {
+				outline: none;
+				border-color: $color-neutral-300;
+			}
+		}
+	}
+
+	ol,
+	ul {
+		padding-left: $spacing-lg;
+	}
+
+	&-container {
+		display: flex;
+		justify-content: flex-start;
+		padding-right: $spacing-sm;
+
+		&:not(:first-child) {
+			margin-top: $spacing-sm;
+		}
+
+		&.has-avatar {
+			padding-left: #{$spacing-lg + $spacing-sm};
+		}
+	}
+}

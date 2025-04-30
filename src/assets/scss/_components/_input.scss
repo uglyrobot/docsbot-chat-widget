@@ -1,0 +1,52 @@
+@use '../_utils/tokens' as *;
+
+.docsbot-chat-input {
+	$input-border-width: 1px;
+
+	width: 100%;
+	max-height: 80px;
+	resize: none;
+	padding: #{$spacing-md - $input-border-width} #{$spacing-lg -
+		$input-border-width};
+	padding-right: #{($spacing-lg - $input-border-width) +
+		(40px - $spacing-lg) + $spacing-md};
+	border: $input-border-width solid $color-secondary-300;
+	border-radius: $spacing-md;
+	background: $color-neutral-300;
+	color: $color-neutral-100;
+	font-family: $font-family;
+	font-weight: 400;
+	font-size: 14px;
+	line-height: 20px;
+	transition:
+		border-color $transition-duration-default linear,
+		outline $transition-duration-short linear;
+
+	&::placeholder {
+		color: $color-secondary-200;
+	}
+
+	&:hover,
+	&:focus {
+		border-color: var(--docsbot-input--hover, $color-primary-200);
+	}
+
+	&:focus {
+		outline: 1px solid var(--docsbot-input--hover, $color-primary-200);
+	}
+
+	// Element: .docsbot-chat-input-container
+	&-container {
+		width: 100%;
+		display: flex;
+		background: transparent;
+	}
+
+	// Element: .docsbot-chat-input-form
+	&-form {
+		position: relative;
+		display: flex;
+		flex: 1;
+		background: transparent;
+	}
+}

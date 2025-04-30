@@ -1,0 +1,30 @@
+@use 'sass:meta';
+@use 'sass:color';
+@use 'sass:string';
+
+/// -----------------------------------------------------------------------------
+/// 🟢 Tint
+///
+/// Adjust `$color` tint (mixture of a color with white) in `$percentage` to
+/// increase its lightness.
+///
+/// @param {String} $color
+/// @param {Number} $percentage
+///
+/// @author Leighton Quito (iamleigh.com)
+/// -----------------------------------------------------------------------------
+@function tint($color, $percentage) {
+	$base-color: #ffffff;
+
+	@if meta.type-of($color) == 'color' {
+		@return color.mix($base-color, $color, $percentage);
+	} @else if
+		meta.type-of($color) ==
+		'string' and
+		string.index($color + '', 'var')
+	{
+		@return string.unquote(
+			'color-mix(in srgb, #{$base-color} #{$percentage}, #{$color})'
+		);
+	}
+}
