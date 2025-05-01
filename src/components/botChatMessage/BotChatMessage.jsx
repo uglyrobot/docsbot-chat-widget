@@ -59,10 +59,7 @@ export const BotChatMessage = ({
 	const runSupportCallback = async (e, history) => {
 		setIsSupportLoading(true);
 
-		// Store the original URL we want to navigate to
-		const targetUrl = e && e.target && e.target.href;
-
-		// Prevent default to ensure we complete the request before navigation
+		// Prevent default to ensure we complete the request before navigation, not really needed as they are not links anymore
 		if (e && e.preventDefault) {
 			e.preventDefault();
 		}
@@ -79,15 +76,15 @@ export const BotChatMessage = ({
 			apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${payload.conversationId}/escalate`;
 		}
 
+		// Create a flag to track if we should open the link
+		let shouldOpenLink = true;
+
 		try {
 			// Make the API call
 			await fetch(apiUrl, {
 				method: 'PUT',
 				headers
 			});
-
-			// Create a flag to track if we should open the link
-			let shouldOpenLink = true;
 
 			// run callback if provided
 			if (supportCallback && typeof supportCallback === 'function') {
@@ -109,7 +106,7 @@ export const BotChatMessage = ({
 					);
 				} else {
 					// only create a ticket if the callback expects 4 parameters
-					if (payload.conversationId) {
+					if (payload.conversationId && isAgent) {
 						// make api call to get summary
 						const ticketResponse = await fetch(
 							`${apiBase}/teams/${teamId}/bots/${botId}/conversations/${payload.conversationId}/ticket`
@@ -131,12 +128,15 @@ export const BotChatMessage = ({
 					}
 				}
 			}
-
 			// Open the link if it exists and shouldOpenLink is still true
-			if (shouldOpenLink && targetUrl && targetUrl !== '#') {
-				window.open(targetUrl, '_blank');
+			if (shouldOpenLink && supportLink && supportLink !== '#') {
+				window.open(supportLink, '_blank');
 			}
 		} catch (err) {
+			// Open the link if it exists and shouldOpenLink is still true
+			if (shouldOpenLink && supportLink && supportLink !== '#') {
+				window.open(supportLink, '_blank');
+			}
 			console.warn(`DOCSBOT: Error recording support click: ${err}`);
 		} finally {
 			setIsSupportLoading(false);
@@ -515,22 +515,19 @@ export const BotChatMessage = ({
 						typeof supportCallback === 'function'))) ? (
 				<div
 					className={clsx(
-						'docsbot-chat-bot-message-container',
+						'docbot-chat-bot-message-rate',
 						botIcon && 'has-avatar'
 					)}
 				>
-					<div className="docsbot-chat-bot-message-support">
-						<a
-							href={supportLink}
-							target="_blank"
-							disabled={isSupportLoading}
-							onClick={(e) =>
-								runSupportCallback(e, state.chatHistory || [])
-							}
-						>
-							{isSupportLoading ? <Loader /> : labels.getSupport}
-						</a>
-					</div>
+					<button
+						onClick={(e) =>
+							runSupportCallback(e, state.chatHistory || [])
+						}
+						disabled={isSupportLoading}
+						className="docsbot-support-button"
+					>
+						{isSupportLoading ? <Loader /> : labels.getSupport}
+					</button>
 				</div>
 			) : null}
 		</>
