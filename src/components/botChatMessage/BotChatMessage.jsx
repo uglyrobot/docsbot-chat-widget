@@ -505,10 +505,8 @@ export const BotChatMessage = ({
 						typeof supportCallback === 'function')) &&
 				!isAgent &&
 				useEscalation &&
-				(!useFeedback || rating === -1) &&
-				payload.sources &&
-				(payload.sources.length > 0 ||
-					payload.couldAnswer === false)) ||
+				(!useFeedback || rating === -1 || (payload.sources && payload.sources.length == 0)) &&
+				(payload.sources || payload.couldAnswer === false)) ||
 			(payload.error &&
 				(supportLink ||
 					(supportCallback &&
