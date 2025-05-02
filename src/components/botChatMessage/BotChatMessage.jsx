@@ -267,8 +267,17 @@ export const BotChatMessage = ({
 									}}
 								/>
 
-								{!hideSources &&
-									payload.sources?.length > 0 && (
+								{/* 
+								 * Show sources if:
+								 * 1. There are sources available (payload.sources?.length > 0)
+								 * 2. AND either:
+								 *    a. hideSources is falsy (sources are not hidden globally)
+								 *    b. OR hideSources is an array AND not all sources are of types that should be hidden
+								 */}
+								{payload.sources?.length > 0 && 
+									(!hideSources || 
+									(Array.isArray(hideSources) && 
+									!payload.sources.every(source => hideSources.includes(source.type)))) && (
 										<div className="docsbot-sources-container">
 											<h3 className="docsbot-sources-title">
 												{labels.sources}

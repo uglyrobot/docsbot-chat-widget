@@ -3,7 +3,7 @@ import { faLink, faFile, faArrowUpRightFromSquare } from "@fortawesome/free-soli
 import { useConfig } from "../configContext/ConfigContext";
 
 export const Source = ({ source }) => {
-  const { noURLSourceTypes } = useConfig();
+  const { noURLSourceTypes, hideSources } = useConfig();
   const ALWAYS_HIDE_SOURCE_TYPES = [
     'helpscout',
     'freshdesk',
@@ -13,6 +13,11 @@ export const Source = ({ source }) => {
     'qa'
   ];
 
+  // If hideSources is an array, check if this source type should be hidden
+  if (Array.isArray(hideSources) && hideSources.includes(source.type)) {
+    return null;
+  }
+  
   // Check if source type matches hideSourceTypes or is in ALWAYS_HIDE_SOURCE_TYPES
   const shouldHideUrl = (noURLSourceTypes &&
     (Array.isArray(noURLSourceTypes)
