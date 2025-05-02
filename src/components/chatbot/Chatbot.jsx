@@ -36,6 +36,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		botId,
 		signature,
 		botName,
+		botIcon,
 		description,
 		branding,
 		labels,
@@ -140,6 +141,20 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		localStorage.removeItem(`DocsBot_${botId}_chatHistory`);
 		localStorage.removeItem(`DocsBot_${botId}_localChatHistory`);
 		localStorage.removeItem(`DocsBot_${botId}_conversationId`);
+
+		// Add first message after clearing
+		if (labels.firstMessage) {
+			const parsedMessage = await parseMarkdown(labels.firstMessage);
+			dispatch({
+				type: 'add_message',
+				payload: {
+					id: uuidv4(),
+					variant: 'chatbot',
+					message: parsedMessage,
+					timestamp: Date.now()
+				}
+			});
+		}
 	};
 
 	useEffect(() => {
@@ -385,12 +400,19 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											? 'add_message'
 											: 'update_message',
 									payload: {
-										id: data.event === 'is_resolved_question' ? uuidv4() : id,
+										id:
+											data.event ===
+											'is_resolved_question'
+												? uuidv4()
+												: id,
 										variant: 'chatbot',
 										type: data.event,
-										message: await parseMarkdown(finalData.answer),
+										message: await parseMarkdown(
+											finalData.answer
+										),
 										sources: finalData.sources || null,
-										answerId: answerId || finalData.id || null, // use saved prev id for feedback button
+										answerId:
+											answerId || finalData.id || null, // use saved prev id for feedback button
 										conversationId: getConversationId(),
 										loading: false,
 										responses: finalData.options || null
@@ -909,7 +931,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											...message,
 											conversationId: getConversationId() //lets us escalate historic conversations
 										}}
-										messageBoxRef={messagesRefs.current[message.id]}
+										messageBoxRef={
+											messagesRefs.current[message.id]
+										}
 										chatContainerRef={ref}
 										fetchAnswer={fetchAnswer}
 										inputRef={inputRef}
@@ -932,7 +956,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 						{Object.keys(state.messages).length <= 1 &&
 							Object.keys(questions).length >= 1 && (
-								<div className="docsbot-chat-suggested-questions-container">
+								<div
+									className={clsx(
+										'docsbot-chat-suggested-questions-container',
+										botIcon && 'has-avatar'
+									)}
+								>
 									<span className="docsbot-chat-suggested-questions-title">
 										{labels.suggestions}
 									</span>

@@ -5,6 +5,10 @@
 		display: block;
 		margin-top: $spacing-sm;
 		padding-right: $spacing-xl;
+
+		&.has-avatar {
+			padding-left: #{$spacing-lg + $spacing-sm};
+		}
 	}
 
 	&-title {

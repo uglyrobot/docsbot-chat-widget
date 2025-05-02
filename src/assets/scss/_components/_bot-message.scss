@@ -75,5 +75,10 @@
 		&.has-avatar {
 			padding-left: #{$spacing-lg + $spacing-sm};
 		}
+
+		// Add padding-left when no avatar is shown to maintain alignment
+		&:not(:has(.docsbot-chat-bot-avatar)) {
+			padding-left: #{$spacing-lg + $spacing-sm};
+		}
 	}
 }

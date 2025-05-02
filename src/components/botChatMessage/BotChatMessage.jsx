@@ -43,6 +43,17 @@ export const BotChatMessage = ({
 	const [hljs, setHljs] = useState(null);
 	const [isSupportLoading, setIsSupportLoading] = useState(false);
 
+	// Check if this is a repeated bot message
+	const isRepeatedBotMessage = () => {
+		const messageIds = Object.keys(state.messages);
+		const currentIndex = messageIds.findIndex(
+			(id) => state.messages[id].id === payload.id
+		);
+		if (currentIndex <= 0) return false; // First message always shows avatar
+		const prevMessage = state.messages[messageIds[currentIndex - 1]];
+		return prevMessage.variant === 'chatbot';
+	};
+
 	useEffect(() => {
 		getHighlightJs().then(setHljs);
 	}, []);
@@ -245,7 +256,7 @@ export const BotChatMessage = ({
 	return (
 		<>
 			<div className="docsbot-chat-bot-message-container">
-				<BotAvatar />
+				{!isRepeatedBotMessage() && <BotAvatar />}
 				<div
 					className="docsbot-chat-bot-message"
 					{...(payload.error && {
