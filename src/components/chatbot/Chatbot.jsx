@@ -49,6 +49,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		hideHeader,
 		inputLimit,
 		contextItems,
+		botIcon,
 		isAgent, // If new agent api is enabled
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
@@ -932,7 +933,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 						{Object.keys(state.messages).length <= 1 &&
 							Object.keys(questions).length >= 1 && (
-								<div className="docsbot-chat-suggested-questions-container">
+								<div className="docsbot-chat-suggested-questions-container" {...(botIcon && {style: {marginLeft: '32px'}})}>
 									<span className="docsbot-chat-suggested-questions-title">
 										{labels.suggestions}
 									</span>
