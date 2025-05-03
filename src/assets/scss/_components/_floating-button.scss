@@ -74,8 +74,7 @@ $floating-button-color: $color-neutral-300;
 
 	&.has-label {
 		min-width: 1px;
-		padding: ($spacing-xs * 3) $spacing-lg;
-		border-radius: $spacing-md;
+		padding: $spacing-md $spacing-lg;
 	}
 
 	&.is-open {

@@ -293,7 +293,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				metadata,
 				conversationId: getConversationId(),
 				context_items: contextItems || 6,
-				autocut: 2
+				autocut: 2,
+				default_language: navigator.language
 			};
 			if (signature) {
 				sse_req.auth = signature;
