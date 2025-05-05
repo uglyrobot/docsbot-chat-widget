@@ -2,10 +2,24 @@
 
 .docsbot-chat-bot-message {
 	@include bubble-message('left', $color-secondary-400, $color-neutral-100);
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+	word-break: break-word;
+
+	// Handle text alignment based on content direction
+	span[dir="auto"] {
+		text-align: start;
+		unicode-bidi: plaintext;
+		display: block;
+		width: 100%;
+	}
 
 	a {
 		color: inherit;
 		font-weight: 500;
+		word-break: break-all;
+		display: inline-block;
+		max-width: 100%;
 
 		&:hover {
 			text-decoration: none;
@@ -14,6 +28,7 @@
 
 	p {
 		margin-top: 0;
+		max-width: 100%;
 
 		&:last-child {
 			margin-bottom: 0;
@@ -21,6 +36,8 @@
 	}
 
 	pre {
+		direction: ltr;
+		text-align: left;
 		overflow: hidden;
 		position: relative;
 		margin: $spacing-xs 0;
@@ -33,6 +50,9 @@
 			box-shadow: none;
 			font-size: 12px;
 			line-height: 16px;
+			direction: ltr;
+			text-align: left;
+			unicode-bidi: normal;
 		}
 
 		button {
@@ -55,6 +75,11 @@
 				outline: none;
 				border-color: $color-neutral-300;
 			}
+
+			&[data-copied="true"] {
+				padding-left: $spacing-sm;
+				padding-right: $spacing-sm;
+			}
 		}
 	}
 
@@ -66,18 +91,13 @@
 	&-container {
 		display: flex;
 		justify-content: flex-start;
-		padding-right: $spacing-sm;
 
 		&:not(:first-child) {
 			margin-top: $spacing-sm;
 		}
 
-		&.has-avatar {
-			padding-left: #{$spacing-lg + $spacing-sm};
-		}
-
 		// Add padding-left when no avatar is shown to maintain alignment
-		&:not(:has(.docsbot-chat-bot-avatar)) {
+		&.has-avatar:not(:has(.docsbot-chat-bot-avatar)) {
 			padding-left: #{$spacing-lg + $spacing-sm};
 		}
 	}

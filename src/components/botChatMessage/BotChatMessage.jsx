@@ -255,7 +255,7 @@ export const BotChatMessage = ({
 
 	return (
 		<>
-			<div className="docsbot-chat-bot-message-container">
+			<div className={clsx("docsbot-chat-bot-message-container", botIcon && 'has-avatar')}>
 				{!isRepeatedBotMessage() && <BotAvatar />}
 				<div
 					className="docsbot-chat-bot-message"
@@ -273,6 +273,7 @@ export const BotChatMessage = ({
 							<>
 								<span
 									ref={contentRef}
+									dir="auto"
 									dangerouslySetInnerHTML={{
 										__html: payload.message
 									}}
@@ -342,7 +343,7 @@ export const BotChatMessage = ({
 								)}
 								{...(rating === 1 && { disabled: true })}
 							>
-								<span aria-hidden="true">
+								<span dir="auto" aria-hidden="true">
 									{payload.responses?.yes ||
 										labels.feedbackYes ||
 										'👍'}
@@ -360,7 +361,7 @@ export const BotChatMessage = ({
 								)}
 								{...(rating === -1 && { disabled: true })}
 							>
-								<span aria-hidden="true">
+								<span dir="auto" aria-hidden="true">
 									{payload.responses?.no ||
 										labels.feedbackNo ||
 										'👎'}
@@ -395,7 +396,7 @@ export const BotChatMessage = ({
 							)}
 						>
 							<div className="docsbot-chat-bot-message">
-								{labels.feedbackMessage}
+								<span dir="auto">{labels.feedbackMessage}</span>
 							</div>
 						</div>
 
@@ -416,7 +417,7 @@ export const BotChatMessage = ({
 								)}
 								{...(rating === 1 && { disabled: true })}
 							>
-								<span aria-hidden="true">
+								<span dir="auto" aria-hidden="true">
 									{labels.feedbackYes || '👍'}
 								</span>
 							</button>
@@ -432,7 +433,7 @@ export const BotChatMessage = ({
 								)}
 								{...(rating === -1 && { disabled: true })}
 							>
-								<span aria-hidden="true">
+								<span dir="auto" aria-hidden="true">
 									{labels.feedbackNo || '👎'}
 								</span>
 							</button>
@@ -471,7 +472,7 @@ export const BotChatMessage = ({
 								{isSupportLoading ? (
 									<Loader />
 								) : (
-									<span aria-hidden="true">
+									<span dir="auto" aria-hidden="true">
 										{payload.responses?.yes ||
 											labels.getSupport}
 									</span>
@@ -503,7 +504,7 @@ export const BotChatMessage = ({
 									}}
 									className=""
 								>
-									<span aria-hidden="true">
+									<span dir="auto" aria-hidden="true">
 										{payload.responses?.no ||
 											labels.feedbackNo ||
 											'👎'}
@@ -544,7 +545,7 @@ export const BotChatMessage = ({
 						disabled={isSupportLoading}
 						className="docsbot-support-button"
 					>
-						{isSupportLoading ? <Loader /> : labels.getSupport}
+						{isSupportLoading ? <Loader /> : <span dir="auto">{labels.getSupport}</span>}
 					</button>
 				</div>
 			) : null}

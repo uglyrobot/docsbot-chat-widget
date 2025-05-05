@@ -9,7 +9,7 @@ export const UserChatMessage = ({ loading, message }) => {
             return <Loader />;
           }
 
-          return <span>{message}</span>;
+          return <span dir="auto">{message}</span>;
         })()}
       </div>
     </div>

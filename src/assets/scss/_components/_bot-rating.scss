@@ -7,6 +7,12 @@
 	button {
 		@include bubble-button($color-secondary-300);
 
+		span[dir="auto"] {
+			text-align: start;
+			unicode-bidi: plaintext;
+			display: inline-block;
+		}
+
 		&.selected {
 			background: $color-secondary-300;
 		}

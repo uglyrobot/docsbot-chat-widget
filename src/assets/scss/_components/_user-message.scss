@@ -7,8 +7,15 @@
 		var(--docsbot-user--color, $color-neutral-100)
 	);
 
+	// Handle text alignment based on content direction
+	span[dir="auto"] {
+		text-align: start;
+		unicode-bidi: plaintext;
+	}
+
 	p {
 		margin: 0;
+		text-align: start;
 	}
 
 	&-container {
