@@ -296,9 +296,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				autocut: 2,
 				default_language: navigator.language
 			};
-			if (signature) {
-				sse_req.auth = signature;
-			}
 
 			// Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
 			let retryCount = 0;
@@ -313,7 +310,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					signal: abortController.signal,
 					headers: {
 						'Content-Type': 'application/json',
-						accept: 'application/json'
+						accept: 'application/json',
+						// Set Authorization header if signature is provided
+						...(signature && {
+							'Authorization': `Bearer ${signature}`
+						})
 					},
 					method: 'POST',
 					body: JSON.stringify(sse_req),
