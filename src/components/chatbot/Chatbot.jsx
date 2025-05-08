@@ -1287,6 +1287,35 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 													e.target.style.height = 'auto';
 												}
 											}}
+											onPaste={(e) => {
+												if (!useImageUpload) return;
+												
+												const clipboardItems = e.clipboardData.items;
+												const imageItems = Array.from(clipboardItems).filter(
+													item => item.type.startsWith('image/')
+												);
+												
+												if (imageItems.length > 0) {
+													e.preventDefault();
+													
+													// Process only one image if multiple are pasted
+													// For simplicity, we're just handling the first image
+													const item = imageItems[0];
+													
+													// Convert clipboard item to a file
+													const blob = item.getAsFile();
+													if (blob) {
+														// Check if we'd exceed the limit
+														if (selectedImages.length >= 2) {
+															console.warn("DOCSBOT: Maximum 2 images allowed");
+															return;
+														}
+														
+														// Process the pasted image file
+														processImageFiles([blob]);
+													}
+												}
+											}}
 											ref={inputRef}
 											maxLength={
 												inputLimit
