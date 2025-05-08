@@ -17,8 +17,12 @@ import {
 	faXmark,
 	faRefresh,
 	faPaperPlane,
-	faChevronDown
+	faChevronDown,
+	faTimes
 } from '@fortawesome/free-solid-svg-icons';
+import {
+	faImage
+} from '@fortawesome/free-regular-svg-icons';
 import { Emitter, decideTextColor, scrollToBottom } from '../../utils/utils';
 import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
@@ -29,6 +33,9 @@ class FatalError extends Error {}
 
 export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const [chatInput, setChatInput] = useState('');
+	const [selectedImages, setSelectedImages] = useState([]);
+	const [imageUrls, setImageUrls] = useState([]);
+	const [isDragging, setIsDragging] = useState(false);
 	const { dispatch, state } = useChatbot();
 	const {
 		color,
@@ -53,15 +60,124 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		isAgent, // If new agent api is enabled
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
+		useImageUpload, // If image upload is enabled
 		localDev
 	} = useConfig();
 	const ref = useRef();
 	const inputRef = useRef();
+	const fileInputRef = useRef(null);
 	const mediaMatch = window.matchMedia('(min-width: 480px)');
 	const messagesRefs = useRef({});
 	const [isFetching, setIsFetching] = useState(false);
 	const [isAtBottom, setIsAtBottom] = useState(true);
 	const [streamController, setStreamController] = useState(null);
+
+	const handleImageSelect = (e) => {
+		if (!useImageUpload) return;
+		const files = Array.from(e.target.files);
+		processImageFiles(files);
+	};
+
+	const processImageFiles = (files) => {
+		if (!useImageUpload || files.length === 0) return;
+
+		// Limit to max 2 images total
+		if (selectedImages.length + files.length > 2) {
+			const maxImages = 2;
+			const remainingSlots = maxImages - selectedImages.length;
+			const filesToProcess = files.slice(0, remainingSlots);
+			
+			if (filesToProcess.length < files.length) {
+				console.warn(`DOCSBOT: Only processing ${filesToProcess.length} of ${files.length} images. Maximum ${maxImages} images allowed.`);
+			}
+			
+			// Replace files with the trimmed array
+			files = filesToProcess;
+		}
+
+		files.forEach((file) => {
+			if (!file.type.startsWith('image/')) {
+				// Could add an error message here
+				return;
+			}
+
+			const reader = new FileReader();
+			reader.onload = (e) => {
+				const img = new Image();
+				img.onload = () => {
+					// Calculate new dimensions while maintaining aspect ratio
+					let width = img.width;
+					let height = img.height;
+					const maxSize = 1200;
+
+					if (width > height && width > maxSize) {
+						height = (height * maxSize) / width;
+						width = maxSize;
+					} else if (height > maxSize) {
+						width = (width * maxSize) / height;
+						height = maxSize;
+					}
+
+					// Create canvas and resize image for full-size version
+					const canvas = document.createElement('canvas');
+					canvas.width = width;
+					canvas.height = height;
+					const ctx = canvas.getContext('2d');
+					ctx.drawImage(img, 0, 0, width, height);
+
+					// Convert to base64 with compression for full-size image
+					const fullSizeBase64 = canvas.toDataURL('image/jpeg', 0.8);
+					
+					// Create thumbnail for history (max 200px)
+					const thumbnailBase64 = createThumbnail(img, 200);
+					
+					setSelectedImages((prev) => [...prev, { 
+						url: fullSizeBase64, 
+						file,
+						thumbnailUrl: thumbnailBase64
+					}]);
+					setImageUrls((prev) => [...prev, fullSizeBase64]);
+				};
+				img.src = e.target.result;
+			};
+			reader.readAsDataURL(file);
+		});
+	};
+
+	// Create a smaller thumbnail version of the image for chat history
+	const createThumbnail = (imgElement, maxSize) => {
+		// Calculate new dimensions while maintaining aspect ratio
+		let width = imgElement.width;
+		let height = imgElement.height;
+		
+		if (width > height && width > maxSize) {
+			height = (height * maxSize) / width;
+			width = maxSize;
+		} else if (height > maxSize) {
+			width = (width * maxSize) / height;
+			height = maxSize;
+		}
+		
+		// Create canvas and resize image for thumbnail
+		const canvas = document.createElement('canvas');
+		canvas.width = width;
+		canvas.height = height;
+		const ctx = canvas.getContext('2d');
+		ctx.drawImage(imgElement, 0, 0, width, height);
+		
+		// Convert to base64 with higher compression for thumbnail
+		return canvas.toDataURL('image/jpeg', 0.6);
+	};
+
+	const removeImage = (index) => {
+		setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+		setImageUrls((prev) => prev.filter((_, i) => i !== index));
+	};
+
+	const triggerFileInput = () => {
+		if (!useImageUpload) return;
+		fileInputRef.current.click();
+	};
 
 	useEffect(() => {
 		Emitter.on('docsbot_add_user_message', async ({ message, send }) => {
@@ -248,7 +364,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		}
 	}, [state.chatHistory]);
 
-	async function fetchAnswer(question) {
+	async function fetchAnswer(question, image_urls = []) {
 		const id = uuidv4();
 		setIsFetching(true);
 		let answerId = null;
@@ -294,7 +410,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				conversationId: getConversationId(),
 				context_items: contextItems || 6,
 				autocut: 2,
-				default_language: navigator.language
+				default_language: navigator.language,
+				image_urls: image_urls.length > 0 && useImageUpload ? image_urls : undefined
 			};
 
 			// Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
@@ -686,6 +803,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 	async function handleSubmit(event) {
 		event.preventDefault();
+		if (chatInput.trim().length < 2) {
+			return;
+		}
+
+		// Extract thumbnails for history storage if images exist
+		const historyImageUrls = useImageUpload && selectedImages.length > 0 
+			? selectedImages.map(img => img.thumbnailUrl) 
+			: undefined;
 
 		dispatch({
 			type: 'add_message',
@@ -693,12 +818,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				variant: 'user',
 				message: chatInput,
 				loading: false,
-				timestamp: Date.now()
+				timestamp: Date.now(),
+				imageUrls: historyImageUrls
 			}
 		});
 
-		fetchAnswer(chatInput);
+		// Add full-size image_urls to the API request if image upload is enabled
+		fetchAnswer(chatInput, useImageUpload ? imageUrls : []);
+		
+		// Clear the input and images after sending
 		setChatInput('');
+		setSelectedImages([]);
+		setImageUrls([]);
 
 		// Wait for DOM update, then scroll
 		setTimeout(() => {
@@ -757,6 +888,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			'--docsbot-logo--color',
 			isWhite ? '#314351' : primaryColor
 		);
+		
+		// Add image upload button styles
+		root.style.setProperty(
+			'--docsbot-image-upload-btn--color',
+			isWhite ? '#314351' : primaryColor
+		);
+		
+		// Add drag-and-drop zone styles
+		root.style.setProperty(
+			'--docsbot-drag-border-color',
+			isWhite ? '#314351' : primaryColor
+		);
 	}, [color]);
 
 	useEffect(() => {
@@ -806,6 +949,48 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			setTimeout(() => scrollToBottom(ref), 0);
 		}
 	}, [isOpen]);
+
+	// Handle drag and drop events
+	const handleDragEnter = (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		setIsDragging(true);
+	};
+
+	const handleDragLeave = (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		
+		// Only reset isDragging if we're leaving the target element 
+		// and not entering a child element of the target
+		if (!e.currentTarget.contains(e.relatedTarget)) {
+			setIsDragging(false);
+		}
+	};
+
+	const handleDragOver = (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		if (!isDragging) setIsDragging(true);
+	};
+
+	const handleDrop = (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		setIsDragging(false);
+
+		const files = Array.from(e.dataTransfer.files);
+		
+		// Check if all files are images
+		const allImages = files.every(file => file.type.startsWith('image/'));
+		
+		if (files.length > 0 && !allImages) {
+			console.warn("DOCSBOT: Only image files are allowed");
+			return;
+		}
+		
+		processImageFiles(files);
+	};
 
 	return (
 		<div
@@ -952,6 +1137,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									key={key}
 									loading={message.loading}
 									message={message.message}
+									imageUrls={message.imageUrls}
 								/>
 							);
 						})}
@@ -960,7 +1146,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							Object.keys(questions).length >= 1 && (
 								<div
 									className={clsx(
-										'docsbot-chat-suggested-questions-container',
+										'docsbot-chat-suggested-questions-container consecutive-bot-message',
 										botIcon && 'has-avatar'
 									)}
 								>
@@ -1020,76 +1206,160 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						<div className="docsbot-chat-footer-inner-wrapper">
 							<div className="docsbot-chat-input-container">
 								<form
-									className="docsbot-chat-input-form"
+									className={`docsbot-chat-input-form ${chatInput.trim().length < 2 || isFetching ? 'has-disabled-submit' : ''}`}
 									onSubmit={handleSubmit}
+									onDragEnter={useImageUpload ? handleDragEnter : null}
+									onDragLeave={useImageUpload ? handleDragLeave : null}
+									onDragOver={useImageUpload ? handleDragOver : null}
+									onDrop={useImageUpload ? handleDrop : null}
 								>
-									<textarea
-										className="docsbot-chat-input"
-										placeholder={labels.inputPlaceholder}
-										value={chatInput}
-										onFocus={(e) => {
-											const textarea = e.target;
-											const form = textarea.parentNode;
-											const container = form.parentNode;
+									{/* Hidden file input */}
+									{useImageUpload && (
+										<input
+											type="file"
+											ref={fileInputRef}
+											onChange={handleImageSelect}
+											accept="image/*"
+											multiple
+											className="docsbot-hidden-file-input"
+											aria-label="Upload image"
+										/>
+									)}
+									
+									<div className={`docsbot-chat-input-wrapper ${selectedImages.length > 0 ? 'has-images' : ''} ${isDragging ? 'is-dragging' : ''} ${!useImageUpload ? 'no-image-upload' : ''}`}>
 
-											container.classList.add('focused');
-										}}
-										onBlur={(e) => {
-											const textarea = e.target;
-											const form = textarea.parentNode;
-											const container = form.parentNode;
+										<textarea
+											className={`docsbot-chat-input ${!useImageUpload ? 'no-image-upload' : ''}`}
+											placeholder={labels.inputPlaceholder}
+											value={chatInput}
+											onFocus={(e) => {
+												const textarea = e.target;
+												const form = textarea.parentNode.parentNode;
+												const container = form.parentNode;
 
-											container.classList.remove(
-												'focused'
-											); // remove focused class
-										}}
-										onChange={(e) => {
-											setChatInput(e.target.value);
+												container.classList.add('focused');
+											}}
+											onBlur={(e) => {
+												const textarea = e.target;
+												const form = textarea.parentNode.parentNode;
+												const container = form.parentNode;
 
-											e.target.style.height = 'auto';
+												container.classList.remove(
+													'focused'
+												); // remove focused class
+											}}
+											onChange={(e) => {
+												setChatInput(e.target.value);
 
-											// get the computed style of the textarea
-											const computed =
-												window.getComputedStyle(
-													e.target
-												);
-											const padding =
-												parseInt(computed.paddingTop) +
-												parseInt(
-													computed.paddingBottom
-												);
-
-											if (e.target.scrollHeight > 54) {
-												e.target.style.height =
-													e.target.scrollHeight -
-													padding +
-													'px';
-											}
-										}}
-										onKeyDown={(e) => {
-											//this detects if the user is typing in a IME session (ie Kanji autocomplete) to avoid premature submission
-											if (
-												e.isComposing ||
-												e.keyCode === 229
-											) {
-												return;
-											}
-											if (
-												e.key === 'Enter' &&
-												!e.shiftKey
-											) {
-												handleSubmit(e);
 												e.target.style.height = 'auto';
+
+												// get the computed style of the textarea
+												const computed =
+													window.getComputedStyle(
+														e.target
+													);
+												const padding =
+													parseInt(computed.paddingTop) +
+													parseInt(
+														computed.paddingBottom
+													);
+
+												if (e.target.scrollHeight > 54) {
+													e.target.style.height =
+														e.target.scrollHeight -
+														padding +
+														'px';
+												}
+											}}
+											onKeyDown={(e) => {
+												//this detects if the user is typing in a IME session (ie Kanji autocomplete) to avoid premature submission
+												if (
+													e.isComposing ||
+													e.keyCode === 229
+												) {
+													return;
+												}
+												if (
+													e.key === 'Enter' &&
+													!e.shiftKey
+												) {
+													handleSubmit(e);
+													e.target.style.height = 'auto';
+												}
+											}}
+											onPaste={(e) => {
+												if (!useImageUpload) return;
+												
+												const clipboardItems = e.clipboardData.items;
+												const imageItems = Array.from(clipboardItems).filter(
+													item => item.type.startsWith('image/')
+												);
+												
+												if (imageItems.length > 0) {
+													e.preventDefault();
+													
+													// Process only one image if multiple are pasted
+													// For simplicity, we're just handling the first image
+													const item = imageItems[0];
+													
+													// Convert clipboard item to a file
+													const blob = item.getAsFile();
+													if (blob) {
+														// Check if we'd exceed the limit
+														if (selectedImages.length >= 2) {
+															console.warn("DOCSBOT: Maximum 2 images allowed");
+															return;
+														}
+														
+														// Process the pasted image file
+														processImageFiles([blob]);
+													}
+												}
+											}}
+											ref={inputRef}
+											maxLength={
+												inputLimit
+													? Math.min(inputLimit, 2000)
+													: 500
 											}
-										}}
-										ref={inputRef}
-										maxLength={
-											inputLimit
-												? Math.min(inputLimit, 2000)
-												: 500
-										}
-										rows={1}
-									/>
+											rows={1}
+										/>
+										{selectedImages.length > 0 && (
+											<div className="docsbot-image-preview-container">
+												{selectedImages.map((image, index) => (
+													<div key={index} className="docsbot-image-preview">
+														<img
+															src={image.url}
+															alt={`Selected ${index + 1}`}
+															className="docsbot-image-preview-img"
+														/>
+														<button
+															type="button"
+															onClick={() => removeImage(index)}
+															className="docsbot-image-remove-btn"
+															aria-label="Remove image"
+														>
+															<FontAwesomeIcon icon={faTimes} />
+														</button>
+													</div>
+												))}
+											</div>
+										)}
+									</div>
+									
+									{/* Image upload button - only show when useImageUpload is true */}
+									{useImageUpload && (
+										<button 
+											type="button"
+											onClick={triggerFileInput}
+											className="docsbot-image-upload-btn"
+											disabled={selectedImages.length >= 2 || isFetching}
+											aria-label="Upload image"
+										>
+											<FontAwesomeIcon icon={faImage} />
+										</button>
+									)}
+									
 									<button
 										type="submit"
 										className="docsbot-chat-btn-send"

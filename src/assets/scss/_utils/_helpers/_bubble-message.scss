@@ -8,6 +8,7 @@
 		border-top-left-radius: $spacing-xs;
 	} @else if $position == 'right' {
 		border-top-right-radius: $spacing-xs;
+		padding: $spacing-sm $spacing-md;
 	}
 	background: $background;
 	color: $color;

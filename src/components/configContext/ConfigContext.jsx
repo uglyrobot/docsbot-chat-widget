@@ -80,7 +80,27 @@ export function ConfigProvider(props = {}) {
             }
           }
 
-          setConfig({ ...data, supportCallback, identify: identify || {}, signature, ...options });
+          // Create a clean copy of options without the labels property
+          const { labels: optionsLabels, ...restOptions } = options || {};
+          
+          // Merge labels ensuring undefined values in options.labels use defaults from data.labels
+          const mergedLabels = optionsLabels
+            ? { ...data.labels, ...Object.entries(optionsLabels).reduce((acc, [key, value]) => {
+                if (value !== undefined) {
+                  acc[key] = value;
+                }
+                return acc;
+              }, {}) }
+            : data.labels;
+
+          setConfig({ 
+            ...data, 
+            supportCallback, 
+            identify: identify || {}, 
+            signature, 
+            ...restOptions,
+            labels: mergedLabels 
+          });
         })
         .catch((e) => {
           console.warn(`DOCSBOT: Error fetching config: ${e}`);

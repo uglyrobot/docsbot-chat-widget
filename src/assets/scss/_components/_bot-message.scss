@@ -91,14 +91,20 @@
 	&-container {
 		display: flex;
 		justify-content: flex-start;
+		padding-right: $spacing-sm;
 
 		&:not(:first-child) {
 			margin-top: $spacing-sm;
 		}
-
+		
 		// Add padding-left when no avatar is shown to maintain alignment
 		&.has-avatar:not(:has(.docsbot-chat-bot-avatar)) {
 			padding-left: #{$spacing-lg + $spacing-sm};
 		}
 	}
+}
+
+/* Target consecutive bot messages with higher specificity */
+.docsbot-chat-message-container > div.consecutive-bot-message {
+	margin-top: $spacing-xs !important;
 }

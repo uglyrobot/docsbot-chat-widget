@@ -253,10 +253,17 @@ export const BotChatMessage = ({
 		return currentIndex < messageIds.length - 1;
 	};
 
+	// Pre-compute this value once for use in multiple places
+	const repeatedBotMessage = isRepeatedBotMessage();
+
 	return (
 		<>
-			<div className={clsx("docsbot-chat-bot-message-container", botIcon && 'has-avatar')}>
-				{!isRepeatedBotMessage() && <BotAvatar />}
+			<div className={clsx(
+				"docsbot-chat-bot-message-container", 
+				botIcon && 'has-avatar',
+				repeatedBotMessage && 'consecutive-bot-message'
+			)}>
+				{!repeatedBotMessage && <BotAvatar />}
 				<div
 					className="docsbot-chat-bot-message"
 					{...(payload.error && {
