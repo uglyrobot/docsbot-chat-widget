@@ -7,6 +7,10 @@
 	padding: $spacing-lg $spacing-lg $spacing-xl;
 
 	> div:not(:first-child) {
+		margin-top: $spacing-md;
+	}
+
+	> div:has(.consecutive-bot-message) {
 		margin-top: $spacing-sm;
 	}
 
