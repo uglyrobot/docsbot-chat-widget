@@ -81,7 +81,7 @@ export function ConfigProvider(props = {}) {
           }
 
           // Create a clean copy of options without the labels property
-          const { labels: optionsLabels, ...restOptions } = options || {};
+          const { labels: optionsLabels, branding, ...restOptions } = options || {};
           
           // Merge labels ensuring undefined values in options.labels use defaults from data.labels
           const mergedLabels = optionsLabels

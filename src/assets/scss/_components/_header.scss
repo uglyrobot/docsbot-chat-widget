@@ -193,6 +193,7 @@
 .docsbot-embedded .unbranded {
 	&.docsbot-chat-header {
 		padding: $spacing-sm $spacing-md;
+		background-color: transparent;
 
 		// Element: .docsbot-chat-header-inner
 		.docsbot-chat-header-inner {

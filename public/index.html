@@ -7,10 +7,44 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
     />
+    <style>
+      :root {
+        --background-color: #121212;
+        --text-color: #ffffff;
+        --secondary-bg: #1e1e1e;
+        --accent-color: #bb86fc;
+      }
+      
+      body {
+        background-color: var(--background-color);
+        color: var(--text-color);
+      }
+      
+      * {
+        color: var(--text-color);
+      }
+      
+      button {
+        background-color: var(--secondary-bg);
+        border: 1px solid var(--accent-color);
+        color: var(--text-color);
+      }
+      
+      input {
+        background-color: var(--secondary-bg);
+        color: var(--text-color);
+        border: 1px solid #333;
+      }
+      
+      h1, h2 {
+        color: var(--accent-color);
+      }
+      
+    </style>
     <title>React + Webpack</title>
   </head>
 
-  <body style="background-color: whitesmoke">
+  <body>
     <h1>Embeddable Widget Demo</h1>
     <div>
       <button id="open-btn">Open</button>
@@ -70,7 +104,7 @@
           logo: "https://docsbot.ai/branding/docsbot-logo-white.png",
           //headerAlignment: "left",
           //logo: "https://docsbot.ai/branding/docsbot-logo-lg.png",
-          //hideHeader: true,
+          //hideHeader: true, // only on embedded chat
           //customCSS: `.docsbot-chat-credits a { color: red; }`,
           //inputLimit: 2000,
           //noURLSourceTypes: ['crawler', 'confluence', 'salesforce', 'gitbook', 'guru', 'google_docs', 'dropbox', 'onedrive', 'box', 'sharepoint', 'zotero', 'zendesk', 'intercom', 'freshdesk', 'servicenow', 'slack', 'gong', 'gmail', 'outlook', 'github', 's3', 'gcs'],
@@ -190,7 +224,7 @@
     </p>
 
     <!-- Change the id to test the different embeddable widget -->
-    <div id="1docsbot-widget-embed" style="max-width:600px;height:650px;margin: 20px auto;">
+    <div id="1docsbot-widget-embed" style="max-width:600px;height:650px;margin: 20px auto;border: none;">
     </div>
 
     <h1>HTML Ipsum Presents</h1>
