@@ -541,16 +541,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								scrollToBottom(ref);
 
 								answerId = finalData.id || null; // save the answer id for the feedback button
-								let newChatHistory = [];
-
-								if (state.chatHistory?.length) {
-									newChatHistory = [
-										...state?.chatHistory,
-										finalData.history[0]
-									];
-								} else {
-									newChatHistory = finalData.history;
-								}
+								let newChatHistory = finalData.history
 
 								dispatch({
 									type: 'save_history',
