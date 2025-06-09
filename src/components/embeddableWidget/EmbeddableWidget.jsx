@@ -97,6 +97,8 @@ export default class EmbeddableWidget {
         }
         let el = null;
         let root = null;
+        Emitter.once("docsbot_mount_complete", () => resolve(true));
+
         if (embeddedChatElement) {
           el = embeddedChatElement;
         } else {
@@ -119,8 +121,6 @@ export default class EmbeddableWidget {
         }
 
         Emitter.emit("docsbot_mount");
-
-        Emitter.once("docsbot_mount_complete", resolve);
       };
 
       if (document.readyState === "complete") {
@@ -140,6 +140,8 @@ export default class EmbeddableWidget {
         resolve(false);
         return;
       }
+      Emitter.once("docsbot_unmount_complete", () => resolve(true));
+
       const div_root = document.getElementById("docsbotai-root");
       if (this._root) {
         this._root.unmount();
@@ -150,7 +152,6 @@ export default class EmbeddableWidget {
       EmbeddableWidget.el = null;
 
       Emitter.emit("docsbot_unmount");
-      Emitter.once("docsbot_unmount_complete", resolve);
     });
   }
 
