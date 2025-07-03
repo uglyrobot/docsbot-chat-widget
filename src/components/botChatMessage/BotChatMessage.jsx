@@ -536,6 +536,7 @@ export const BotChatMessage = ({
 				(!useFeedback || rating === -1 || (payload.sources && payload.sources.length == 0)) &&
 				(payload.sources || payload.couldAnswer === false)) ||
 			(payload.error &&
+				!payload.isRateLimitError &&
 				(supportLink ||
 					(supportCallback &&
 						typeof supportCallback === 'function'))) ? (

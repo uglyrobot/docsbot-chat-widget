@@ -449,20 +449,29 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							// Try to extract error message from response body
 							try {
 								const responseBody = await response.text();
-								const parsedBody = JSON.parse(responseBody);
-
-								if (parsedBody && parsedBody.error) {
-									errorMessage = parsedBody.error;
+								if (responseBody && responseBody.trim()) {
+									try {
+										const parsedBody = JSON.parse(responseBody);
+										if (parsedBody && parsedBody.error) {
+											errorMessage = parsedBody.error;
+										}
+									} catch (parseError) {
+										// If we can't parse as JSON, use the raw response text
+										errorMessage = responseBody.trim();
+									}
 								}
 							} catch (e) {
-								// If we can't parse the body, just use the default error message
+								// If we can't read the response body, use the default error message
 								console.error(
 									'DOCSBOT: Failed to parse error response:',
 									e
 								);
 							}
 
-							throw new FatalError(errorMessage);
+							// Create error with status code
+							const error = new FatalError(errorMessage);
+							error.status = response.status;
+							throw error;
 						} else {
 							// Server errors or network issues should be retried
 							throw new RetriableError(
@@ -581,17 +590,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					onerror(err) {
 						if (err instanceof FatalError) {
 							// For fatal errors (4xx), don't retry and show error
+							const errorMessage = err.message || 'There was an error with your request. Please try again.';
+							const isRateLimitError = err.status === 429;
+							
 							dispatch({
 								type: 'update_message',
 								payload: {
 									id,
 									variant: 'chatbot',
-									// Use the error message from the server if available
-									message:
-										err.message ||
-										'There was an error with your request. Please try again.',
+									message: errorMessage,
 									loading: false,
-									error: true
+									error: true,
+									isRateLimitError
 								}
 							});
 							setIsFetching(false);
@@ -630,16 +640,28 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				});
 			} catch (error) {
 				console.error('DOCSBOT: Failed to fetch answer:', error);
+				
+				// Check if this is a FatalError with a specific message
+				let errorMessage = 'Unknown error. Please try again later.';
+				let isRateLimitError = false;
+				if (error instanceof FatalError && error.message) {
+					errorMessage = error.message;
+					// Check if this is a rate limit error (429)
+					isRateLimitError = error.status === 429;
+				}
+				
 				dispatch({
 					type: 'update_message',
 					payload: {
 						id,
 						variant: 'chatbot',
-						message: 'Unknown error. Please try again later.',
+						message: errorMessage,
 						loading: false,
-						error: true
+						error: true,
+						isRateLimitError
 					}
 				});
+				setIsFetching(false);
 			}
 		} else {
 			const history = state.chatHistory || [];
