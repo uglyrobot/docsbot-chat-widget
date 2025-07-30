@@ -64,8 +64,20 @@ export default class EmbeddableWidget {
         }
       }
 
-      Emitter.emit("docsbot_add_user_message", { message, send });
-      Emitter.once("docsbot_add_user_message_complete", resolve);
+      const emitMessage = () => {
+        Emitter.emit("docsbot_add_user_message", { message, send });
+        Emitter.once("docsbot_add_user_message_complete", resolve);
+      };
+
+      if (Emitter.listenerCount("docsbot_add_user_message") > 0) {
+        emitMessage();
+      } else {
+        const waitAndEmit = () => {
+          Emitter.off("docsbot_ready", waitAndEmit);
+          emitMessage();
+        };
+        Emitter.on("docsbot_ready", waitAndEmit);
+      }
     });
   }
 
@@ -77,8 +89,20 @@ export default class EmbeddableWidget {
         return;
       }
 
-      Emitter.emit("docsbot_add_bot_message", { message });
-      Emitter.once("docsbot_add_bot_message_complete", resolve);
+      const emitMessage = () => {
+        Emitter.emit("docsbot_add_bot_message", { message });
+        Emitter.once("docsbot_add_bot_message_complete", resolve);
+      };
+
+      if (Emitter.listenerCount("docsbot_add_bot_message") > 0) {
+        emitMessage();
+      } else {
+        const waitAndEmit = () => {
+          Emitter.off("docsbot_ready", waitAndEmit);
+          emitMessage();
+        };
+        Emitter.on("docsbot_ready", waitAndEmit);
+      }
     });
   }
 
