@@ -1,10 +1,12 @@
 @use '../_utils/utils' as *;
 
 .docsbot-chat-bot-message {
-	@include bubble-message('left', $color-secondary-400, $color-neutral-100);
-	word-wrap: break-word;
-	overflow-wrap: break-word;
-	word-break: break-word;
+        @include bubble-message('left', $color-secondary-400, $color-neutral-100);
+
+        // Ensure long text does not overflow the bubble
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        word-break: break-word;
 
 	// Handle text alignment based on content direction
 	span[dir="auto"] {
