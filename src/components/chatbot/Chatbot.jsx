@@ -20,9 +20,7 @@ import {
 	faChevronDown,
 	faTimes
 } from '@fortawesome/free-solid-svg-icons';
-import {
-	faImage
-} from '@fortawesome/free-regular-svg-icons';
+import { faImage } from '@fortawesome/free-regular-svg-icons';
 import { Emitter, decideTextColor, scrollToBottom } from '../../utils/utils';
 import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
@@ -72,6 +70,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const [isAtBottom, setIsAtBottom] = useState(true);
 	const [streamController, setStreamController] = useState(null);
 
+	const allowedSingleCharLanguages = ['ja', 'zh', 'ko'];
+	const allowSingleCharMessage = allowedSingleCharLanguages.some((lang) =>
+		navigator.language?.startsWith(lang)
+	);
+	const minInputLength = allowSingleCharMessage ? 1 : 2;
+
 	const handleImageSelect = (e) => {
 		if (!useImageUpload) return;
 		const files = Array.from(e.target.files);
@@ -86,11 +90,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			const maxImages = 2;
 			const remainingSlots = maxImages - selectedImages.length;
 			const filesToProcess = files.slice(0, remainingSlots);
-			
+
 			if (filesToProcess.length < files.length) {
-				console.warn(`DOCSBOT: Only processing ${filesToProcess.length} of ${files.length} images. Maximum ${maxImages} images allowed.`);
+				console.warn(
+					`DOCSBOT: Only processing ${filesToProcess.length} of ${files.length} images. Maximum ${maxImages} images allowed.`
+				);
 			}
-			
+
 			// Replace files with the trimmed array
 			files = filesToProcess;
 		}
@@ -127,15 +133,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 					// Convert to base64 with compression for full-size image
 					const fullSizeBase64 = canvas.toDataURL('image/jpeg', 0.8);
-					
+
 					// Create thumbnail for history (max 200px)
 					const thumbnailBase64 = createThumbnail(img, 200);
-					
-					setSelectedImages((prev) => [...prev, { 
-						url: fullSizeBase64, 
-						file,
-						thumbnailUrl: thumbnailBase64
-					}]);
+
+					setSelectedImages((prev) => [
+						...prev,
+						{
+							url: fullSizeBase64,
+							file,
+							thumbnailUrl: thumbnailBase64
+						}
+					]);
 					setImageUrls((prev) => [...prev, fullSizeBase64]);
 				};
 				img.src = e.target.result;
@@ -149,7 +158,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		// Calculate new dimensions while maintaining aspect ratio
 		let width = imgElement.width;
 		let height = imgElement.height;
-		
+
 		if (width > height && width > maxSize) {
 			height = (height * maxSize) / width;
 			width = maxSize;
@@ -157,14 +166,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			width = (width * maxSize) / height;
 			height = maxSize;
 		}
-		
+
 		// Create canvas and resize image for thumbnail
 		const canvas = document.createElement('canvas');
 		canvas.width = width;
 		canvas.height = height;
 		const ctx = canvas.getContext('2d');
 		ctx.drawImage(imgElement, 0, 0, width, height);
-		
+
 		// Convert to base64 with higher compression for thumbnail
 		return canvas.toDataURL('image/jpeg', 0.6);
 	};
@@ -411,7 +420,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				context_items: contextItems || 6,
 				autocut: 2,
 				default_language: navigator.language,
-				image_urls: image_urls.length > 0 && useImageUpload ? image_urls : undefined
+				image_urls:
+					image_urls.length > 0 && useImageUpload
+						? image_urls
+						: undefined
 			};
 
 			// Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
@@ -430,7 +442,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						accept: 'application/json',
 						// Set Authorization header if signature is provided
 						...(signature && {
-							'Authorization': `Bearer ${signature}`
+							Authorization: `Bearer ${signature}`
 						})
 					},
 					method: 'POST',
@@ -451,7 +463,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								const responseBody = await response.text();
 								if (responseBody && responseBody.trim()) {
 									try {
-										const parsedBody = JSON.parse(responseBody);
+										const parsedBody =
+											JSON.parse(responseBody);
 										if (parsedBody && parsedBody.error) {
 											errorMessage = parsedBody.error;
 										}
@@ -550,7 +563,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								scrollToBottom(ref);
 
 								answerId = finalData.id || null; // save the answer id for the feedback button
-								let newChatHistory = finalData.history
+								let newChatHistory = finalData.history;
 
 								dispatch({
 									type: 'save_history',
@@ -590,9 +603,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					onerror(err) {
 						if (err instanceof FatalError) {
 							// For fatal errors (4xx), don't retry and show error
-							const errorMessage = err.message || 'There was an error with your request. Please try again.';
+							const errorMessage =
+								err.message ||
+								'There was an error with your request. Please try again.';
 							const isRateLimitError = err.status === 429;
-							
+
 							dispatch({
 								type: 'update_message',
 								payload: {
@@ -640,7 +655,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				});
 			} catch (error) {
 				console.error('DOCSBOT: Failed to fetch answer:', error);
-				
+
 				// Check if this is a FatalError with a specific message
 				let errorMessage = 'Unknown error. Please try again later.';
 				let isRateLimitError = false;
@@ -649,7 +664,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					// Check if this is a rate limit error (429)
 					isRateLimitError = error.status === 429;
 				}
-				
+
 				dispatch({
 					type: 'update_message',
 					payload: {
@@ -816,14 +831,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 	async function handleSubmit(event) {
 		event.preventDefault();
-		if (chatInput.trim().length < 2) {
+		if (chatInput.trim().length < minInputLength) {
 			return;
 		}
 
 		// Extract thumbnails for history storage if images exist
-		const historyImageUrls = useImageUpload && selectedImages.length > 0 
-			? selectedImages.map(img => img.thumbnailUrl) 
-			: undefined;
+		const historyImageUrls =
+			useImageUpload && selectedImages.length > 0
+				? selectedImages.map((img) => img.thumbnailUrl)
+				: undefined;
 
 		dispatch({
 			type: 'add_message',
@@ -838,7 +854,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 		// Add full-size image_urls to the API request if image upload is enabled
 		fetchAnswer(chatInput, useImageUpload ? imageUrls : []);
-		
+
 		// Clear the input and images after sending
 		setChatInput('');
 		setSelectedImages([]);
@@ -901,13 +917,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			'--docsbot-logo--color',
 			isWhite ? '#314351' : primaryColor
 		);
-		
+
 		// Add image upload button styles
 		root.style.setProperty(
 			'--docsbot-image-upload-btn--color',
 			isWhite ? '#314351' : primaryColor
 		);
-		
+
 		// Add drag-and-drop zone styles
 		root.style.setProperty(
 			'--docsbot-drag-border-color',
@@ -973,8 +989,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const handleDragLeave = (e) => {
 		e.preventDefault();
 		e.stopPropagation();
-		
-		// Only reset isDragging if we're leaving the target element 
+
+		// Only reset isDragging if we're leaving the target element
 		// and not entering a child element of the target
 		if (!e.currentTarget.contains(e.relatedTarget)) {
 			setIsDragging(false);
@@ -993,15 +1009,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		setIsDragging(false);
 
 		const files = Array.from(e.dataTransfer.files);
-		
+
 		// Check if all files are images
-		const allImages = files.every(file => file.type.startsWith('image/'));
-		
+		const allImages = files.every((file) => file.type.startsWith('image/'));
+
 		if (files.length > 0 && !allImages) {
-			console.warn("DOCSBOT: Only image files are allowed");
+			console.warn('DOCSBOT: Only image files are allowed');
 			return;
 		}
-		
+
 		processImageFiles(files);
 	};
 
@@ -1219,11 +1235,17 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						<div className="docsbot-chat-footer-inner-wrapper">
 							<div className="docsbot-chat-input-container">
 								<form
-									className={`docsbot-chat-input-form ${chatInput.trim().length < 2 || isFetching ? 'has-disabled-submit' : ''}`}
+									className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching ? 'has-disabled-submit' : ''}`}
 									onSubmit={handleSubmit}
-									onDragEnter={useImageUpload ? handleDragEnter : null}
-									onDragLeave={useImageUpload ? handleDragLeave : null}
-									onDragOver={useImageUpload ? handleDragOver : null}
+									onDragEnter={
+										useImageUpload ? handleDragEnter : null
+									}
+									onDragLeave={
+										useImageUpload ? handleDragLeave : null
+									}
+									onDragOver={
+										useImageUpload ? handleDragOver : null
+									}
 									onDrop={useImageUpload ? handleDrop : null}
 								>
 									{/* Hidden file input */}
@@ -1238,24 +1260,35 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											aria-label="Upload image"
 										/>
 									)}
-									
-									<div className={`docsbot-chat-input-wrapper ${selectedImages.length > 0 ? 'has-images' : ''} ${isDragging ? 'is-dragging' : ''} ${!useImageUpload ? 'no-image-upload' : ''}`}>
 
+									<div
+										className={`docsbot-chat-input-wrapper ${selectedImages.length > 0 ? 'has-images' : ''} ${isDragging ? 'is-dragging' : ''} ${!useImageUpload ? 'no-image-upload' : ''}`}
+									>
 										<textarea
 											className={`docsbot-chat-input ${!useImageUpload ? 'no-image-upload' : ''}`}
-											placeholder={labels.inputPlaceholder}
+											placeholder={
+												labels.inputPlaceholder
+											}
 											value={chatInput}
 											onFocus={(e) => {
 												const textarea = e.target;
-												const form = textarea.parentNode.parentNode;
-												const container = form.parentNode;
+												const form =
+													textarea.parentNode
+														.parentNode;
+												const container =
+													form.parentNode;
 
-												container.classList.add('focused');
+												container.classList.add(
+													'focused'
+												);
 											}}
 											onBlur={(e) => {
 												const textarea = e.target;
-												const form = textarea.parentNode.parentNode;
-												const container = form.parentNode;
+												const form =
+													textarea.parentNode
+														.parentNode;
+												const container =
+													form.parentNode;
 
 												container.classList.remove(
 													'focused'
@@ -1272,12 +1305,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 														e.target
 													);
 												const padding =
-													parseInt(computed.paddingTop) +
+													parseInt(
+														computed.paddingTop
+													) +
 													parseInt(
 														computed.paddingBottom
 													);
 
-												if (e.target.scrollHeight > 54) {
+												if (
+													e.target.scrollHeight > 54
+												) {
 													e.target.style.height =
 														e.target.scrollHeight -
 														padding +
@@ -1297,35 +1334,49 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 													!e.shiftKey
 												) {
 													handleSubmit(e);
-													e.target.style.height = 'auto';
+													e.target.style.height =
+														'auto';
 												}
 											}}
 											onPaste={(e) => {
 												if (!useImageUpload) return;
-												
-												const clipboardItems = e.clipboardData.items;
-												const imageItems = Array.from(clipboardItems).filter(
-													item => item.type.startsWith('image/')
+
+												const clipboardItems =
+													e.clipboardData.items;
+												const imageItems = Array.from(
+													clipboardItems
+												).filter((item) =>
+													item.type.startsWith(
+														'image/'
+													)
 												);
-												
+
 												if (imageItems.length > 0) {
 													e.preventDefault();
-													
+
 													// Process only one image if multiple are pasted
 													// For simplicity, we're just handling the first image
 													const item = imageItems[0];
-													
+
 													// Convert clipboard item to a file
-													const blob = item.getAsFile();
+													const blob =
+														item.getAsFile();
 													if (blob) {
 														// Check if we'd exceed the limit
-														if (selectedImages.length >= 2) {
-															console.warn("DOCSBOT: Maximum 2 images allowed");
+														if (
+															selectedImages.length >=
+															2
+														) {
+															console.warn(
+																'DOCSBOT: Maximum 2 images allowed'
+															);
 															return;
 														}
-														
+
 														// Process the pasted image file
-														processImageFiles([blob]);
+														processImageFiles([
+															blob
+														]);
 													}
 												}
 											}}
@@ -1339,40 +1390,56 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										/>
 										{selectedImages.length > 0 && (
 											<div className="docsbot-image-preview-container">
-												{selectedImages.map((image, index) => (
-													<div key={index} className="docsbot-image-preview">
-														<img
-															src={image.url}
-															alt={`Selected ${index + 1}`}
-															className="docsbot-image-preview-img"
-														/>
-														<button
-															type="button"
-															onClick={() => removeImage(index)}
-															className="docsbot-image-remove-btn"
-															aria-label="Remove image"
+												{selectedImages.map(
+													(image, index) => (
+														<div
+															key={index}
+															className="docsbot-image-preview"
 														>
-															<FontAwesomeIcon icon={faTimes} />
-														</button>
-													</div>
-												))}
+															<img
+																src={image.url}
+																alt={`Selected ${index + 1}`}
+																className="docsbot-image-preview-img"
+															/>
+															<button
+																type="button"
+																onClick={() =>
+																	removeImage(
+																		index
+																	)
+																}
+																className="docsbot-image-remove-btn"
+																aria-label="Remove image"
+															>
+																<FontAwesomeIcon
+																	icon={
+																		faTimes
+																	}
+																/>
+															</button>
+														</div>
+													)
+												)}
 											</div>
 										)}
 									</div>
-									
+
 									{/* Image upload button - only show when useImageUpload is true */}
 									{useImageUpload && (
-										<button 
+										<button
 											type="button"
 											onClick={triggerFileInput}
 											className="docsbot-image-upload-btn"
-											disabled={selectedImages.length >= 2 || isFetching}
+											disabled={
+												selectedImages.length >= 2 ||
+												isFetching
+											}
 											aria-label="Upload image"
 										>
 											<FontAwesomeIcon icon={faImage} />
 										</button>
 									)}
-									
+
 									<button
 										type="submit"
 										className="docsbot-chat-btn-send"
@@ -1384,8 +1451,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											style: { fill: 'inherit' }
 										})}
 										disabled={
-											chatInput.trim().length < 2 ||
-											isFetching
+											chatInput.trim().length <
+												minInputLength || isFetching
 										}
 									>
 										<FontAwesomeIcon
