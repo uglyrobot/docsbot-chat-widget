@@ -516,8 +516,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						}
 
 						if (data.event === 'stream') {
-							//append to answer
-							answer += data.data;
+							// Handle empty data fields as line breaks to preserve formatting
+							if (data.data === '') {
+								answer += '\n';
+							} else {
+								answer += data.data;
+							}
 							dispatch({
 								type: 'update_message',
 								payload: {

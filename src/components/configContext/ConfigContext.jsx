@@ -54,6 +54,7 @@ export function ConfigProvider(props = {}) {
   useEffect(() => {
     if (id && !config) {
       const apiUrl = `https://docsbot.ai/api/widget/${id}`;
+      const [teamId, botId] = props.id.split('/');
 
       fetch(apiUrl, {
         method: "GET",
@@ -95,6 +96,8 @@ export function ConfigProvider(props = {}) {
 
           setConfig({ 
             ...data, 
+            teamId,
+            botId,
             supportCallback, 
             identify: identify || {}, 
             signature, 
