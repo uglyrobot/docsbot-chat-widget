@@ -841,32 +841,42 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				? selectedImages.map((img) => img.thumbnailUrl)
 				: undefined;
 
-		dispatch({
-			type: 'add_message',
-			payload: {
-				variant: 'user',
-				message: chatInput,
-				loading: false,
-				timestamp: Date.now(),
-				imageUrls: historyImageUrls
-			}
-		});
+                dispatch({
+                        type: 'add_message',
+                        payload: {
+                                variant: 'user',
+                                message: chatInput,
+                                loading: false,
+                                timestamp: Date.now(),
+                                imageUrls: historyImageUrls
+                        }
+                });
 
-		// Add full-size image_urls to the API request if image upload is enabled
-		fetchAnswer(chatInput, useImageUpload ? imageUrls : []);
+                // Add full-size image_urls to the API request if image upload is enabled
+                fetchAnswer(chatInput, useImageUpload ? imageUrls : []);
 
-		// Clear the input and images after sending
-		setChatInput('');
-		setSelectedImages([]);
-		setImageUrls([]);
+                // Clear the input and images after sending
+                setChatInput('');
+                setSelectedImages([]);
+                setImageUrls([]);
 
-		// Wait for DOM update, then scroll
-		setTimeout(() => {
-			scrollToBottom(ref);
-		}, 0);
+                // Wait for DOM update, then scroll
+                setTimeout(() => {
+                        scrollToBottom(ref);
+                }, 0);
 
-		inputRef.current.focus();
-	}
+                if (mediaMatch.matches) {
+                        inputRef.current.focus();
+                } else {
+                        inputRef.current.blur();
+                }
+        }
+
+        useEffect(() => {
+                if (!mediaMatch.matches && isFetching && inputRef.current) {
+                        inputRef.current.blur();
+                }
+        }, [isFetching]);
 
 	useEffect(() => {
 		const root = document.documentElement;
@@ -1201,14 +1211,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 																	Date.now()
 															}
 														});
-														fetchAnswer(question);
-														setChatInput('');
-														inputRef.current.focus();
-													}}
-													className="docsbot-chat-suggested-questions-button"
-												>
-													{question}
-												</button>
+                                                fetchAnswer(question);
+                                                setChatInput('');
+                                                if (mediaMatch.matches) {
+                                                        inputRef.current.focus();
+                                                } else {
+                                                        inputRef.current.blur();
+                                                }
+                                                }}
+                                                className="docsbot-chat-suggested-questions-button"
+                                        >
+                                                {question}
+                                        </button>
 											);
 										})}
 									</div>
