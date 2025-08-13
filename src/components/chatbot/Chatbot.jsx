@@ -59,6 +59,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
 		useImageUpload, // If image upload is enabled
+		keepFooterVisible,
 		localDev
 	} = useConfig();
 	const ref = useRef();
@@ -1470,8 +1471,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							{(branding || parsedFooterText?.trim()) && (
 								<div className="docsbot-chat-credits">
 									{parsedFooterText?.trim() &&
-										Object.keys(state.messages).length <=
-											1 && (
+										(keepFooterVisible || Object.keys(state.messages).length <=
+											1) && (
 											<div
 												className="docsbot-chat-credits--policy"
 												dangerouslySetInnerHTML={{
