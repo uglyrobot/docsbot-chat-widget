@@ -38,8 +38,9 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
   }, []);
 
   return (
-    <a
-      role="button"
+    <button
+      id="docsbot-toggle-button"
+      type="button"
       className={clsx(
         showButtonLabel ? "has-label" : "",
         alignment === "left" ? "docsbot-left" : "",
@@ -47,8 +48,7 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
         "floating-button"
       )}
       part="button"
-      onClick={(e) => {
-        e.preventDefault()
+      onClick={() => {
         setIsOpen(!isOpen)
       }}
       style={{
@@ -56,16 +56,19 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
         right: alignment === "right" ? horizontalMargin || 20 : "auto",
         bottom: verticalMargin || 20,
       }}
-      sr-label="Open/close chat">
+      aria-label={!showButtonLabel ? (labels?.floatingButton || 'Open chat') : undefined}
+      aria-expanded={isOpen}
+      aria-haspopup="dialog"
+      aria-controls="docsbot-chat-dialog">
         <div className="floating-button-icon">
           { isIconInList
             ? <FontAwesomeIcon size="xl" icon={iconMap[icon] || iconMap.default} className="floating-button-icon--open" />
-            : <img src={icon} alt="Icon" className="floating-button-icon--open" /> }
+            : <img src={icon} alt="" aria-hidden="true" className="floating-button-icon--open" /> }
           <FontAwesomeIcon size="xl" icon={faXmark} className="floating-button-icon--close" />
         </div>
       {showButtonLabel ? (
         <span className="floating-button-label">{labels.floatingButton}</span>
       ) : null}
-    </a>
+    </button>
   )
 }
