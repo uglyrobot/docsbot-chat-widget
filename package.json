@@ -1,7 +1,7 @@
 {
   "scripts": {
     "build": "gulp build && webpack --mode production",
-	  "start": "gulp build && npm-run-all --parallel dev:web dev:css",
+    "start": "gulp build && npm-run-all --parallel dev:web dev:css",
     "dev:web": "webpack serve --mode development --client-overlay --port=3005",
     "dev:css": "gulp watch",
     "preview": "npm run build && serve build",
@@ -18,7 +18,7 @@
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.7.3",
     "del": "^8.0.0",
-    "gulp": "^5.0.0",
+    "gulp": "^5.0.1",
     "gulp-autoprefixer": "^8.0.0",
     "gulp-clean-css": "^4.3.0",
     "gulp-header": "^1.8.9",

@@ -4,6 +4,9 @@ import App from "../app/App";
 import { ConfigProvider } from "../configContext/ConfigContext";
 import { Emitter } from "../../utils/event-emitter";
 import EmbeddedChat from "../embeddedChatBox/EmbeddedChat";
+import { config as fontAwesomeConfig } from "@fortawesome/fontawesome-svg-core";
+
+fontAwesomeConfig.autoAddCss = false;
 
 export default class EmbeddableWidget {
   static _root;
