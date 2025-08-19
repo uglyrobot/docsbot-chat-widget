@@ -10,11 +10,11 @@ export function useConfig() {
   return context;
 }
 
-const grabQuestions = (questions) => {
-  // grab at most 3 unique questions from the bot
+const grabQuestions = (questions, limit = 3) => {
+  // grab at most `limit` unique questions from the bot
   if (questions) {
     const randomQuestions = []
-    const questionsLimit = questions.length > 3 ? 3 : questions.length
+    const questionsLimit = questions.length > limit ? limit : questions.length
 
     for (let i = 0; i < questionsLimit; i++) {
       const randomIndex = Math.floor(Math.random() * questions.length)
@@ -62,7 +62,7 @@ export function ConfigProvider(props = {}) {
         .then((response) => response.json())
         .then((data) => {
           if (data.questions) {
-            data.questions = grabQuestions(data.questions) // limit the number of questions
+            data.questions = grabQuestions(data.questions, options?.suggestedQuestions) // limit the number of questions
           } else {
             data.questions = []
           }
