@@ -4,21 +4,6 @@ Embeddable chat widget to integrate with DocsBot.ai
 
 Full documentation can be found at https://docsbot.ai/docs/embeddable-chat-widget
 
-### Suggested questions
-
-By default the widget displays up to three random suggested questions from your bot's training data. You can override this amount by passing `suggestedQuestions` in the embed options:
-
-```html
-<script>
-DocsBotAI.init({
-  id: "TEAM/BOT",
-  options: {
-    suggestedQuestions: 4 // show four suggestions instead of three
-  }
-});
-</script>
-```
-
 ## Development
 
 - `npm install` to install dependencies.
