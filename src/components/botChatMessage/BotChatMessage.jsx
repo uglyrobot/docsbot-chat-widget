@@ -105,16 +105,19 @@ export const BotChatMessage = ({
 					shouldOpenLink = false;
 				};
 
+				// Build metadata object and include conversation details in agent mode
+				const metadata = { ...(identify.metadata || {}) };
+				if (isAgent && payload.conversationId) {
+					metadata.conversationId = payload.conversationId;
+					metadata.conversationUrl = `https://docsbot.ai/app/bots/${botId}/conversations?conversationId=${payload.conversationId}`;
+				}
+
 				// Check the number of parameters the callback expects, don't run slow api call if it's not needed
 				const paramCount = supportCallback.length;
 				if (paramCount <= 2) {
 					await supportCallback(syntheticEvent, history);
 				} else if (paramCount === 3) {
-					await supportCallback(
-						syntheticEvent,
-						history,
-						identify.metadata || {}
-					);
+					await supportCallback(syntheticEvent, history, metadata);
 				} else {
 					// only create a ticket if the callback expects 4 parameters
 					if (payload.conversationId && isAgent) {
@@ -126,14 +129,14 @@ export const BotChatMessage = ({
 						await supportCallback(
 							syntheticEvent,
 							history,
-							identify.metadata || {},
+							metadata,
 							ticket
 						);
 					} else {
 						await supportCallback(
 							syntheticEvent,
 							history,
-							identify.metadata || {},
+							metadata,
 							null
 						);
 					}
@@ -258,11 +261,13 @@ export const BotChatMessage = ({
 
 	return (
 		<>
-			<div className={clsx(
-				"docsbot-chat-bot-message-container", 
-				botIcon && 'has-avatar',
-				repeatedBotMessage && 'consecutive-bot-message'
-			)}>
+			<div
+				className={clsx(
+					'docsbot-chat-bot-message-container',
+					botIcon && 'has-avatar',
+					repeatedBotMessage && 'consecutive-bot-message'
+				)}
+			>
 				{!repeatedBotMessage && <BotAvatar />}
 				<div
 					className="docsbot-chat-bot-message"
@@ -286,17 +291,21 @@ export const BotChatMessage = ({
 									}}
 								/>
 
-								{/* 
+								{/*
 								 * Show sources if:
 								 * 1. There are sources available (payload.sources?.length > 0)
 								 * 2. AND either:
 								 *    a. hideSources is falsy (sources are not hidden globally)
 								 *    b. OR hideSources is an array AND not all sources are of types that should be hidden
 								 */}
-								{payload.sources?.length > 0 && 
-									(!hideSources || 
-									(Array.isArray(hideSources) && 
-									!payload.sources.every(source => hideSources.includes(source.type)))) && (
+								{payload.sources?.length > 0 &&
+									(!hideSources ||
+										(Array.isArray(hideSources) &&
+											!payload.sources.every((source) =>
+												hideSources.includes(
+													source.type
+												)
+											))) && (
 										<div className="docsbot-sources-container">
 											<h3 className="docsbot-sources-title">
 												{labels.sources}
@@ -533,7 +542,9 @@ export const BotChatMessage = ({
 						typeof supportCallback === 'function')) &&
 				!isAgent &&
 				useEscalation &&
-				(!useFeedback || rating === -1 || (payload.sources && payload.sources.length == 0)) &&
+				(!useFeedback ||
+					rating === -1 ||
+					(payload.sources && payload.sources.length == 0)) &&
 				(payload.sources || payload.couldAnswer === false)) ||
 			(payload.error &&
 				!payload.isRateLimitError &&
@@ -553,7 +564,11 @@ export const BotChatMessage = ({
 						disabled={isSupportLoading}
 						className="docsbot-support-button"
 					>
-						{isSupportLoading ? <Loader /> : <span dir="auto">{labels.getSupport}</span>}
+						{isSupportLoading ? (
+							<Loader />
+						) : (
+							<span dir="auto">{labels.getSupport}</span>
+						)}
 					</button>
 				</div>
 			) : null}
