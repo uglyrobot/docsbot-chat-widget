@@ -15,7 +15,7 @@ import { ChatbotProvider } from "../chatbotContext/ChatbotContext";
 import { Emitter } from "../../utils/event-emitter";
 import { useConfig } from "../configContext/ConfigContext";
 
-fontAwesomeConfig.autoAddCss = false;
+// fontAwesomeConfig.autoAddCss is set at the entrypoint (EmbeddableWidget)
 
 function App() {
   const [isOpen, setIsOpen] = useState(false);
