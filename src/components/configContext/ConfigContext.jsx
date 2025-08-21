@@ -51,9 +51,12 @@ export function ConfigProvider(props = {}) {
     })
   }
 
+  const localDev = options?.localDev;
+
   useEffect(() => {
     if (id && !config) {
-      const apiUrl = `https://docsbot.ai/api/widget/${id}`;
+      const baseUrl = localDev ? 'http://localhost:3000/api' : 'https://docsbot.ai/api';
+      const apiUrl = `${baseUrl}/widget/${id}`;
       const [teamId, botId] = props.id.split('/');
 
       fetch(apiUrl, {
@@ -109,7 +112,7 @@ export function ConfigProvider(props = {}) {
           console.warn(`DOCSBOT: Error fetching config: ${e}`);
         });
     }
-  }, [id, config]);
+  }, [id, config, localDev]);
 
   if (!config) return null;
 
