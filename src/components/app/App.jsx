@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import ReactShadowRoot from "react-shadow-root";
 import { FloatingButton } from "../floatingButton/FloatingButton";
 import { config as fontAwesomeConfig } from "@fortawesome/fontawesome-svg-core";
@@ -20,6 +20,7 @@ import { useConfig } from "../configContext/ConfigContext";
 function App() {
   const [isOpen, setIsOpen] = useState(false);
   const { customCSS } = useConfig();
+  const previousFocusRef = useRef(null);
 
   useEffect(() => {
     const handleOpen = async () => {
@@ -57,6 +58,28 @@ function App() {
       Emitter.emit("docsbot_unmount_complete");
     };
   }, []);
+
+  // Manage focus when opening/closing the dialog
+  useEffect(() => {
+    if (isOpen) {
+      previousFocusRef.current = document.activeElement;
+      // Defer to next tick to ensure dialog is in DOM
+      setTimeout(() => {
+        const dialogEl = document.querySelector('#docsbot-chat-dialog');
+        if (dialogEl) {
+          dialogEl.focus();
+        }
+      }, 0);
+    } else {
+      const prev = previousFocusRef.current;
+      if (prev && typeof prev.focus === 'function') {
+        prev.focus();
+      } else {
+        const toggleBtn = document.querySelector('#docsbot-toggle-button') || document.querySelector('.floating-button');
+        if (toggleBtn && typeof toggleBtn.focus === 'function') toggleBtn.focus();
+      }
+    }
+  }, [isOpen]);
 
   return (
     <ReactShadowRoot>
