@@ -4,6 +4,10 @@ Embeddable chat widget to integrate with DocsBot.ai
 
 Full documentation can be found at https://docsbot.ai/docs/embeddable-chat-widget
 
+### Reasoning Effort
+
+When using the widget in agent mode with a signed request, you can control the reasoning depth of responses by supplying a `reasoningEffort` option. Valid values are `minimal`, `low`, `medium`, and `high`. The parameter is only sent to the API when a signature is present.
+
 ## Development
 
 - `npm install` to install dependencies.
