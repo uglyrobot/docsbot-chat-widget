@@ -54,13 +54,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		headerAlignment,
 		hideHeader,
 		inputLimit,
-		contextItems,
-		isAgent, // If new agent api is enabled
-		useFeedback, // If feedback collection is enabled
-		useEscalation, // If escalation collection is enabled
-		useImageUpload, // If image upload is enabled
-		keepFooterVisible,
-		localDev
+                contextItems,
+                isAgent, // If new agent api is enabled
+                reasoningEffort, // Optional reasoning_effort override
+                useFeedback, // If feedback collection is enabled
+                useEscalation, // If escalation collection is enabled
+                useImageUpload, // If image upload is enabled
+                keepFooterVisible,
+                localDev
 	} = useConfig();
 	const ref = useRef();
 	const inputRef = useRef();
@@ -418,14 +419,17 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				full_source: false,
 				metadata,
 				conversationId: getConversationId(),
-				context_items: contextItems || 6,
-				autocut: 2,
-				default_language: navigator.language,
-				image_urls:
-					image_urls.length > 0 && useImageUpload
-						? image_urls
-						: undefined
-			};
+                                context_items: contextItems || 6,
+                                autocut: 2,
+                                default_language: navigator.language,
+                                image_urls:
+                                        image_urls.length > 0 && useImageUpload
+                                                ? image_urls
+                                                : undefined,
+                                ...(signature && reasoningEffort && {
+                                        reasoning_effort: reasoningEffort
+                                })
+                        };
 
 			// Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
 			let retryCount = 0;
