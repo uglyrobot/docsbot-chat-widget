@@ -8,13 +8,14 @@ import { scrollToBottom, getHighlightJs } from '../../utils/utils';
 import clsx from 'clsx';
 
 export const BotChatMessage = ({
-	payload,
-	messageBoxRef,
-	fetchAnswer,
-	chatContainerRef,
-	inputRef
+        payload,
+        messageBoxRef,
+        fetchAnswer,
+        chatContainerRef,
+        inputRef
 }) => {
-	const [rating, setRating] = useState(payload.rating || 0);
+        const [rating, setRating] = useState(payload.rating || 0);
+        const mediaMatch = window.matchMedia('(min-width: 480px)');
 	const [ratingSubmitted, setRatingSubmitted] = useState(false);
 	const {
 		teamId,
@@ -189,11 +190,15 @@ export const BotChatMessage = ({
 				}
 			}
 
-			// Scroll to bottom and focus input after rating
-			scrollToBottom(chatContainerRef);
-			if (inputRef?.current) {
-				inputRef.current.focus();
-			}
+                        // Scroll to bottom and adjust input focus after rating
+                        scrollToBottom(chatContainerRef);
+                        if (inputRef?.current) {
+                                if (mediaMatch.matches) {
+                                        inputRef.current.focus();
+                                } else {
+                                        inputRef.current.blur();
+                                }
+                        }
 
 			const response = await fetch(apiUrl, {
 				method: 'PUT',
@@ -512,12 +517,16 @@ export const BotChatMessage = ({
 											}
 										});
 										fetchAnswer(message);
-										// Scroll to bottom and focus input after clicking no
-										scrollToBottom(chatContainerRef);
-										if (inputRef?.current) {
-											inputRef.current.focus();
-										}
-									}}
+                                                                                // Scroll to bottom and adjust input focus after clicking no
+                                                                                scrollToBottom(chatContainerRef);
+                                                                                if (inputRef?.current) {
+                                                                                        if (mediaMatch.matches) {
+                                                                                                inputRef.current.focus();
+                                                                                        } else {
+                                                                                                inputRef.current.blur();
+                                                                                        }
+                                                                                }
+                                                                        }}
 									className=""
 								>
 									<span dir="auto" aria-hidden="true">
