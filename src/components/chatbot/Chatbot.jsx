@@ -68,9 +68,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const fileInputRef = useRef(null);
 	const mediaMatch = window.matchMedia('(min-width: 480px)');
 	const messagesRefs = useRef({});
-	const [isFetching, setIsFetching] = useState(false);
-	const [isAtBottom, setIsAtBottom] = useState(true);
-	const [streamController, setStreamController] = useState(null);
+        const [isFetching, setIsFetching] = useState(false);
+        const [isAtBottom, setIsAtBottom] = useState(true);
+        const [streamController, setStreamController] = useState(null);
+        const hasConversationStarted = Object.keys(state.messages).length > 1;
 
 	const allowedSingleCharLanguages = ['ja', 'zh', 'ko'];
 	const allowSingleCharMessage = allowedSingleCharLanguages.some((lang) =>
@@ -1072,15 +1073,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							</span>
 						</a>
 					)}
-					<div
-						className={clsx(
-							'docsbot-chat-header',
-							isEmbeddedBox && hideHeader && 'unbranded',
-							!(
-								Object.keys(state.messages).length <= 1 &&
-								Object.keys(questions).length >= 1
-							) && 'is-small'
-						)}
+                                        <div
+                                                className={clsx(
+                                                        'docsbot-chat-header',
+                                                        isEmbeddedBox && hideHeader && 'unbranded',
+                                                        hasConversationStarted && 'is-small'
+                                                )}
 						data-shadow={
 							isWhite &&
 							(isFloatingSmall || !isEmbeddedBox || isEmbeddedBox)
