@@ -1,11 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader } from '../loader/Loader';
 import { useConfig } from '../configContext/ConfigContext';
 import { BotAvatar } from '../botAvatar/BotAvatar';
 import { Source } from '../source/Source';
 import { useChatbot } from '../chatbotContext/ChatbotContext';
-import { scrollToBottom, getHighlightJs } from '../../utils/utils';
+import { scrollToBottom } from '../../utils/utils';
 import clsx from 'clsx';
+import { Streamdown } from 'streamdown';
+import { streamdownRemarkPlugins } from '../../utils/markdown';
 
 export const BotChatMessage = ({
 	payload,
@@ -39,9 +41,7 @@ export const BotChatMessage = ({
 	if (signature) {
 		headers.Authorization = `Bearer ${signature}`;
 	}
-	const contentRef = useRef(null);
-	const [hljs, setHljs] = useState(null);
-	const [isSupportLoading, setIsSupportLoading] = useState(false);
+        const [isSupportLoading, setIsSupportLoading] = useState(false);
 
 	// Check if this is a repeated bot message
 	const isRepeatedBotMessage = () => {
@@ -54,20 +54,7 @@ export const BotChatMessage = ({
 		return prevMessage.variant === 'chatbot';
 	};
 
-	useEffect(() => {
-		getHighlightJs().then(setHljs);
-	}, []);
-
-	useEffect(() => {
-		if (contentRef.current && hljs) {
-			const codeBlocks = contentRef.current.querySelectorAll('pre code');
-			codeBlocks.forEach((block) => {
-				hljs.highlightElement(block);
-			});
-		}
-	}, [payload.message, hljs]);
-
-	const runSupportCallback = async (e, history) => {
+        const runSupportCallback = async (e, history) => {
 		setIsSupportLoading(true);
 
 		// Prevent default to ensure we complete the request before navigation, not really needed as they are not links anymore
@@ -283,13 +270,15 @@ export const BotChatMessage = ({
 
 						return (
 							<>
-								<span
-									ref={contentRef}
-									dir="auto"
-									dangerouslySetInnerHTML={{
-										__html: payload.message
-									}}
-								/>
+                                                                <div dir="auto">
+                                                                        <Streamdown
+                                                                                className="docsbot-streamdown"
+                                                                                isAnimating={Boolean(payload.streaming)}
+                                                                                remarkPlugins={streamdownRemarkPlugins}
+                                                                        >
+                                                                                {payload.message || ''}
+                                                                        </Streamdown>
+                                                                </div>
 
 								{/*
 								 * Show sources if:
