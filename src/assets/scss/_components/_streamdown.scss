@@ -1,0 +1,176 @@
+@use '../_utils/tokens' as *;
+
+.docsbot-streamdown {
+        display: block;
+        width: 100%;
+        color: inherit;
+        font-family: inherit;
+        font-size: 14px;
+        line-height: 20px;
+        word-wrap: break-word;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+
+        > * {
+                margin: $spacing-xs 0;
+        }
+
+        > :first-child {
+                margin-top: 0;
+        }
+
+        > :last-child {
+                margin-bottom: 0;
+        }
+
+        a {
+                color: inherit;
+                font-weight: 500;
+                text-decoration: underline;
+                word-break: break-word;
+                display: inline-block;
+                max-width: 100%;
+
+                &:hover {
+                        text-decoration: none;
+                }
+        }
+
+        p {
+                margin: $spacing-xs 0;
+                max-width: 100%;
+        }
+
+        strong {
+                font-weight: 600;
+        }
+
+        em {
+                font-style: italic;
+        }
+
+        ul,
+        ol {
+                margin: $spacing-xs 0;
+                padding-left: $spacing-lg;
+        }
+
+        li {
+                margin: $spacing-xs 0;
+        }
+
+        blockquote {
+                margin: $spacing-sm 0;
+                padding-left: $spacing-sm;
+                border-left: 2px solid $color-secondary-200;
+                color: $color-secondary-100;
+        }
+
+        hr {
+                border: none;
+                border-top: 1px solid $color-secondary-200;
+                margin: $spacing-sm 0;
+        }
+
+        img,
+        video,
+        iframe {
+                display: block;
+                max-width: 100%;
+                height: auto;
+                margin: $spacing-xs 0;
+                border-radius: $spacing-xs;
+        }
+
+        table {
+                width: 100%;
+                margin: $spacing-sm 0;
+                border-collapse: collapse;
+                font-size: 13px;
+                line-height: 18px;
+                display: block;
+                overflow-x: auto;
+        }
+
+        th,
+        td {
+                padding: $spacing-xs $spacing-sm;
+                border: 1px solid $color-secondary-200;
+                vertical-align: top;
+                text-align: left;
+                white-space: normal;
+                word-break: break-word;
+        }
+
+        thead th {
+                background: $color-secondary-400;
+                color: $color-neutral-100;
+                font-weight: 600;
+        }
+
+        code {
+                font-family:
+                        SFMono-Regular,
+                        Menlo,
+                        Monaco,
+                        Consolas,
+                        'Liberation Mono',
+                        'Courier New',
+                        monospace;
+        }
+
+        :not(pre) > code {
+                display: inline;
+                padding: 0 $spacing-xs;
+                border-radius: $spacing-xs;
+                background: $color-secondary-300;
+        }
+
+        pre {
+                position: relative;
+                margin: $spacing-xs 0;
+                border: 1px solid $color-secondary-200;
+                border-radius: $spacing-xs;
+                background: $color-secondary-400;
+                overflow: auto;
+                direction: ltr;
+                text-align: left;
+
+                code {
+                        display: block;
+                        padding: $spacing-sm;
+                        font-size: 12px;
+                        line-height: 16px;
+                        background: transparent;
+                        color: inherit;
+                        unicode-bidi: normal;
+                }
+
+                button {
+                        cursor: pointer;
+                        border: 1px solid $color-secondary-200;
+                        background: $color-secondary-200;
+                        color: $color-neutral-100;
+                        transition:
+                                border-color $transition-duration-short linear,
+                                background $transition-duration-short ease,
+                                color $transition-duration-short ease;
+
+                        &:hover {
+                                border-color: $color-neutral-100;
+                                background: $color-neutral-100;
+                                color: $color-neutral-300;
+                        }
+
+                        &:focus {
+                                outline: none;
+                                border-color: $color-neutral-300;
+                        }
+
+                        &[data-copied='true'] {
+                                padding-left: $spacing-sm;
+                                padding-right: $spacing-sm;
+                        }
+                }
+        }
+}
