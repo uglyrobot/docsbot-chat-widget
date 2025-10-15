@@ -71,6 +71,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         const [isFetching, setIsFetching] = useState(false);
         const [isAtBottom, setIsAtBottom] = useState(true);
         const [streamController, setStreamController] = useState(null);
+        const requestIdCounterRef = useRef(0);
+        const activeRequestIdRef = useRef(null);
         const hasConversationStarted = Object.keys(state.messages).length > 1;
 
 	const allowedSingleCharLanguages = ['ja', 'zh', 'ko'];
@@ -380,6 +382,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		const id = uuidv4();
 		setIsFetching(true);
 		let answerId = null;
+
+		requestIdCounterRef.current += 1;
+		const requestId = requestIdCounterRef.current;
+		activeRequestIdRef.current = requestId;
 
 		const abortController = new AbortController();
 		setStreamController(abortController);
@@ -713,35 +719,44 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				ws.send(JSON.stringify(req));
 			};
 
-			ws.onerror = function (event) {
-				console.error('DOCSBOT: WebSocket error', event);
-				dispatch({
-					type: 'update_message',
-					payload: {
-						id,
-						variant: 'chatbot',
-						message:
-							'There was a connection error. Please try again.',
-						loading: false,
-						error: true
-					}
-				});
-			};
+                        ws.onerror = function (event) {
+                                console.error('DOCSBOT: WebSocket error', event);
+                                dispatch({
+                                        type: 'update_message',
+                                        payload: {
+                                                id,
+                                                variant: 'chatbot',
+                                                message:
+                                                        'There was a connection error. Please try again.',
+                                                loading: false,
+                                                error: true
+                                        }
+                                });
+                                if (activeRequestIdRef.current === requestId) {
+                                        setIsFetching(false);
+                                }
+                        };
 
-			ws.onclose = function (event) {
-				if (!event.wasClean) {
-					dispatch({
-						type: 'update_message',
-						payload: {
-							id,
-							message:
-								'There was a network error. Please try again.',
-							loading: false,
-							error: true
-						}
-					});
-				}
-			};
+                        ws.onclose = function (event) {
+                                if (!event.wasClean) {
+                                        dispatch({
+                                                type: 'update_message',
+                                                payload: {
+                                                        id,
+                                                        message:
+                                                                'There was a network error. Please try again.',
+                                                        loading: false,
+                                                        error: true
+                                                }
+                                        });
+                                }
+                                if (activeRequestIdRef.current === requestId) {
+                                        setIsFetching(false);
+                                }
+                                setStreamController((current) =>
+                                        current === ws ? null : current
+                                );
+                        };
 
 			// Receive message from server word by word. Display the words as they are received.
 			ws.onmessage = async function (event) {
@@ -769,51 +784,57 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							}
 						});
 					} else if (data.type === 'info') {
-					} else if (data.type === 'end') {
-						const finalData = JSON.parse(data.message);
-						dispatch({
-							type: 'update_message',
-							payload: {
+                                        } else if (data.type === 'end') {
+                                                const finalData = JSON.parse(data.message);
+                                                dispatch({
+                                                        type: 'update_message',
+                                                        payload: {
 								id,
 								variant: 'chatbot',
 								message: await parseMarkdown(finalData.answer),
 								sources: finalData.sources,
-								answerId: finalData.id,
-								rating: finalData.rating,
-								loading: false
-							}
-						});
-						dispatch({
-							type: 'save_history',
-							payload: {
-								chatHistory: finalData.history
-							}
-						});
-						currentHeight = 0;
-						scrollToBottom(ref);
-						ws.close();
-						// Change this to use native JS event
-						document.dispatchEvent(
-							new CustomEvent(
-								'docsbot_fetching_answer_complete',
-								{ detail: finalData }
-							)
-						);
-					} else if (data.type === 'error') {
-						dispatch({
-							type: 'update_message',
-							payload: {
-								id,
+                                                                answerId: finalData.id,
+                                                                rating: finalData.rating,
+                                                                loading: false
+                                                        }
+                                                });
+                                                dispatch({
+                                                        type: 'save_history',
+                                                        payload: {
+                                                                chatHistory: finalData.history
+                                                        }
+                                                });
+                                                currentHeight = 0;
+                                                scrollToBottom(ref);
+                                                ws.close();
+                                                // Change this to use native JS event
+                                                document.dispatchEvent(
+                                                        new CustomEvent(
+                                                                'docsbot_fetching_answer_complete',
+                                                                { detail: finalData }
+                                                        )
+                                                );
+                                                if (activeRequestIdRef.current === requestId) {
+                                                        setIsFetching(false);
+                                                }
+                                        } else if (data.type === 'error') {
+                                                dispatch({
+                                                        type: 'update_message',
+                                                        payload: {
+                                                                id,
 								variant: 'chatbot',
-								message: data.message,
-								loading: false,
-								error: true
-							}
-						});
-						ws.close();
-					}
-				}
-			};
+                                                                message: data.message,
+                                                                loading: false,
+                                                                error: true
+                                                        }
+                                                });
+                                                ws.close();
+                                                if (activeRequestIdRef.current === requestId) {
+                                                        setIsFetching(false);
+                                                }
+                                        }
+                                }
+                        };
 		}
 	}
 
@@ -839,11 +860,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			});
 	}
 
-	async function handleSubmit(event) {
-		event.preventDefault();
-		if (chatInput.trim().length < minInputLength) {
-			return;
-		}
+        async function handleSubmit(event) {
+                event.preventDefault();
+                if (isFetching || chatInput.trim().length < minInputLength) {
+                        return;
+                }
 
 		// Extract thumbnails for history storage if images exist
 		const historyImageUrls =
@@ -1196,6 +1217,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 												<button
 													key={'question' + index}
 													type="button"
+													dir="auto"
 													onClick={() => {
 														dispatch({
 															type: 'add_message',

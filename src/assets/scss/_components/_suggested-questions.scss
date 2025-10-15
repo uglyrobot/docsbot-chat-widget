@@ -33,5 +33,6 @@
 
 	&-button {
 		@include bubble-button;
+		text-align: start;
 	}
 }
