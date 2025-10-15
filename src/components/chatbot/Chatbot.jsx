@@ -713,35 +713,37 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				ws.send(JSON.stringify(req));
 			};
 
-			ws.onerror = function (event) {
-				console.error('DOCSBOT: WebSocket error', event);
-				dispatch({
-					type: 'update_message',
-					payload: {
-						id,
-						variant: 'chatbot',
-						message:
-							'There was a connection error. Please try again.',
-						loading: false,
-						error: true
-					}
-				});
-			};
+                        ws.onerror = function (event) {
+                                console.error('DOCSBOT: WebSocket error', event);
+                                dispatch({
+                                        type: 'update_message',
+                                        payload: {
+                                                id,
+                                                variant: 'chatbot',
+                                                message:
+                                                        'There was a connection error. Please try again.',
+                                                loading: false,
+                                                error: true
+                                        }
+                                });
+                                setIsFetching(false);
+                        };
 
-			ws.onclose = function (event) {
-				if (!event.wasClean) {
-					dispatch({
-						type: 'update_message',
-						payload: {
-							id,
-							message:
-								'There was a network error. Please try again.',
-							loading: false,
-							error: true
-						}
-					});
-				}
-			};
+                        ws.onclose = function (event) {
+                                if (!event.wasClean) {
+                                        dispatch({
+                                                type: 'update_message',
+                                                payload: {
+                                                        id,
+                                                        message:
+                                                                'There was a network error. Please try again.',
+                                                        loading: false,
+                                                        error: true
+                                                }
+                                        });
+                                }
+                                setIsFetching(false);
+                        };
 
 			// Receive message from server word by word. Display the words as they are received.
 			ws.onmessage = async function (event) {
@@ -769,51 +771,53 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							}
 						});
 					} else if (data.type === 'info') {
-					} else if (data.type === 'end') {
-						const finalData = JSON.parse(data.message);
-						dispatch({
-							type: 'update_message',
-							payload: {
+                                        } else if (data.type === 'end') {
+                                                const finalData = JSON.parse(data.message);
+                                                dispatch({
+                                                        type: 'update_message',
+                                                        payload: {
 								id,
 								variant: 'chatbot',
 								message: await parseMarkdown(finalData.answer),
 								sources: finalData.sources,
-								answerId: finalData.id,
-								rating: finalData.rating,
-								loading: false
-							}
-						});
-						dispatch({
-							type: 'save_history',
-							payload: {
-								chatHistory: finalData.history
-							}
-						});
-						currentHeight = 0;
-						scrollToBottom(ref);
-						ws.close();
-						// Change this to use native JS event
-						document.dispatchEvent(
-							new CustomEvent(
-								'docsbot_fetching_answer_complete',
-								{ detail: finalData }
-							)
-						);
-					} else if (data.type === 'error') {
-						dispatch({
-							type: 'update_message',
-							payload: {
-								id,
+                                                                answerId: finalData.id,
+                                                                rating: finalData.rating,
+                                                                loading: false
+                                                        }
+                                                });
+                                                dispatch({
+                                                        type: 'save_history',
+                                                        payload: {
+                                                                chatHistory: finalData.history
+                                                        }
+                                                });
+                                                currentHeight = 0;
+                                                scrollToBottom(ref);
+                                                ws.close();
+                                                // Change this to use native JS event
+                                                document.dispatchEvent(
+                                                        new CustomEvent(
+                                                                'docsbot_fetching_answer_complete',
+                                                                { detail: finalData }
+                                                        )
+                                                );
+                                                setIsFetching(false);
+                                        } else if (data.type === 'error') {
+                                                dispatch({
+                                                        type: 'update_message',
+                                                        payload: {
+                                                                id,
 								variant: 'chatbot',
-								message: data.message,
-								loading: false,
-								error: true
-							}
-						});
-						ws.close();
-					}
-				}
-			};
+                                                                message: data.message,
+                                                                loading: false,
+                                                                error: true
+                                                        }
+                                                });
+                                                ws.close();
+                                                setIsFetching(false);
+                                        }
+                                }
+                        };
 		}
 	}
 
@@ -839,11 +843,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			});
 	}
 
-	async function handleSubmit(event) {
-		event.preventDefault();
-		if (chatInput.trim().length < minInputLength) {
-			return;
-		}
+        async function handleSubmit(event) {
+                event.preventDefault();
+                if (isFetching || chatInput.trim().length < minInputLength) {
+                        return;
+                }
 
 		// Extract thumbnails for history storage if images exist
 		const historyImageUrls =
