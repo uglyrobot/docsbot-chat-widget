@@ -1217,6 +1217,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 												<button
 													key={'question' + index}
 													type="button"
+													dir="auto"
 													onClick={() => {
 														dispatch({
 															type: 'add_message',
