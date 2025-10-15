@@ -71,6 +71,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         const [isFetching, setIsFetching] = useState(false);
         const [isAtBottom, setIsAtBottom] = useState(true);
         const [streamController, setStreamController] = useState(null);
+        const requestIdCounterRef = useRef(0);
+        const activeRequestIdRef = useRef(null);
         const hasConversationStarted = Object.keys(state.messages).length > 1;
 
 	const allowedSingleCharLanguages = ['ja', 'zh', 'ko'];
@@ -380,6 +382,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		const id = uuidv4();
 		setIsFetching(true);
 		let answerId = null;
+
+		requestIdCounterRef.current += 1;
+		const requestId = requestIdCounterRef.current;
+		activeRequestIdRef.current = requestId;
 
 		const abortController = new AbortController();
 		setStreamController(abortController);
@@ -726,7 +732,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                 error: true
                                         }
                                 });
-                                setIsFetching(false);
+                                if (activeRequestIdRef.current === requestId) {
+                                        setIsFetching(false);
+                                }
                         };
 
                         ws.onclose = function (event) {
@@ -742,7 +750,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                 }
                                         });
                                 }
-                                setIsFetching(false);
+                                if (activeRequestIdRef.current === requestId) {
+                                        setIsFetching(false);
+                                }
+                                setStreamController((current) =>
+                                        current === ws ? null : current
+                                );
                         };
 
 			// Receive message from server word by word. Display the words as they are received.
@@ -801,7 +814,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                                 { detail: finalData }
                                                         )
                                                 );
-                                                setIsFetching(false);
+                                                if (activeRequestIdRef.current === requestId) {
+                                                        setIsFetching(false);
+                                                }
                                         } else if (data.type === 'error') {
                                                 dispatch({
                                                         type: 'update_message',
@@ -814,7 +829,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                         }
                                                 });
                                                 ws.close();
-                                                setIsFetching(false);
+                                                if (activeRequestIdRef.current === requestId) {
+                                                        setIsFetching(false);
+                                                }
                                         }
                                 }
                         };
