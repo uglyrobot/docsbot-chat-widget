@@ -4,7 +4,7 @@ import { useConfig } from '../configContext/ConfigContext';
 import { BotAvatar } from '../botAvatar/BotAvatar';
 import { Source } from '../source/Source';
 import { useChatbot } from '../chatbotContext/ChatbotContext';
-import { scrollToBottom, getHighlightJs } from '../../utils/utils';
+import { scrollToBottom, getHighlightJs, mergeIdentifyMetadata } from '../../utils/utils';
 import clsx from 'clsx';
 
 export const BotChatMessage = ({
@@ -106,7 +106,7 @@ export const BotChatMessage = ({
 				};
 
 				// Build metadata object and include conversation details in agent mode
-				const metadata = { ...(identify.metadata || {}) };
+                                const metadata = mergeIdentifyMetadata(identify);
 				if (isAgent && payload.conversationId) {
 					metadata.conversationId = payload.conversationId;
 					metadata.conversationUrl = `https://docsbot.ai/app/bots/${botId}/conversations?conversationId=${payload.conversationId}`;

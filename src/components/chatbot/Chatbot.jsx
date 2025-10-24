@@ -21,7 +21,12 @@ import {
 	faTimes
 } from '@fortawesome/free-solid-svg-icons';
 import { faImage } from '@fortawesome/free-regular-svg-icons';
-import { Emitter, decideTextColor, scrollToBottom } from '../../utils/utils';
+import {
+        Emitter,
+        decideTextColor,
+        scrollToBottom,
+        mergeIdentifyMetadata
+} from '../../utils/utils';
 import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 
@@ -412,8 +417,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 		let currentHeight = 0;
 		let answer = '';
-		let metadata = identify;
-		metadata.referrer = window.location.href;
+                const metadata = mergeIdentifyMetadata(identify);
+                if (!Object.prototype.hasOwnProperty.call(metadata, 'referrer')) {
+                        metadata.referrer = window.location.href;
+                }
 
 		if (isAgent) {
 			const sse_req = {
