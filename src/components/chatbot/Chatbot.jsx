@@ -247,6 +247,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		};
 	}, []);
 
+	// Close on Escape when acting as a dialog (floating mode)
+	useEffect(() => {
+		if (isEmbeddedBox) return;
+		const onKeyDown = (e) => {
+			if (e.key === 'Escape') {
+				setIsOpen(false);
+			}
+		};
+		document.addEventListener('keydown', onKeyDown);
+		return () => document.removeEventListener('keydown', onKeyDown);
+	}, [isEmbeddedBox, setIsOpen]);
+
 	const getConversationId = () => {
 		let conversationId = localStorage.getItem(
 			`DocsBot_${botId}_conversationId`
@@ -1082,24 +1094,36 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					: {}
 			}
 			part="wrapper"
+			id="docsbot-chat-dialog"
+			tabIndex={-1}
+			{...(!isEmbeddedBox && {
+				role: 'dialog',
+				'aria-modal': true,
+				...(logo
+					? { 'aria-label': botName }
+					: {
+						'aria-labelledby': 'docsbot-chat-title',
+						...(description ? { 'aria-describedby': 'docsbot-chat-desc' } : {})
+					}
+				)
+			})}
 		>
 			<div className="docsbot-chat-container">
 				<div className="docsbot-chat-inner-container">
 					{!isEmbeddedBox && (
-						<a
-							role="button"
+						<button
+							type="button"
 							className={'mobile-close-button'}
 							onClick={(e) => {
-								e.preventDefault();
 								setIsOpen(false);
 							}}
-							sr-label="Close chat"
+							aria-label={labels.close || 'Close'}
 						>
 							<FontAwesomeIcon size="lg" icon={faXmark} />
 							<span className="mobile-close-button-label">
 								{labels.close || 'Close'}
 							</span>
-						</a>
+						</button>
 					)}
                                         <div
                                                 className={clsx(
@@ -1149,10 +1173,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										</div>
 									) : (
 										<>
-											<h1 className="docsbot-chat-header-title">
+											<h1 className="docsbot-chat-header-title" id="docsbot-chat-title">
 												{botName}
 											</h1>
-											<span className="docsbot-chat-header-subtitle">
+											<span className="docsbot-chat-header-subtitle" id="docsbot-chat-desc">
 												{description}
 											</span>
 										</>
@@ -1169,7 +1193,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						</div>
 					</div>
 
-					<div className="docsbot-chat-message-container" ref={ref}>
+					<div className="docsbot-chat-message-container" ref={ref} id="docsbot-chat-messages" role="log" aria-live="polite" aria-relevant="additions text" aria-busy={isFetching} aria-label="Chat messages" tabIndex={0}>
 						{Object.keys(state.messages).map((key) => {
 							const message = state.messages[key];
 							message.isLast =
@@ -1260,6 +1284,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									isAtBottom && 'hide'
 								)}
 								onClick={() => scrollToBottom(ref)}
+								aria-controls="docsbot-chat-messages"
 							>
 								<span className="docsbot-screen-reader-only">
 									Scroll to the bottom of conversation
@@ -1421,8 +1446,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 												inputLimit
 													? Math.min(inputLimit, 2000)
 													: 500
-											}
+												}
 											rows={1}
+											aria-label={labels?.inputPlaceholder || 'Type your message'}
 										/>
 										{selectedImages.length > 0 && (
 											<div className="docsbot-image-preview-container">
