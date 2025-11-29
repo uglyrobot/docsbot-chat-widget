@@ -16,21 +16,79 @@
 		width: 100%;
 	}
 
-	a {
-		color: inherit;
-		font-weight: 500;
-		word-break: break-all;
-		display: inline-block;
-		max-width: 100%;
+        a {
+                color: inherit;
+                font-weight: 500;
+                word-break: break-all;
+                display: inline-block;
+                max-width: 100%;
 
-		&:hover {
-			text-decoration: none;
-		}
-	}
+                &:hover {
+                        text-decoration: none;
+                }
+        }
 
-	p {
-		margin-top: 0;
-		max-width: 100%;
+        .docsbot-copy-button-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: $spacing-xs;
+                margin-top: $spacing-sm;
+                margin-bottom: 0;
+
+                &:not(:has(.docsbot-sources-title)) {
+                        margin-top: -6px;
+                        margin-bottom: calc($spacing-sm * -1);
+                }
+        }
+
+        .docsbot-copy-button {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: $spacing-lg;
+                height: $spacing-lg;
+                padding: calc($spacing-xs / 2);
+                font-size: 0.9em;
+                line-height: 0;
+                border-radius: $spacing-xs;
+                border: none;
+                background: transparent;
+                color: $color-secondary-100;
+                cursor: pointer;
+                transition: color $transition-duration-default ease,
+                        transform $transition-duration-default ease;
+                margin-left: auto;
+
+                svg,
+                .docsbot-copy-icon {
+                        width: 24px !important;
+                        height: 24px !important;
+                        display: block;
+                }
+
+                &:hover,
+                &:focus {
+                        color: #1f2f3d;
+                }
+
+                &:active {
+                        transform: translateY(1px);
+                }
+
+                &.copied {
+                        color: #166534;
+                }
+
+                &:focus-visible {
+                        outline: 2px solid #d4d4ff;
+                        outline-offset: 2px;
+                }
+        }
+
+        p {
+                margin-top: 0;
+                max-width: 100%;
 
 		&:last-child {
 			margin-bottom: 0;

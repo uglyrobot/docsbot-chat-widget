@@ -222,14 +222,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		Emitter.on('docsbot_add_bot_message', async ({ message }) => {
 			await dispatch({
 				type: 'add_message',
-				payload: {
-					id: uuidv4(),
-					variant: 'chatbot',
-					message: await parseMarkdown(message),
-					loading: false,
-					timestamp: Date.now()
-				}
-			});
+                                payload: {
+                                        id: uuidv4(),
+                                        variant: 'chatbot',
+                                        message: await parseMarkdown(message),
+                                        markdown: message,
+                                        loading: false,
+                                        timestamp: Date.now()
+                                }
+                        });
 
 			Emitter.emit('docsbot_add_bot_message_complete');
 		});
@@ -282,13 +283,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			const parsedMessage = await parseMarkdown(labels.firstMessage);
 			dispatch({
 				type: 'add_message',
-				payload: {
-					id: uuidv4(),
-					variant: 'chatbot',
-					message: parsedMessage,
-					timestamp: Date.now()
-				}
-			});
+                                payload: {
+                                        id: uuidv4(),
+                                        variant: 'chatbot',
+                                        message: parsedMessage,
+                                        markdown: labels.firstMessage,
+                                        timestamp: Date.now()
+                                }
+                        });
 		}
 	};
 
@@ -296,15 +298,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		const addFirstMessage = async () => {
 			const parsedMessage = await parseMarkdown(labels.firstMessage);
 
-			dispatch({
-				type: 'add_message',
-				payload: {
-					id: uuidv4(),
-					variant: 'chatbot',
-					message: parsedMessage,
-					timestamp: Date.now()
-				}
-			});
+                        dispatch({
+                                type: 'add_message',
+                                payload: {
+                                        id: uuidv4(),
+                                        variant: 'chatbot',
+                                        message: parsedMessage,
+                                        markdown: labels.firstMessage,
+                                        timestamp: Date.now()
+                                }
+                        });
 		};
 
 		const fetchData = async () => {
@@ -397,13 +400,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 		dispatch({
 			type: 'add_message',
-			payload: {
-				id,
-				variant: 'chatbot',
-				message: null,
-				loading: true,
-				timestamp: Date.now()
-			}
+                                payload: {
+                                        id,
+                                        variant: 'chatbot',
+                                        message: null,
+                                        markdown: '',
+                                        loading: true,
+                                        timestamp: Date.now()
+                                }
 		});
 
 		// Change this to use native JS event
@@ -543,14 +547,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							}
 							dispatch({
 								type: 'update_message',
-								payload: {
-									id,
-									variant: 'chatbot',
-									message: await parseMarkdown(answer),
-									sources: null,
-									loading: false
-								}
-							});
+                                                                payload: {
+                                                                        id,
+                                                                        variant: 'chatbot',
+                                                                        message: await parseMarkdown(answer),
+                                                                        markdown: answer,
+                                                                        sources: null,
+                                                                        loading: false
+                                                                }
+                                                        });
 
 							scrollToBottom(ref);
 						} else {
@@ -563,20 +568,21 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										data.event === 'is_resolved_question'
 											? 'add_message'
 											: 'update_message',
-									payload: {
-										id:
-											data.event ===
-											'is_resolved_question'
-												? uuidv4()
-												: id,
-										variant: 'chatbot',
-										type: data.event,
-										message: await parseMarkdown(
-											finalData.answer
-										),
-										sources: finalData.sources || null,
-										answerId:
-											answerId || finalData.id || null, // use saved prev id for feedback button
+                                                                        payload: {
+                                                                                id:
+                                                                                        data.event ===
+                                                                                        'is_resolved_question'
+                                                                                                ? uuidv4()
+                                                                                                : id,
+                                                                                variant: 'chatbot',
+                                                                                type: data.event,
+                                                                                message: await parseMarkdown(
+                                                                                        finalData.answer
+                                                                                ),
+                                                                                markdown: finalData.answer,
+                                                                                sources: finalData.sources || null,
+                                                                                answerId:
+                                                                                        answerId || finalData.id || null, // use saved prev id for feedback button
 										conversationId: getConversationId(),
 										loading: false,
 										responses: finalData.options || null
@@ -782,24 +788,26 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						answer += data.message;
 						dispatch({
 							type: 'update_message',
-							payload: {
-								id,
-								variant: 'chatbot',
-								message: await parseMarkdown(answer),
-								sources: null,
-								loading: false
-							}
-						});
+                                                        payload: {
+                                                                id,
+                                                                variant: 'chatbot',
+                                                                message: await parseMarkdown(answer),
+                                                                markdown: answer,
+                                                                sources: null,
+                                                                loading: false
+                                                        }
+                                                });
 					} else if (data.type === 'info') {
                                         } else if (data.type === 'end') {
                                                 const finalData = JSON.parse(data.message);
                                                 dispatch({
                                                         type: 'update_message',
                                                         payload: {
-								id,
-								variant: 'chatbot',
-								message: await parseMarkdown(finalData.answer),
-								sources: finalData.sources,
+                                                                id,
+                                                                variant: 'chatbot',
+                                                                message: await parseMarkdown(finalData.answer),
+                                                                markdown: finalData.answer,
+                                                                sources: finalData.sources,
                                                                 answerId: finalData.id,
                                                                 rating: finalData.rating,
                                                                 loading: false
