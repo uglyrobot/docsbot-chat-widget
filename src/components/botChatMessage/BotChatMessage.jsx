@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
+import { Loader } from '../loader/Loader';
+import { useConfig } from '../configContext/ConfigContext';
 import { BotAvatar } from '../botAvatar/BotAvatar';
 import { Source } from '../source/Source';
 import { CheckIcon } from '../icons/CheckIcon';
 import { CopyIcon } from '../icons/CopyIcon';
-import { Loader } from '../loader/Loader';
-import { useConfig } from '../configContext/ConfigContext';
 import { useChatbot } from '../chatbotContext/ChatbotContext';
-import { scrollToBottom, getHighlightJs, mergeIdentifyMetadata } from '../../utils/utils';
+import { scrollToBottom, mergeIdentifyMetadata } from '../../utils/utils';
 import clsx from 'clsx';
+import { Streamdown } from 'streamdown';
+import { streamdownRemarkPlugins, preprocessMath } from '../../utils/markdown';
 
 export const BotChatMessage = ({
 	payload,
@@ -42,56 +44,76 @@ export const BotChatMessage = ({
 	if (signature) {
 		headers.Authorization = `Bearer ${signature}`;
 	}
-        const contentRef = useRef(null);
-        const [hljs, setHljs] = useState(null);
-        const [isSupportLoading, setIsSupportLoading] = useState(false);
-        const [isCopied, setIsCopied] = useState(false);
+	const contentRef = useRef(null);
+	const streamdownRef = useRef(null);
+	const [isSupportLoading, setIsSupportLoading] = useState(false);
+	const [isCopied, setIsCopied] = useState(false);
 
-        const copyContentToClipboard = async () => {
-                const markdownContent =
-                        payload.markdown ||
-                        payload.message ||
-                        contentRef.current?.innerText ||
-                        '';
-                const htmlContent = payload.message || contentRef.current?.innerHTML || '';
+	const copyContentToClipboard = async () => {
+		// payload.message contains raw markdown
+		const markdownContent = payload.message || '';
+		// Get rendered HTML from Streamdown component
+		const htmlContent = streamdownRef.current?.innerHTML || '';
 
-                try {
-                        if (navigator.clipboard?.write && window.ClipboardItem) {
-                                const clipboardItemInput = {
-                                        'text/plain': new Blob([markdownContent], {
-                                                type: 'text/plain'
-                                        })
-                                };
+		try {
+			// Try to copy both markdown and HTML formats using ClipboardItem
+			if (navigator.clipboard?.write && window.ClipboardItem) {
+				const clipboardItemInput = {
+					'text/plain': new Blob([markdownContent], {
+						type: 'text/plain'
+					})
+				};
 
-                                if (htmlContent) {
-                                        clipboardItemInput['text/html'] = new Blob([htmlContent], {
-                                                type: 'text/html'
-                                        });
-                                }
+				// Add HTML format if available
+				if (htmlContent) {
+					clipboardItemInput['text/html'] = new Blob([htmlContent], {
+						type: 'text/html'
+					});
+				}
 
-                                await navigator.clipboard.write([
-                                        new ClipboardItem(clipboardItemInput)
-                                ]);
-                        } else if (navigator.clipboard?.writeText) {
-                                await navigator.clipboard.writeText(markdownContent);
-                        } else {
-                                const textArea = document.createElement('textarea');
-                                textArea.value = markdownContent;
-                                document.body.appendChild(textArea);
-                                textArea.select();
-                                document.execCommand('copy');
-                                document.body.removeChild(textArea);
-                        }
+				await navigator.clipboard.write([
+					new ClipboardItem(clipboardItemInput)
+				]);
 
-                        setIsCopied(true);
-                        setTimeout(() => setIsCopied(false), 2000);
-                } catch (err) {
-                        console.warn('DOCSBOT: Unable to copy response', err);
-                        if (navigator.clipboard?.writeText) {
-                                await navigator.clipboard.writeText(markdownContent);
-                        }
-                }
-        };
+				setIsCopied(true);
+				setTimeout(() => setIsCopied(false), 2000);
+			} else if (navigator.clipboard?.writeText) {
+				// Fallback: copy markdown as plain text
+				await navigator.clipboard.writeText(markdownContent);
+				setIsCopied(true);
+				setTimeout(() => setIsCopied(false), 2000);
+			} else {
+				// Fallback for older browsers
+				const textArea = document.createElement('textarea');
+				textArea.value = markdownContent;
+				document.body.appendChild(textArea);
+				textArea.select();
+				document.execCommand('copy');
+				document.body.removeChild(textArea);
+				setIsCopied(true);
+				setTimeout(() => setIsCopied(false), 2000);
+			}
+		} catch (err) {
+			console.warn('DOCSBOT: Unable to copy response', err);
+			// Try fallback method - copy markdown as plain text
+			try {
+				if (navigator.clipboard?.writeText) {
+					await navigator.clipboard.writeText(markdownContent);
+				} else {
+					const textArea = document.createElement('textarea');
+					textArea.value = markdownContent;
+					document.body.appendChild(textArea);
+					textArea.select();
+					document.execCommand('copy');
+					document.body.removeChild(textArea);
+				}
+				setIsCopied(true);
+				setTimeout(() => setIsCopied(false), 2000);
+			} catch (fallbackErr) {
+				console.warn('DOCSBOT: Fallback copy also failed', fallbackErr);
+			}
+		}
+	};
 
 	// Check if this is a repeated bot message
 	const isRepeatedBotMessage = () => {
@@ -119,20 +141,7 @@ export const BotChatMessage = ({
 		return currentIndex >= 0 && payload.variant === 'chatbot';
 	};
 
-	useEffect(() => {
-		getHighlightJs().then(setHljs);
-	}, []);
-
-	useEffect(() => {
-		if (contentRef.current && hljs) {
-			const codeBlocks = contentRef.current.querySelectorAll('pre code');
-			codeBlocks.forEach((block) => {
-				hljs.highlightElement(block);
-			});
-		}
-	}, [payload.message, hljs]);
-
-	const runSupportCallback = async (e, history) => {
+        const runSupportCallback = async (e, history) => {
 		setIsSupportLoading(true);
 
 		// Prevent default to ensure we complete the request before navigation, not really needed as they are not links anymore
@@ -361,13 +370,15 @@ export const BotChatMessage = ({
 
 						return (
 							<>
-								<span
-									ref={contentRef}
-									dir="auto"
-									dangerouslySetInnerHTML={{
-										__html: payload.message
-									}}
-								/>
+                                                                <div dir="auto" ref={streamdownRef}>
+                                                                        <Streamdown
+                                                                                className="docsbot-streamdown"
+                                                                                isAnimating={Boolean(payload.streaming)}
+                                                                                remarkPlugins={streamdownRemarkPlugins}
+                                                                        >
+                                                                                {preprocessMath(payload.message || '')}
+                                                                        </Streamdown>
+                                                                </div>
 
 								{(hasVisibleSources || shouldShowCopyButton) && (
 									<div className="docsbot-copy-button-row">

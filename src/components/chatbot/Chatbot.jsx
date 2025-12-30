@@ -2,10 +2,6 @@
 
 import { useEffect, useRef, useState, createRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { remark } from 'remark';
-import html from 'remark-html';
-import remarkGfm from 'remark-gfm';
-import externalLinks from 'remark-external-links';
 import { useChatbot } from '../chatbotContext/ChatbotContext';
 import { useConfig } from '../configContext/ConfigContext';
 import { BotChatMessage } from '../botChatMessage/BotChatMessage';
@@ -27,6 +23,8 @@ import {
         scrollToBottom,
         mergeIdentifyMetadata
 } from '../../utils/utils';
+import { Streamdown } from 'streamdown';
+import { streamdownRemarkPlugins } from '../../utils/markdown';
 import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 
@@ -198,14 +196,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		fileInputRef.current.click();
 	};
 
-	useEffect(() => {
-		Emitter.on('docsbot_add_user_message', async ({ message, send }) => {
-			await dispatch({
-				type: 'add_message',
-				payload: {
-					variant: 'user',
-					message: message,
-					loading: false,
+        useEffect(() => {
+                Emitter.on('docsbot_add_user_message', ({ message, send }) => {
+                        dispatch({
+                                type: 'add_message',
+                                payload: {
+                                        variant: 'user',
+                                        message: message,
+                                        loading: false,
 					timestamp: Date.now()
 				}
 			});
@@ -216,8 +214,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				fetchAnswer(message);
 			}
 
-			Emitter.emit('docsbot_add_user_message_complete');
-		});
+                        Emitter.emit('docsbot_add_user_message_complete');
+                });
 
 		Emitter.on('docsbot_add_bot_message', async ({ message }) => {
 			await dispatch({
@@ -225,9 +223,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                 payload: {
                                         id: uuidv4(),
                                         variant: 'chatbot',
-                                        message: await parseMarkdown(message),
-                                        markdown: message,
+                                        message: message,
                                         loading: false,
+                                        streaming: false,
                                         timestamp: Date.now()
                                 }
                         });
@@ -280,14 +278,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 		// Add first message after clearing
 		if (labels.firstMessage) {
-			const parsedMessage = await parseMarkdown(labels.firstMessage);
 			dispatch({
 				type: 'add_message',
                                 payload: {
                                         id: uuidv4(),
                                         variant: 'chatbot',
-                                        message: parsedMessage,
-                                        markdown: labels.firstMessage,
+                                        message: labels.firstMessage,
+                                        streaming: false,
                                         timestamp: Date.now()
                                 }
                         });
@@ -296,15 +293,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 	useEffect(() => {
 		const addFirstMessage = async () => {
-			const parsedMessage = await parseMarkdown(labels.firstMessage);
-
                         dispatch({
                                 type: 'add_message',
                                 payload: {
                                         id: uuidv4(),
                                         variant: 'chatbot',
-                                        message: parsedMessage,
-                                        markdown: labels.firstMessage,
+                                        message: labels.firstMessage,
+                                        streaming: false,
                                         timestamp: Date.now()
                                 }
                         });
@@ -404,8 +399,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                         id,
                                         variant: 'chatbot',
                                         message: null,
-                                        markdown: '',
                                         loading: true,
+                                        streaming: false,
                                         timestamp: Date.now()
                                 }
 		});
@@ -523,17 +518,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 						// If server sends an error event, handle accordingly
 						if (data.event === 'error') {
-							dispatch({
-								type: 'update_message',
-								payload: {
-									id,
-									variant: 'chatbot',
-									type: data.event,
-									message: data.data,
-									loading: false,
-									error: true
-								}
-							});
+                                                        dispatch({
+                                                                type: 'update_message',
+                                                                payload: {
+                                                                        id,
+                                                                        variant: 'chatbot',
+                                                                        type: data.event,
+                                                                        message: data.data,
+                                                                        loading: false,
+                                                                        error: true,
+                                                                        streaming: false
+                                                                }
+                                                        });
 							scrollToBottom(ref);
 							throw new FatalError(data.data);
 						}
@@ -550,10 +546,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                                 payload: {
                                                                         id,
                                                                         variant: 'chatbot',
-                                                                        message: await parseMarkdown(answer),
-                                                                        markdown: answer,
+                                                                        message: answer,
                                                                         sources: null,
-                                                                        loading: false
+                                                                        loading: false,
+                                                                        streaming: true
                                                                 }
                                                         });
 
@@ -576,15 +572,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                                                                 : id,
                                                                                 variant: 'chatbot',
                                                                                 type: data.event,
-                                                                                message: await parseMarkdown(
-                                                                                        finalData.answer
-                                                                                ),
-                                                                                markdown: finalData.answer,
+                                                                                message: finalData.answer,
                                                                                 sources: finalData.sources || null,
                                                                                 answerId:
                                                                                         answerId || finalData.id || null, // use saved prev id for feedback button
 										conversationId: getConversationId(),
 										loading: false,
+										streaming: false,
 										responses: finalData.options || null
 									}
 								});
@@ -637,17 +631,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								'There was an error with your request. Please try again.';
 							const isRateLimitError = err.status === 429;
 
-							dispatch({
-								type: 'update_message',
-								payload: {
-									id,
-									variant: 'chatbot',
-									message: errorMessage,
-									loading: false,
-									error: true,
-									isRateLimitError
-								}
-							});
+                                                        dispatch({
+                                                                type: 'update_message',
+                                                                payload: {
+                                                                        id,
+                                                                        variant: 'chatbot',
+                                                                        message: errorMessage,
+                                                                        loading: false,
+                                                                        error: true,
+                                                                        isRateLimitError,
+                                                                        streaming: false
+                                                                }
+                                                        });
 							setIsFetching(false);
 							scrollToBottom(ref);
 							throw err; // Re-throw to stop the operation
@@ -657,17 +652,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 							if (retryCount > MAX_RETRIES) {
 								// Too many retries, give up
-								dispatch({
-									type: 'update_message',
-									payload: {
-										id,
-										variant: 'chatbot',
-										message:
-											'Failed to connect after several attempts. Please try again later.',
-										loading: false,
-										error: true
-									}
-								});
+                                                                dispatch({
+                                                                        type: 'update_message',
+                                                                        payload: {
+                                                                                id,
+                                                                                variant: 'chatbot',
+                                                                                message:
+                                                                                        'Failed to connect after several attempts. Please try again later.',
+                                                                                loading: false,
+                                                                                error: true,
+                                                                                streaming: false
+                                                                        }
+                                                                });
 								setIsFetching(false);
 								scrollToBottom(ref);
 								throw new FatalError('Max retries exceeded');
@@ -694,17 +690,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					isRateLimitError = error.status === 429;
 				}
 
-				dispatch({
-					type: 'update_message',
-					payload: {
-						id,
-						variant: 'chatbot',
-						message: errorMessage,
-						loading: false,
-						error: true,
-						isRateLimitError
-					}
-				});
+                                dispatch({
+                                        type: 'update_message',
+                                        payload: {
+                                                id,
+                                                variant: 'chatbot',
+                                                message: errorMessage,
+                                                loading: false,
+                                                error: true,
+                                                isRateLimitError,
+                                                streaming: false
+                                        }
+                                });
 				setIsFetching(false);
 			}
 		} else {
@@ -742,7 +739,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                 message:
                                                         'There was a connection error. Please try again.',
                                                 loading: false,
-                                                error: true
+                                                error: true,
+                                                streaming: false
                                         }
                                 });
                                 if (activeRequestIdRef.current === requestId) {
@@ -759,7 +757,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                         message:
                                                                 'There was a network error. Please try again.',
                                                         loading: false,
-                                                        error: true
+                                                        error: true,
+                                                        streaming: false
                                                 }
                                         });
                                 }
@@ -791,10 +790,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                         payload: {
                                                                 id,
                                                                 variant: 'chatbot',
-                                                                message: await parseMarkdown(answer),
-                                                                markdown: answer,
+                                                                message: answer,
                                                                 sources: null,
-                                                                loading: false
+                                                                loading: false,
+                                                                streaming: true
                                                         }
                                                 });
 					} else if (data.type === 'info') {
@@ -805,12 +804,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                         payload: {
                                                                 id,
                                                                 variant: 'chatbot',
-                                                                message: await parseMarkdown(finalData.answer),
-                                                                markdown: finalData.answer,
+                                                                message: finalData.answer,
                                                                 sources: finalData.sources,
                                                                 answerId: finalData.id,
                                                                 rating: finalData.rating,
-                                                                loading: false
+                                                                loading: false,
+                                                                streaming: false
                                                         }
                                                 });
                                                 dispatch({
@@ -840,7 +839,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								variant: 'chatbot',
                                                                 message: data.message,
                                                                 loading: false,
-                                                                error: true
+                                                                error: true,
+                                                                streaming: false
                                                         }
                                                 });
                                                 ws.close();
@@ -853,6 +853,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		}
 	}
 
+	// parseMarkdown is kept for potential future use or other components
+	// For bot messages, we store raw markdown and let Streamdown handle rendering
 	async function parseMarkdown(text) {
 		// Remove incomplete markdown images, but keep the alt text
 		let filteredText = text.replace(
@@ -864,7 +866,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			/\[([^\]]*?)(?:\](?:\([^)"]*(?:"[^"]*")?[^)]*)?)?$/gm,
 			'$1'
 		);
-
+		// Return filtered text as-is since Streamdown handles markdown rendering
+		// If HTML parsing is needed in the future, uncomment the remark code below
+		return filteredText;
+		/*
 		return await remark()
 			.use(html)
 			.use(remarkGfm)
@@ -873,6 +878,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			.then((html) => {
 				return html.toString();
 			});
+		*/
 	}
 
         async function handleSubmit(event) {
@@ -1003,16 +1009,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 	const [parsedFooterText, setParsedFooterText] = useState(null);
 
-	useEffect(() => {
-		async function parseFooter() {
-			if (labels.footerMessage) {
-				const parsed = await parseMarkdown(labels.footerMessage);
-				setParsedFooterText(parsed);
-			}
-		}
-
-		parseFooter();
-	}, [labels.footerMessage]);
+        useEffect(() => {
+                if (labels.footerMessage) {
+                        setParsedFooterText(labels.footerMessage);
+                } else {
+                        setParsedFooterText(null);
+                }
+        }, [labels.footerMessage]);
 
 	const isWhite = ['#ffffff', '#FFFFFF', 'rgb(255, 255, 255)'].includes(
 		color
@@ -1510,15 +1513,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							{(branding || parsedFooterText?.trim()) && (
 								<div className="docsbot-chat-credits">
 									{parsedFooterText?.trim() &&
-										(keepFooterVisible || Object.keys(state.messages).length <=
-											1) && (
-											<div
-												className="docsbot-chat-credits--policy"
-												dangerouslySetInnerHTML={{
-													__html: parsedFooterText
-												}}
-											/>
-										)}
+                                                                                (keepFooterVisible || Object.keys(state.messages).length <=
+                                                                                        1) && (
+                                                                                        <Streamdown
+                                                                                                className={clsx('docsbot-chat-credits--policy', 'docsbot-streamdown')}
+                                                                                                remarkPlugins={streamdownRemarkPlugins}
+                                                                                        >
+                                                                                                {parsedFooterText}
+                                                                                        </Streamdown>
+                                                                                )}
 
 									{branding && (
 										<a
