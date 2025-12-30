@@ -1,22 +1,3 @@
-import { defaultRemarkPlugins } from 'streamdown';
-import remarkExternalLinks from 'remark-external-links';
-
-const externalLinksPlugin = [
-	remarkExternalLinks,
-	{
-		target: '_blank',
-		rel: ['noopener', 'noreferrer']
-	}
-];
-
-// Use all default plugins (includes gfm, math, cjk-friendly, cjk-friendly-gfm-strikethrough)
-// Math is configured with singleDollarTextMath: false (requires $$ for all math)
-const resolvedPlugins = defaultRemarkPlugins
-	? Object.values(defaultRemarkPlugins)
-	: [];
-
-export const streamdownRemarkPlugins = [...resolvedPlugins, externalLinksPlugin];
-
 /**
  * Pre-process markdown to convert LaTeX bracket notation to double dollar sign
  * notation that remark-math understands.
