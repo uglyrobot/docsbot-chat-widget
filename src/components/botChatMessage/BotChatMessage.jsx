@@ -7,7 +7,7 @@ import { useChatbot } from '../chatbotContext/ChatbotContext';
 import { scrollToBottom } from '../../utils/utils';
 import clsx from 'clsx';
 import { Streamdown } from 'streamdown';
-import { streamdownRemarkPlugins } from '../../utils/markdown';
+import { streamdownRemarkPlugins, preprocessMath } from '../../utils/markdown';
 
 export const BotChatMessage = ({
 	payload,
@@ -276,7 +276,7 @@ export const BotChatMessage = ({
                                                                                 isAnimating={Boolean(payload.streaming)}
                                                                                 remarkPlugins={streamdownRemarkPlugins}
                                                                         >
-                                                                                {payload.message || ''}
+                                                                                {preprocessMath(payload.message || '')}
                                                                         </Streamdown>
                                                                 </div>
 

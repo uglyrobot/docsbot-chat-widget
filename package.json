@@ -45,11 +45,12 @@
     "@microsoft/fetch-event-source": "^2.0.1",
     "clsx": "^1.2.1",
     "eventemitter3": "^5.0.0",
-    "remark-external-links": "^9.0.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-shadow-root": "^6.2.0",
-    "streamdown": "^0.6.0",
+    "remark-external-links": "^9.0.1",
+    "remark-math": "^6.0.0",
+    "streamdown": "^1.6.10",
     "uuid": "^9.0.0"
   }
 }
