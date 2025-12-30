@@ -17,7 +17,12 @@ import {
 	faTimes
 } from '@fortawesome/free-solid-svg-icons';
 import { faImage } from '@fortawesome/free-regular-svg-icons';
-import { Emitter, decideTextColor, scrollToBottom } from '../../utils/utils';
+import {
+        Emitter,
+        decideTextColor,
+        scrollToBottom,
+        mergeIdentifyMetadata
+} from '../../utils/utils';
 import { Streamdown } from 'streamdown';
 import { streamdownRemarkPlugins } from '../../utils/markdown';
 import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
@@ -69,6 +74,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
         const [isFetching, setIsFetching] = useState(false);
         const [isAtBottom, setIsAtBottom] = useState(true);
         const [streamController, setStreamController] = useState(null);
+        const requestIdCounterRef = useRef(0);
+        const activeRequestIdRef = useRef(null);
         const hasConversationStarted = Object.keys(state.messages).length > 1;
 
 	const allowedSingleCharLanguages = ['ja', 'zh', 'ko'];
@@ -210,13 +217,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                         Emitter.emit('docsbot_add_user_message_complete');
                 });
 
-                Emitter.on('docsbot_add_bot_message', ({ message }) => {
-                        dispatch({
-                                type: 'add_message',
+		Emitter.on('docsbot_add_bot_message', async ({ message }) => {
+			await dispatch({
+				type: 'add_message',
                                 payload: {
                                         id: uuidv4(),
                                         variant: 'chatbot',
-                                        message,
+                                        message: message,
                                         loading: false,
                                         streaming: false,
                                         timestamp: Date.now()
@@ -270,9 +277,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		localStorage.removeItem(`DocsBot_${botId}_conversationId`);
 
 		// Add first message after clearing
-                if (labels.firstMessage) {
-                        dispatch({
-                                type: 'add_message',
+		if (labels.firstMessage) {
+			dispatch({
+				type: 'add_message',
                                 payload: {
                                         id: uuidv4(),
                                         variant: 'chatbot',
@@ -281,11 +288,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                         timestamp: Date.now()
                                 }
                         });
-                }
-        };
+		}
+	};
 
-        useEffect(() => {
-                const addFirstMessage = async () => {
+	useEffect(() => {
+		const addFirstMessage = async () => {
                         dispatch({
                                 type: 'add_message',
                                 payload: {
@@ -296,7 +303,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                         timestamp: Date.now()
                                 }
                         });
-                };
+		};
 
 		const fetchData = async () => {
 			const savedConversationRaw = localStorage.getItem(
@@ -379,20 +386,24 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		setIsFetching(true);
 		let answerId = null;
 
+		requestIdCounterRef.current += 1;
+		const requestId = requestIdCounterRef.current;
+		activeRequestIdRef.current = requestId;
+
 		const abortController = new AbortController();
 		setStreamController(abortController);
 
-                dispatch({
-                        type: 'add_message',
-                        payload: {
-                                id,
-                                variant: 'chatbot',
-                                message: null,
-                                loading: true,
-                                streaming: false,
-                                timestamp: Date.now()
-                        }
-                });
+		dispatch({
+			type: 'add_message',
+                                payload: {
+                                        id,
+                                        variant: 'chatbot',
+                                        message: null,
+                                        loading: true,
+                                        streaming: false,
+                                        timestamp: Date.now()
+                                }
+		});
 
 		// Change this to use native JS event
 		document.dispatchEvent(
@@ -405,8 +416,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 		let currentHeight = 0;
 		let answer = '';
-		let metadata = identify;
-		metadata.referrer = window.location.href;
+                const metadata = mergeIdentifyMetadata(identify);
+                if (!Object.prototype.hasOwnProperty.call(metadata, 'referrer')) {
+                        metadata.referrer = window.location.href;
+                }
 
 		if (isAgent) {
 			const sse_req = {
@@ -528,8 +541,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							} else {
 								answer += data.data;
 							}
-                                                        dispatch({
-                                                                type: 'update_message',
+							dispatch({
+								type: 'update_message',
                                                                 payload: {
                                                                         id,
                                                                         variant: 'chatbot',
@@ -546,11 +559,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								const finalData = JSON.parse(data.data);
 								//console.log(finalData);
 
-                                                                dispatch({
-                                                                        type:
-                                                                                data.event === 'is_resolved_question'
-                                                                                        ? 'add_message'
-                                                                                        : 'update_message',
+								dispatch({
+									type:
+										data.event === 'is_resolved_question'
+											? 'add_message'
+											: 'update_message',
                                                                         payload: {
                                                                                 id:
                                                                                         data.event ===
@@ -559,16 +572,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                                                                 : id,
                                                                                 variant: 'chatbot',
                                                                                 type: data.event,
-                                                                        message: finalData.answer,
-                                                                        sources: finalData.sources || null,
-                                                                        answerId:
-                                                                                answerId || finalData.id || null, // use saved prev id for feedback button
-                                                                        conversationId: getConversationId(),
-                                                                        loading: false,
-                                                                        streaming: false,
-                                                                        responses: finalData.options || null
-                                                                }
-                                                        });
+                                                                                message: finalData.answer,
+                                                                                sources: finalData.sources || null,
+                                                                                answerId:
+                                                                                        answerId || finalData.id || null, // use saved prev id for feedback button
+										conversationId: getConversationId(),
+										loading: false,
+										streaming: false,
+										responses: finalData.options || null
+									}
+								});
 
 								scrollToBottom(ref);
 
@@ -730,9 +743,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                 streaming: false
                                         }
                                 });
+                                if (activeRequestIdRef.current === requestId) {
+                                        setIsFetching(false);
+                                }
                         };
 
-			ws.onclose = function (event) {
+                        ws.onclose = function (event) {
                                 if (!event.wasClean) {
                                         dispatch({
                                                 type: 'update_message',
@@ -746,6 +762,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                 }
                                         });
                                 }
+                                if (activeRequestIdRef.current === requestId) {
+                                        setIsFetching(false);
+                                }
+                                setStreamController((current) =>
+                                        current === ws ? null : current
+                                );
                         };
 
 			// Receive message from server word by word. Display the words as they are received.
@@ -758,13 +780,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						currentHeight = currentReplyHeight;
 						scrollToBottom(ref);
 					}
-                                        if (data.type === 'start') {
-                                                scrollToBottom(ref);
-                                        } else if (data.type === 'stream') {
-                                                //append to answer
-                                                answer += data.message;
-                                                dispatch({
-                                                        type: 'update_message',
+					if (data.type === 'start') {
+						scrollToBottom(ref);
+					} else if (data.type === 'stream') {
+						//append to answer
+						answer += data.message;
+						dispatch({
+							type: 'update_message',
                                                         payload: {
                                                                 id,
                                                                 variant: 'chatbot',
@@ -774,7 +796,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                                 streaming: true
                                                         }
                                                 });
-                                        } else if (data.type === 'info') {
+					} else if (data.type === 'info') {
                                         } else if (data.type === 'end') {
                                                 const finalData = JSON.parse(data.message);
                                                 dispatch({
@@ -790,28 +812,31 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                                 streaming: false
                                                         }
                                                 });
-						dispatch({
-							type: 'save_history',
-							payload: {
-								chatHistory: finalData.history
-							}
-						});
-						currentHeight = 0;
-						scrollToBottom(ref);
-						ws.close();
-						// Change this to use native JS event
-						document.dispatchEvent(
-							new CustomEvent(
-								'docsbot_fetching_answer_complete',
-								{ detail: finalData }
-							)
-						);
+                                                dispatch({
+                                                        type: 'save_history',
+                                                        payload: {
+                                                                chatHistory: finalData.history
+                                                        }
+                                                });
+                                                currentHeight = 0;
+                                                scrollToBottom(ref);
+                                                ws.close();
+                                                // Change this to use native JS event
+                                                document.dispatchEvent(
+                                                        new CustomEvent(
+                                                                'docsbot_fetching_answer_complete',
+                                                                { detail: finalData }
+                                                        )
+                                                );
+                                                if (activeRequestIdRef.current === requestId) {
+                                                        setIsFetching(false);
+                                                }
                                         } else if (data.type === 'error') {
                                                 dispatch({
                                                         type: 'update_message',
                                                         payload: {
                                                                 id,
-                                                                variant: 'chatbot',
+								variant: 'chatbot',
                                                                 message: data.message,
                                                                 loading: false,
                                                                 error: true,
@@ -819,17 +844,48 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
                                                         }
                                                 });
                                                 ws.close();
+                                                if (activeRequestIdRef.current === requestId) {
+                                                        setIsFetching(false);
+                                                }
                                         }
                                 }
                         };
 		}
 	}
 
-	async function handleSubmit(event) {
-		event.preventDefault();
-		if (chatInput.trim().length < minInputLength) {
-			return;
-		}
+	// parseMarkdown is kept for potential future use or other components
+	// For bot messages, we store raw markdown and let Streamdown handle rendering
+	async function parseMarkdown(text) {
+		// Remove incomplete markdown images, but keep the alt text
+		let filteredText = text.replace(
+			/!\[([^\]]*?)(?:\](?:\([^)]*)?)?$/gm,
+			'$1'
+		);
+		// Remove incomplete markdown links, but keep the link text
+		filteredText = filteredText.replace(
+			/\[([^\]]*?)(?:\](?:\([^)"]*(?:"[^"]*")?[^)]*)?)?$/gm,
+			'$1'
+		);
+		// Return filtered text as-is since Streamdown handles markdown rendering
+		// If HTML parsing is needed in the future, uncomment the remark code below
+		return filteredText;
+		/*
+		return await remark()
+			.use(html)
+			.use(remarkGfm)
+			.use(externalLinks, { target: '_blank' })
+			.process(filteredText)
+			.then((html) => {
+				return html.toString();
+			});
+		*/
+	}
+
+        async function handleSubmit(event) {
+                event.preventDefault();
+                if (isFetching || chatInput.trim().length < minInputLength) {
+                        return;
+                }
 
 		// Extract thumbnails for history storage if images exist
 		const historyImageUrls =
@@ -1179,6 +1235,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 												<button
 													key={'question' + index}
 													type="button"
+													dir="auto"
 													onClick={() => {
 														dispatch({
 															type: 'add_message',

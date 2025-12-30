@@ -84,7 +84,7 @@ export function ConfigProvider(props = {}) {
             }
           }
 
-          // Create a clean copy of options without the labels property
+          // Create a clean copy of options without the labels property. No overwriting of branding.
           const { labels: optionsLabels, branding, ...restOptions } = options || {};
           
           // Merge labels ensuring undefined values in options.labels use defaults from data.labels
@@ -105,7 +105,7 @@ export function ConfigProvider(props = {}) {
             identify: identify || {}, 
             signature, 
             ...restOptions,
-            labels: mergedLabels 
+            labels: mergedLabels
           });
         })
         .catch((e) => {

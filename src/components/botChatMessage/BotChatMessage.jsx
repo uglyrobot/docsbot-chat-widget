@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Loader } from '../loader/Loader';
 import { useConfig } from '../configContext/ConfigContext';
 import { BotAvatar } from '../botAvatar/BotAvatar';
 import { Source } from '../source/Source';
+import { CheckIcon } from '../icons/CheckIcon';
+import { CopyIcon } from '../icons/CopyIcon';
 import { useChatbot } from '../chatbotContext/ChatbotContext';
-import { scrollToBottom } from '../../utils/utils';
+import { scrollToBottom, mergeIdentifyMetadata } from '../../utils/utils';
 import clsx from 'clsx';
 import { Streamdown } from 'streamdown';
 import { streamdownRemarkPlugins, preprocessMath } from '../../utils/markdown';
@@ -23,16 +25,17 @@ export const BotChatMessage = ({
 		botId,
 		botIcon,
 		signature,
-		hideSources,
-		labels,
-		supportLink,
-		supportCallback,
-		isAgent, // If new agent api is enabled
-		useFeedback, // If feedback collection is enabled
-		useEscalation, // If escalation collection is enabled
-		identify,
-		localDev
-	} = useConfig();
+                hideSources,
+                labels,
+                supportLink,
+                supportCallback,
+                isAgent, // If new agent api is enabled
+                useFeedback, // If feedback collection is enabled
+                useEscalation, // If escalation collection is enabled
+                identify,
+                showCopyButton,
+                localDev
+        } = useConfig();
 	const { dispatch, state } = useChatbot();
 	const headers = {
 		Accept: 'application/json',
@@ -41,7 +44,76 @@ export const BotChatMessage = ({
 	if (signature) {
 		headers.Authorization = `Bearer ${signature}`;
 	}
-        const [isSupportLoading, setIsSupportLoading] = useState(false);
+	const contentRef = useRef(null);
+	const streamdownRef = useRef(null);
+	const [isSupportLoading, setIsSupportLoading] = useState(false);
+	const [isCopied, setIsCopied] = useState(false);
+
+	const copyContentToClipboard = async () => {
+		// payload.message contains raw markdown
+		const markdownContent = payload.message || '';
+		// Get rendered HTML from Streamdown component
+		const htmlContent = streamdownRef.current?.innerHTML || '';
+
+		try {
+			// Try to copy both markdown and HTML formats using ClipboardItem
+			if (navigator.clipboard?.write && window.ClipboardItem) {
+				const clipboardItemInput = {
+					'text/plain': new Blob([markdownContent], {
+						type: 'text/plain'
+					})
+				};
+
+				// Add HTML format if available
+				if (htmlContent) {
+					clipboardItemInput['text/html'] = new Blob([htmlContent], {
+						type: 'text/html'
+					});
+				}
+
+				await navigator.clipboard.write([
+					new ClipboardItem(clipboardItemInput)
+				]);
+
+				setIsCopied(true);
+				setTimeout(() => setIsCopied(false), 2000);
+			} else if (navigator.clipboard?.writeText) {
+				// Fallback: copy markdown as plain text
+				await navigator.clipboard.writeText(markdownContent);
+				setIsCopied(true);
+				setTimeout(() => setIsCopied(false), 2000);
+			} else {
+				// Fallback for older browsers
+				const textArea = document.createElement('textarea');
+				textArea.value = markdownContent;
+				document.body.appendChild(textArea);
+				textArea.select();
+				document.execCommand('copy');
+				document.body.removeChild(textArea);
+				setIsCopied(true);
+				setTimeout(() => setIsCopied(false), 2000);
+			}
+		} catch (err) {
+			console.warn('DOCSBOT: Unable to copy response', err);
+			// Try fallback method - copy markdown as plain text
+			try {
+				if (navigator.clipboard?.writeText) {
+					await navigator.clipboard.writeText(markdownContent);
+				} else {
+					const textArea = document.createElement('textarea');
+					textArea.value = markdownContent;
+					document.body.appendChild(textArea);
+					textArea.select();
+					document.execCommand('copy');
+					document.body.removeChild(textArea);
+				}
+				setIsCopied(true);
+				setTimeout(() => setIsCopied(false), 2000);
+			} catch (fallbackErr) {
+				console.warn('DOCSBOT: Fallback copy also failed', fallbackErr);
+			}
+		}
+	};
 
 	// Check if this is a repeated bot message
 	const isRepeatedBotMessage = () => {
@@ -52,6 +124,21 @@ export const BotChatMessage = ({
 		if (currentIndex <= 0) return false; // First message always shows avatar
 		const prevMessage = state.messages[messageIds[currentIndex - 1]];
 		return prevMessage.variant === 'chatbot';
+	};
+
+	// Check if this is the first bot message
+	const isFirstBotMessage = () => {
+		const messageIds = Object.keys(state.messages);
+		const currentIndex = messageIds.findIndex(
+			(id) => state.messages[id].id === payload.id
+		);
+		// Check if this is the first bot message by looking at all previous messages
+		for (let i = 0; i < currentIndex; i++) {
+			if (state.messages[messageIds[i]].variant === 'chatbot') {
+				return false; // Found a bot message before this one
+			}
+		}
+		return currentIndex >= 0 && payload.variant === 'chatbot';
 	};
 
         const runSupportCallback = async (e, history) => {
@@ -93,7 +180,7 @@ export const BotChatMessage = ({
 				};
 
 				// Build metadata object and include conversation details in agent mode
-				const metadata = { ...(identify.metadata || {}) };
+                                const metadata = mergeIdentifyMetadata(identify);
 				if (isAgent && payload.conversationId) {
 					metadata.conversationId = payload.conversationId;
 					metadata.conversationUrl = `https://docsbot.ai/app/bots/${botId}/conversations?conversationId=${payload.conversationId}`;
@@ -245,6 +332,19 @@ export const BotChatMessage = ({
 
 	// Pre-compute this value once for use in multiple places
 	const repeatedBotMessage = isRepeatedBotMessage();
+	const hasVisibleSources =
+		payload.sources?.length > 0 &&
+		(!hideSources ||
+			(Array.isArray(hideSources) &&
+				!payload.sources.every((source) => hideSources.includes(source.type))));
+	const isAgentLookupAnswer =
+		isAgent && payload.type !== 'is_resolved_question' && payload.type !== 'support_escalation';
+	const shouldShowCopyButton =
+		showCopyButton &&
+		!payload.loading &&
+		payload.message &&
+		!isFirstBotMessage() &&
+		(isAgentLookupAnswer || (!isAgent && hasVisibleSources));
 
 	return (
 		<>
@@ -270,7 +370,7 @@ export const BotChatMessage = ({
 
 						return (
 							<>
-                                                                <div dir="auto">
+                                                                <div dir="auto" ref={streamdownRef}>
                                                                         <Streamdown
                                                                                 className="docsbot-streamdown"
                                                                                 isAnimating={Boolean(payload.streaming)}
@@ -280,6 +380,43 @@ export const BotChatMessage = ({
                                                                         </Streamdown>
                                                                 </div>
 
+								{(hasVisibleSources || shouldShowCopyButton) && (
+									<div className="docsbot-copy-button-row">
+										{hasVisibleSources && (
+											<h3 className="docsbot-sources-title">
+												{labels.sources}
+											</h3>
+										)}
+
+										{shouldShowCopyButton && (
+											<button
+												type="button"
+												className={clsx(
+													'docsbot-copy-button',
+													isCopied && 'copied'
+												)}
+												onClick={copyContentToClipboard}
+												aria-label={
+													isCopied
+														? labels?.copied ||
+														  'Copied!'
+														: labels?.copyResponse ||
+														  'Copy response'
+												}
+												title={
+													isCopied
+														? labels?.copied ||
+														  'Copied!'
+														: labels?.copyResponse ||
+														  'Copy response'
+												}
+											>
+												{isCopied ? <CheckIcon /> : <CopyIcon />}
+											</button>
+										)}
+									</div>
+								)}
+
 								{/*
 								 * Show sources if:
 								 * 1. There are sources available (payload.sources?.length > 0)
@@ -287,38 +424,20 @@ export const BotChatMessage = ({
 								 *    a. hideSources is falsy (sources are not hidden globally)
 								 *    b. OR hideSources is an array AND not all sources are of types that should be hidden
 								 */}
-								{payload.sources?.length > 0 &&
-									(!hideSources ||
-										(Array.isArray(hideSources) &&
-											!payload.sources.every((source) =>
-												hideSources.includes(
-													source.type
-												)
-											))) && (
-										<div className="docsbot-sources-container">
-											<h3 className="docsbot-sources-title">
-												{labels.sources}
-											</h3>
-
-											<ul className="docsbot-sources">
-												{payload.sources?.map(
-													(source, index) => {
-														return (
-															<Source
-																key={index}
-																source={source}
-															/>
-														);
-													}
-												)}
-											</ul>
-										</div>
-									)}
-							</>
-						);
-					})()}
-				</div>
-			</div>
+								{hasVisibleSources && (
+									<div className="docsbot-sources-container">
+										<ul className="docsbot-sources">
+											{payload.sources?.map((source, index) => {
+												return <Source key={index} source={source} />;
+											})}
+										</ul>
+									</div>
+								)}
+                                                        </>
+                                                );
+                                        })()}
+                                </div>
+                        </div>
 
 			{/*
 				This section handles feedback for agent-based responses.

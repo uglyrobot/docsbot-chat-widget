@@ -1,57 +1,57 @@
 @use '../_utils/tokens' as *;
 
 .docsbot-streamdown {
-        display: block;
-        width: 100%;
-        color: inherit;
-        font-family: inherit;
-        font-size: 14px;
-        line-height: 20px;
-        word-wrap: break-word;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-        // Support RTL text direction
-        unicode-bidi: plaintext;
-        text-align: start;
+	display: block;
+	width: 100%;
+	color: inherit;
+	font-family: inherit;
+	font-size: 14px;
+	line-height: 20px;
+	word-wrap: break-word;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+	// Support RTL text direction
+	unicode-bidi: plaintext;
+	text-align: start;
 
-        > * {
-                margin: $spacing-xs 0;
-        }
+	> * {
+		margin: $spacing-xs 0;
+	}
 
-        > :first-child {
-                margin-top: 0;
-        }
+	> :first-child {
+		margin-top: 0;
+	}
 
-        > :last-child {
-                margin-bottom: 0;
-        }
+	> :last-child {
+		margin-bottom: 0;
+	}
 
-        a {
-                color: var(--docsbot-color-main);
-                font-weight: 500;
-                text-decoration: underline;
-                word-break: break-word;
-                display: inline-block;
-                max-width: 100%;
+	a {
+		color: var(--docsbot-color-main);
+		font-weight: 500;
+		text-decoration: underline;
+		word-break: break-word;
+		display: inline-block;
+		max-width: 100%;
 
-                &:hover {
-                        text-decoration: none;
-                }
-        }
+		&:hover {
+			text-decoration: none;
+		}
+	}
 
 	p {
-		margin: $spacing-xs 0;
+		margin: $spacing-sm 0;
 		max-width: 100%;
 		unicode-bidi: plaintext;
 	}
 
-        strong {
-                font-weight: 600;
-        }
+	strong {
+		font-weight: 600;
+	}
 
-        em {
-                font-style: italic;
-        }
+	em {
+		font-style: italic;
+	}
 
 	ul,
 	ol {
@@ -71,31 +71,31 @@
 		color: $color-secondary-100;
 	}
 
-        hr {
-                border: none;
-                border-top: 1px solid $color-secondary-200;
-                margin: $spacing-sm 0;
-        }
+	hr {
+		border: none;
+		border-top: 1px solid $color-secondary-200;
+		margin: $spacing-sm 0;
+	}
 
-        img,
-        video,
-        iframe {
-                display: block;
-                max-width: 100%;
-                height: auto;
-                margin: $spacing-xs 0;
-                border-radius: $spacing-xs;
-        }
+	img,
+	video,
+	iframe {
+		display: block;
+		max-width: 100%;
+		height: auto;
+		margin: $spacing-xs 0;
+		border-radius: $spacing-xs;
+	}
 
-        table {
-                width: 100%;
-                margin: $spacing-sm 0;
-                border-collapse: collapse;
-                font-size: 13px;
-                line-height: 18px;
-                display: block;
-                overflow-x: auto;
-        }
+	table {
+		width: 100%;
+		margin: $spacing-sm 0;
+		border-collapse: collapse;
+		font-size: 13px;
+		line-height: 18px;
+		display: block;
+		overflow-x: auto;
+	}
 
 	th,
 	td {
@@ -218,13 +218,8 @@
 	// Inline code (not inside code blocks)
 	code {
 		font-family:
-			SFMono-Regular,
-			Menlo,
-			Monaco,
-			Consolas,
-			'Liberation Mono',
-			'Courier New',
-			monospace;
+			SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+			'Courier New', monospace;
 	}
 
 	:not(pre) > code,
@@ -273,13 +268,8 @@
 	// Language badge
 	[data-streamdown='code-lang'] {
 		font-family:
-			SFMono-Regular,
-			Menlo,
-			Monaco,
-			Consolas,
-			'Liberation Mono',
-			'Courier New',
-			monospace;
+			SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+			'Courier New', monospace;
 		font-size: 11px;
 		color: $color-secondary-100;
 		text-transform: lowercase;
