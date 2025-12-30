@@ -88,13 +88,14 @@
 	}
 
 	table {
-		width: 100%;
 		margin: $spacing-sm 0;
 		border-collapse: collapse;
 		font-size: 13px;
 		line-height: 18px;
 		display: block;
 		overflow-x: auto;
+		max-width: 100%;
+		width: max-content;
 	}
 
 	th,
@@ -105,6 +106,8 @@
 		text-align: start;
 		white-space: normal;
 		word-break: break-word;
+		min-width: 100px;
+		max-width: 400px;
 	}
 
 	thead th {
