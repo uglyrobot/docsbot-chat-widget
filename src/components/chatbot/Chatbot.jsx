@@ -1,6 +1,6 @@
 /** @format */
 
-import { useEffect, useRef, useState, createRef } from 'react';
+import { useEffect, useRef, useState, createRef, Suspense } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useChatbot } from '../chatbotContext/ChatbotContext';
 import { useConfig } from '../configContext/ConfigContext';
@@ -23,8 +23,7 @@ import {
         scrollToBottom,
         mergeIdentifyMetadata
 } from '../../utils/utils';
-import { Streamdown } from 'streamdown';
-import { streamdownRemarkPlugins } from '../../utils/markdown';
+import { LazyStreamdown } from '../streamdown/LazyStreamdown';
 import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 
@@ -1515,12 +1514,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									{parsedFooterText?.trim() &&
                                                                                 (keepFooterVisible || Object.keys(state.messages).length <=
                                                                                         1) && (
-                                                                                        <Streamdown
-                                                                                                className={clsx('docsbot-chat-credits--policy', 'docsbot-streamdown')}
-                                                                                                remarkPlugins={streamdownRemarkPlugins}
-                                                                                        >
-                                                                                                {parsedFooterText}
-                                                                                        </Streamdown>
+                                                                                        <Suspense fallback={null}>
+                                                                                                <LazyStreamdown
+                                                                                                        className={clsx('docsbot-chat-credits--policy', 'docsbot-streamdown')}
+                                                                                                >
+                                                                                                        {parsedFooterText}
+                                                                                                </LazyStreamdown>
+                                                                                        </Suspense>
                                                                                 )}
 
 									{branding && (

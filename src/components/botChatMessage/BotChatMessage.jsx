@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { Loader } from '../loader/Loader';
 import { useConfig } from '../configContext/ConfigContext';
 import { BotAvatar } from '../botAvatar/BotAvatar';
@@ -8,8 +8,8 @@ import { CopyIcon } from '../icons/CopyIcon';
 import { useChatbot } from '../chatbotContext/ChatbotContext';
 import { scrollToBottom, mergeIdentifyMetadata } from '../../utils/utils';
 import clsx from 'clsx';
-import { Streamdown } from 'streamdown';
-import { streamdownRemarkPlugins, preprocessMath } from '../../utils/markdown';
+import { LazyStreamdown } from '../streamdown/LazyStreamdown';
+import { preprocessMath } from '../../utils/markdown';
 
 export const BotChatMessage = ({
 	payload,
@@ -370,15 +370,16 @@ export const BotChatMessage = ({
 
 						return (
 							<>
-                                                                <div dir="auto" ref={streamdownRef}>
-                                                                        <Streamdown
-                                                                                className="docsbot-streamdown"
-                                                                                isAnimating={Boolean(payload.streaming)}
-                                                                                remarkPlugins={streamdownRemarkPlugins}
-                                                                        >
-                                                                                {preprocessMath(payload.message || '')}
-                                                                        </Streamdown>
-                                                                </div>
+								<div dir="auto" ref={streamdownRef}>
+									<Suspense fallback={<Loader />}>
+										<LazyStreamdown
+											className="docsbot-streamdown"
+											isAnimating={Boolean(payload.streaming)}
+										>
+											{preprocessMath(payload.message || '')}
+										</LazyStreamdown>
+									</Suspense>
+								</div>
 
 								{(hasVisibleSources || shouldShowCopyButton) && (
 									<div className="docsbot-copy-button-row">
