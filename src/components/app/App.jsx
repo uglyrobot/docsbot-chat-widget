@@ -3,6 +3,7 @@ import ReactShadowRoot from "react-shadow-root";
 import { FloatingButton } from "../floatingButton/FloatingButton";
 import { config as fontAwesomeConfig } from "@fortawesome/fontawesome-svg-core";
 import fontAwesomeStyles from "!raw-loader!@fortawesome/fontawesome-svg-core/styles.css";
+import reactTailwindStyles from "!raw-loader!../../assets/css/docsbot-tw.min.css";
 import reactChatbotStyles from "!raw-loader!../../assets/css/chatbot.min.css";
 import appStyles from "!raw-loader!../../assets/css/App.min.css";
 import floatingButtonStyles from "!raw-loader!../../assets/css/FloatingButton.min.css";
@@ -59,6 +60,7 @@ function App() {
   return (
     <ReactShadowRoot>
       <style type="text/css">{fontAwesomeStyles}</style>
+      <style type="text/css">{reactTailwindStyles}</style>
       <style type="text/css">{reactChatbotStyles}</style>
       <style type="text/css">{appStyles}</style>
       <style type="text/css">{floatingButtonStyles}</style>
