@@ -7,7 +7,9 @@ const gulp = require("gulp");
 const rename = require("gulp-rename");
 const sass = require("gulp-sass")(require("sass"));
 const cleanCSS = require("gulp-clean-css");
-const autoprefixer = require("gulp-autoprefixer");
+const postcss = require("gulp-postcss");
+const tailwindcss = require("@tailwindcss/postcss");
+const autoprefixer = require("autoprefixer");
 const header = require("gulp-header");
 
 /**
@@ -52,7 +54,12 @@ gulp.task("styles", function () {
 			.src(srcInput.css + "**/*.scss")
 			// Check if files have an error
 			.pipe(sass({ outputStyle: "expanded" }).on("error", sass.logError))
-			.pipe(autoprefixer(browsersList))
+			.pipe(
+				postcss([
+					tailwindcss(),
+					autoprefixer({ overrideBrowserslist: browsersList }),
+				])
+			)
 			.pipe(header(banner))
 			.pipe(gulp.dest(srcOutput.css))
 			.pipe(cleanCSS())
