@@ -1,3 +1,5 @@
+@use "./_utils/tailwind";
+
 @forward './_components/header';
 @forward './_components/message-container';
 @forward './_components/scroll-button';
