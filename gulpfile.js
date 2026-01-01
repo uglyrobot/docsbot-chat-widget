@@ -9,6 +9,7 @@ const sass = require("gulp-sass")(require("sass"));
 const cleanCSS = require("gulp-clean-css");
 const postcss = require("gulp-postcss");
 const tailwindcss = require("@tailwindcss/postcss");
+const cssnano = require("cssnano");
 const autoprefixer = require("gulp-autoprefixer");
 const header = require("gulp-header");
 
@@ -72,7 +73,9 @@ gulp.task("tailwind", function () {
 			.src(srcInput.css + "docsbot-tw.css")
 			.pipe(postcss([tailwindcss()]))
 			.pipe(gulp.dest(srcOutput.css))
-			.pipe(cleanCSS())
+			.pipe(postcss([cssnano({
+				preset: "default",
+			})]))
 			.pipe(rename({ suffix: ".min" }))
 			.pipe(gulp.dest(srcOutput.css))
 			.on("finish", function () {

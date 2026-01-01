@@ -20,6 +20,7 @@
     "clean-webpack-plugin": "^4.0.0",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.7.3",
+    "cssnano": "^7.1.2",
     "del": "^8.0.0",
     "gulp": "^5.0.1",
     "gulp-autoprefixer": "^8.0.0",
