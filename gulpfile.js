@@ -103,6 +103,7 @@ gulp.task("clean", async function () {
  */
 gulp.task("watch", function () {
 	gulp.watch(srcInput.css + "**/**/**/*.scss", gulp.series(["styles"]));
+	gulp.watch(srcInput.css + "docsbot-tw.css", gulp.series(["tailwind"]));
 });
 
 /**
