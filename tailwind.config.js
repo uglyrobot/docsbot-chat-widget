@@ -1,13 +1,12 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+const config = {
   content: [
-    "./src/**/*.{js,jsx,ts,tsx}",
-    "./public/index.html",
-    // Include streamdown if it has class names we need
-    "./node_modules/streamdown/**/*.{js,jsx,ts,tsx,html}" 
+    "./node_modules/streamdown/dist/*.{js,cjs}",
   ],
   theme: {
     extend: {},
   },
   plugins: [],
 }
+
+export default config;

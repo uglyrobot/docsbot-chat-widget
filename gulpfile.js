@@ -9,7 +9,7 @@ const sass = require("gulp-sass")(require("sass"));
 const cleanCSS = require("gulp-clean-css");
 const postcss = require("gulp-postcss");
 const tailwindcss = require("@tailwindcss/postcss");
-const autoprefixer = require("autoprefixer");
+const autoprefixer = require("gulp-autoprefixer");
 const header = require("gulp-header");
 
 /**
@@ -54,12 +54,7 @@ gulp.task("styles", function () {
 			.src(srcInput.css + "**/*.scss")
 			// Check if files have an error
 			.pipe(sass({ outputStyle: "expanded" }).on("error", sass.logError))
-			.pipe(
-				postcss([
-					tailwindcss(),
-					autoprefixer({ overrideBrowserslist: browsersList }),
-				])
-			)
+			.pipe(autoprefixer(browsersList))
 			.pipe(header(banner))
 			.pipe(gulp.dest(srcOutput.css))
 			.pipe(cleanCSS())
@@ -67,6 +62,21 @@ gulp.task("styles", function () {
 			.pipe(gulp.dest(srcOutput.css))
 			.on("finish", function () {
 				console.log("📦 Finished compiling styles.");
+			})
+	);
+});
+
+gulp.task("tailwind", function () {
+	return (
+		gulp
+			.src(srcInput.css + "docsbot-tw.css")
+			.pipe(postcss([tailwindcss()]))
+			.pipe(gulp.dest(srcOutput.css))
+			.pipe(cleanCSS())
+			.pipe(rename({ suffix: ".min" }))
+			.pipe(gulp.dest(srcOutput.css))
+			.on("finish", function () {
+				console.log("📦 Finished compiling Tailwind.");
 			})
 	);
 });
@@ -97,4 +107,4 @@ gulp.task("watch", function () {
  *
  * Task written for production mode.
  */
-gulp.task("build", gulp.series(["clean", "styles"]));
+gulp.task("build", gulp.series(["clean", "tailwind", "styles"]));
