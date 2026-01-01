@@ -370,16 +370,17 @@ export const BotChatMessage = ({
 
 						return (
 							<>
-								<div dir="auto" ref={streamdownRef}>
-									<Suspense fallback={<Loader />}>
-										<LazyStreamdown
-											className="docsbot-streamdown"
-											isAnimating={Boolean(payload.streaming)}
-										>
-											{preprocessMath(payload.message || '')}
-										</LazyStreamdown>
-									</Suspense>
-								</div>
+				<div dir="auto" ref={streamdownRef}>
+					<Suspense fallback={<Loader />}>
+						<LazyStreamdown
+							className="docsbot-streamdown"
+							mode={payload.streaming ? undefined : 'static'}
+							isAnimating={Boolean(payload.streaming)}
+						>
+							{preprocessMath(payload.message || '')}
+						</LazyStreamdown>
+					</Suspense>
+				</div>
 
 								{(hasVisibleSources || shouldShowCopyButton) && (
 									<div className="docsbot-copy-button-row">

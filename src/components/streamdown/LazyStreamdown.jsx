@@ -1,14 +1,16 @@
 import React, { lazy } from 'react';
 
 export const LazyStreamdown = lazy(async () => {
-	const [streamdownModule, remarkExternalLinksModule] = await Promise.all([
+	const [streamdownModule, remarkExternalLinksModule, hardenModule] = await Promise.all([
 		import('streamdown'),
-		import('remark-external-links')
+		import('remark-external-links'),
+		import('rehype-harden')
 	]);
 
-	const { Streamdown, defaultRemarkPlugins } = streamdownModule;
+	const { Streamdown, defaultRemarkPlugins, defaultRehypePlugins } = streamdownModule;
 	const remarkExternalLinks =
 		remarkExternalLinksModule.default || remarkExternalLinksModule;
+	const { harden } = hardenModule;
 
 	const externalLinksPlugin = [
 		remarkExternalLinks,
@@ -18,13 +20,34 @@ export const LazyStreamdown = lazy(async () => {
 		}
 	];
 
-	const resolvedPlugins = defaultRemarkPlugins
+	const resolvedRemarkPlugins = defaultRemarkPlugins
 		? Object.values(defaultRemarkPlugins)
 		: [];
-	const plugins = [...resolvedPlugins, externalLinksPlugin];
+	const remarkPlugins = [...resolvedRemarkPlugins, externalLinksPlugin];
+
+	const resolvedRehypePlugins = defaultRehypePlugins
+		? Object.entries(defaultRehypePlugins)
+			.filter(([key]) => key !== 'raw') // Exclude raw HTML support for security
+			.map(([, value]) => value)
+		: [];
+	const rehypePlugins = [
+		...resolvedRehypePlugins,
+		[
+			harden,
+			{
+				defaultOrigin: window.location.origin,
+				allowedProtocols: [
+					'http',
+					'https',
+					'mailto',
+				],
+				allowDataImages: false,
+			},
+		],
+	];
 
 	const StreamdownWithPlugins = ({ children, ...props }) => (
-		<Streamdown {...props} remarkPlugins={plugins}>
+		<Streamdown {...props} remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins}>
 			{children}
 		</Streamdown>
 	);
