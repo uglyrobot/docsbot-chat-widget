@@ -23,7 +23,8 @@
 
 	// When image upload is disabled, reduce padding (no need for image button space)
 	&.no-image-upload {
-		padding-right: #{($spacing-md - $input-border-width) + $spacing-xl + 4px}; // Only space for send button
+		padding-right: #{($spacing-md - $input-border-width) + $spacing-xl +
+			4px}; // Only space for send button
 	}
 
 	&::placeholder {
@@ -52,34 +53,34 @@
 		border-radius: $spacing-md;
 		background: $color-neutral-300;
 		transition: border-color $transition-duration-default linear;
-		
+
 		&:hover {
 			border-color: var(--docsbot-input--hover, $color-primary-200);
 		}
 	}
-	
+
 	// Element: .docsbot-chat-input-wrapper
 	&-wrapper {
 		display: flex;
 		flex-direction: column;
 		flex: 1;
-		
+
 		// Standard padding for the textarea when no images
 		.docsbot-chat-input {
 			padding-top: #{$spacing-md - $input-border-width}; // Match original top padding
 			padding-bottom: #{$spacing-md - $input-border-width}; // Match original bottom padding
 		}
-		
+
 		// When contains images (class will be added in JS)
 		&.has-images .docsbot-chat-input {
 			padding-bottom: 6px;
 			padding-right: #{$spacing-md - $input-border-width};
 		}
-		
+
 		// When dragging files over the input area
 		&.is-dragging {
 			position: relative;
-			
+
 			&::before {
 				content: '';
 				position: absolute;
@@ -87,14 +88,15 @@
 				left: 0;
 				right: 0;
 				bottom: 0;
-				border: 2px dashed var(--docsbot-drag-border-color, $color-primary-200);
+				border: 2px dashed
+					var(--docsbot-drag-border-color, $color-primary-200);
 				border-radius: $spacing-md - 1px;
 				background-color: rgba(255, 255, 255, 0.9);
 				z-index: 2;
 				pointer-events: none;
 				animation: drag-pulse 1.5s infinite ease-in-out;
 			}
-			
+
 			&::after {
 				content: '+';
 				position: absolute;
@@ -149,7 +151,7 @@
 	border-radius: 12px;
 	color: $color-secondary-200;
 	background: transparent;
-	transition: 
+	transition:
 		color $transition-duration-default ease,
 		right $transition-duration-default ease;
 	z-index: 1;
@@ -195,7 +197,7 @@
 	height: 48px;
 	border-radius: 6px;
 	overflow: hidden;
-	
+
 	&-img {
 		width: 100%;
 		height: 100%;
@@ -220,7 +222,7 @@
 	cursor: pointer;
 	font-size: 8px;
 	padding: 0;
-	
+
 	&:hover {
 		background: rgba(0, 0, 0, 0.8);
 	}

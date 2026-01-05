@@ -43,7 +43,7 @@
 	text-align: center;
 	transition: padding $transition-duration-short linear;
 
-	&[data-shadow="true"] {
+	&[data-shadow='true'] {
 		border-bottom: 1px solid $color-secondary-200;
 	}
 
@@ -163,7 +163,7 @@
 		transform: translateX(-3000px);
 		background-color: var(--docsbot-header--bg, $color-primary-200);
 
-		&[data-shadow="true"] {
+		&[data-shadow='true'] {
 			border-bottom: 1px solid $color-secondary-200;
 		}
 	}
