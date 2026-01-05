@@ -104,6 +104,22 @@
     --tw-inset-ring-shadow: 0 0 #0000;
     --tw-ring-opacity:  ;
 
+    /**
+     * Streamdown: Design Tokens
+     *
+     * List HSL values of Tailwind Slate color to be used:
+     * slate-50   → hsl(210 40% 98%)
+     * slate-100  → hsl(210 40% 96%)
+     * slate-200  → hsl(214 32% 91%)
+     * slate-300  → hsl(213 27% 84%) - Used for muted
+     * slate-400  → hsl(215 20% 65%)
+     * slate-500  → hsl(215 16% 47%)
+     * slate-600  → hsl(215 19% 35%)
+     * slate-700  → hsl(215 25% 27%)
+     * slate-800  → hsl(217 33% 17%)
+     * slate-900  → hsl(222 47% 11%) - Used for muted-foreground
+     * slate-950  → hsl(229 84% 5%)
+     */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
@@ -114,15 +130,25 @@
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 213 27% 84%;
+    --muted-foreground: 222 47% 11%;
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
+    --border: 213 27% 84%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
   }
 }
+
+/**
+ * HSL Values
+ * Colors to be used in CSS variables for testing purposes
+ *
+ * Rose 300: 356 94% 82%
+ * Rose 500: 356 72% 52%
+ * Cyan 300: 187 92% 69%
+ * Cyan 500: 189 94% 43%
+ */
