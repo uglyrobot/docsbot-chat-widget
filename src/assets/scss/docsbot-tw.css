@@ -1,6 +1,7 @@
 @config "../../../tailwind.config.js";
 @import "tailwindcss";
 
+@source "../../components/**/**/*.js";
 /* Include streamdown styles */
 @source "../../../node_modules/streamdown/dist/*.js";
 
