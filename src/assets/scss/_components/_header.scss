@@ -54,7 +54,7 @@
 
 	// Element: .docsbot-chat-header-content
 	&-content {
-		z-index: 99999998;
+		z-index: 10000; // Below Tailwind z-10 value
 	}
 
 	// Element: .docsbot-chat-header-button
@@ -66,7 +66,7 @@
 		width: 28px;
 		height: 28px;
 		position: absolute;
-		z-index: 99999999;
+		z-index: 10; // Below Tailwind z-10 value
 		top: 50%;
 		right: 0;
 		transform: translateY(-50%);
@@ -144,7 +144,7 @@
 		height: 40px;
 		overflow: hidden;
 		position: absolute;
-		z-index: 99999997;
+		z-index: 100000; // Below Tailwind z-10 value
 		left: -#{$spacing-lg};
 		right: -#{$spacing-lg};
 		display: flex;

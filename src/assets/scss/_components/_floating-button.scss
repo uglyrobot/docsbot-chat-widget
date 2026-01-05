@@ -7,7 +7,7 @@ $floating-button-color: $color-neutral-300;
 	cursor: pointer;
 	min-width: 24px;
 	position: fixed;
-	z-index: 99999997;
+	z-index: 100000; // Below Tailwind z-10 value
 	right: $spacing-lg;
 	bottom: $spacing-lg;
 	display: flex;
