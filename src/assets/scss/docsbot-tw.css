@@ -44,7 +44,6 @@
 }
 
 @layer base {
-  :root,
   :host {
     /* Tailwind CSS defaults */
     --tw-border-style: solid;
