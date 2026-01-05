@@ -43,7 +43,6 @@
   --radius-sm: calc(var(--radius) - 4px);
 }
 
-/* Streamdown: Design Tokens */
 @layer base {
   :root,
   :host {
@@ -111,7 +110,7 @@
      * slate-50   → hsl(210 40% 98%)
      * slate-100  → hsl(210 40% 96%)
      * slate-200  → hsl(214 32% 91%)
-     * slate-300  → hsl(213 27% 84%) - Used for muted
+     * slate-300  → hsl(213 27% 84%) - Used for muted, border
      * slate-400  → hsl(215 20% 65%)
      * slate-500  → hsl(215 16% 47%)
      * slate-600  → hsl(215 19% 35%)
@@ -142,13 +141,3 @@
     --radius: 0.5rem;
   }
 }
-
-/**
- * HSL Values
- * Colors to be used in CSS variables for testing purposes
- *
- * Rose 300: 356 94% 82%
- * Rose 500: 356 72% 52%
- * Cyan 300: 187 92% 69%
- * Cyan 500: 189 94% 43%
- */
