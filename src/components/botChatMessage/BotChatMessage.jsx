@@ -357,7 +357,7 @@ export const BotChatMessage = ({
 			>
 				{!repeatedBotMessage && <BotAvatar />}
 				<div
-					className="docsbot-chat-bot-message"
+					className="docsbot-chat-bot-message bg-slate-100 text-slate-800"
 					{...(payload.error && {
 						style: { backgroundColor: '#FEFCE8', color: '#713F12' }
 					})}
@@ -519,7 +519,7 @@ export const BotChatMessage = ({
 								botIcon && 'has-avatar'
 							)}
 						>
-							<div className="docsbot-chat-bot-message">
+							<div className="docsbot-chat-bot-message bg-slate-100 text-slate-800">
 								<span dir="auto">{labels.feedbackMessage}</span>
 							</div>
 						</div>

@@ -1,7 +1,7 @@
 @use '../_utils/utils' as *;
 
 .docsbot-chat-bot-message {
-	@include bubble-message('left', $color-secondary-400, $color-neutral-100);
+	@include bubble-message('left');
 
 	// Ensure long text does not overflow the bubble
 	word-wrap: break-word;

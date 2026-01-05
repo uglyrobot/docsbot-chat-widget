@@ -1,6 +1,6 @@
 @use '../tokens' as *;
 
-@mixin bubble-message($position: 'left', $background, $color) {
+@mixin bubble-message($position: 'left', $background: null, $color: null) {
 	position: relative;
 	padding: $spacing-md;
 	border-radius: $spacing-xs * 3;
@@ -10,8 +10,12 @@
 		border-top-right-radius: $spacing-xs;
 		padding: $spacing-sm $spacing-md;
 	}
-	background: $background;
-	color: $color;
+	@if $background != null {
+		background: $background;
+	}
+	@if $color != null {
+		color: $color;
+	}
 	font-weight: 400;
 	font-size: 14px;
 	line-height: 20px;
