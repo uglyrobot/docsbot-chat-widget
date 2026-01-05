@@ -13,6 +13,7 @@
 @forward './_components/submit-button';
 @forward './_components/credits';
 
+.katex-html[aria-hidden="true"],
 .docsbot-screen-reader-only {
 	width: 1px;
 	height: 1px;
