@@ -3,7 +3,8 @@
 .docsbot-chat-input {
 	$input-border-width: 1px;
 
-	max-height: 80px;
+	min-height: 50px;
+	max-height: 140px;
 	resize: none;
 	padding: #{$spacing-md - $input-border-width} #{$spacing-md -
 		$input-border-width};
