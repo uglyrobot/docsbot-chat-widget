@@ -35,6 +35,11 @@
 		gap: $spacing-xs;
 		margin-top: $spacing-sm;
 		margin-bottom: 0;
+
+		&:not(:has(.docsbot-sources-title)) {
+			margin-top: -6px;
+			margin-bottom: calc($spacing-sm * -1);
+		}
 	}
 
 	.docsbot-copy-button {
