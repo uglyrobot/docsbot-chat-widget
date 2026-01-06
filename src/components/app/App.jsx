@@ -5,6 +5,7 @@ import { config as fontAwesomeConfig } from "@fortawesome/fontawesome-svg-core";
 import fontAwesomeStyles from "!raw-loader!@fortawesome/fontawesome-svg-core/styles.css";
 import reactTailwindStyles from "!raw-loader!../../assets/css/docsbot-tw.min.css";
 import reactChatbotStyles from "!raw-loader!../../assets/css/chatbot.min.css";
+import katexStyles from "!raw-loader!../../assets/css/katex.min.css";
 import appStyles from "!raw-loader!../../assets/css/App.min.css";
 import floatingButtonStyles from "!raw-loader!../../assets/css/FloatingButton.min.css";
 import optionsStyles from "!raw-loader!../../assets/css/Options.min.css";
@@ -60,6 +61,7 @@ function App() {
   return (
     <ReactShadowRoot>
       <style type="text/css">{fontAwesomeStyles}</style>
+      <style type="text/css">{katexStyles}</style>
       <style type="text/css">{reactTailwindStyles}</style>
       <style type="text/css">{reactChatbotStyles}</style>
       <style type="text/css">{appStyles}</style>

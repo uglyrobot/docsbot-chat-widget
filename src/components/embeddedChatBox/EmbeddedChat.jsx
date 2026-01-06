@@ -6,6 +6,7 @@ import ReactShadowRoot from "react-shadow-root";
 import fontAwesomeStyles from "!raw-loader!@fortawesome/fontawesome-svg-core/styles.css";
 import reactTailwindStyles from "!../../assets/css/docsbot-tw.min.css?raw";
 import reactChatbotStyles from "!../../assets/css/chatbot.min.css?raw";
+import katexStyles from "!../../assets/css/katex.min.css?raw";
 import floatingButtonStyles from "!../../assets/css/FloatingButton.min.css?raw";
 import optionsStyles from "!../../assets/css/Options.min.css?raw";
 import linkListStyles from "!../../assets/css/LinkList.min.css?raw";
@@ -17,6 +18,7 @@ const EmbeddedChat = () => {
   return (
     <ReactShadowRoot>
       <style type="text/css">{fontAwesomeStyles}</style>
+      <style type="text/css">{katexStyles}</style>
       <style type="text/css">{reactTailwindStyles}</style>
       <style type="text/css">{reactChatbotStyles}</style>
       <style type="text/css">{floatingButtonStyles}</style>
