@@ -6,3 +6,4 @@
 
 @import "./_utils/_tailwind/_theme.css";
 @import "./_utils/_tailwind/_base.css";
+@import "./_utils/_tailwind/_overwrites.css";
