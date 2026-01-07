@@ -54,6 +54,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-shadow-root": "^6.2.0",
+    "rehype-harden": "^1.1.7",
     "remark-external-links": "^9.0.1",
     "remark-math": "^6.0.0",
     "streamdown": "^1.6.10",
