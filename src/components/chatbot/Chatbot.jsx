@@ -853,39 +853,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		}
 	}
 
-	// parseMarkdown is kept for potential future use or other components
-	// For bot messages, we store raw markdown and let Streamdown handle rendering
-	async function parseMarkdown(text) {
-		// Remove incomplete markdown images, but keep the alt text
-		let filteredText = text.replace(
-			/!\[([^\]]*?)(?:\](?:\([^)]*)?)?$/gm,
-			'$1'
-		);
-		// Remove incomplete markdown links, but keep the link text
-		filteredText = filteredText.replace(
-			/\[([^\]]*?)(?:\](?:\([^)"]*(?:"[^"]*")?[^)]*)?)?$/gm,
-			'$1'
-		);
-		// Return filtered text as-is since Streamdown handles markdown rendering
-		// If HTML parsing is needed in the future, uncomment the remark code below
-		return filteredText;
-		/*
-		return await remark()
-			.use(html)
-			.use(remarkGfm)
-			.use(externalLinks, { target: '_blank' })
-			.process(filteredText)
-			.then((html) => {
-				return html.toString();
-			});
-		*/
-	}
-
-	async function handleSubmit(event) {
-		event.preventDefault();
-		if (isFetching || chatInput.trim().length < minInputLength) {
-			return;
-		}
+        async function handleSubmit(event) {
+                event.preventDefault();
+                if (isFetching || chatInput.trim().length < minInputLength) {
+                        return;
+                }
 
 		// Extract thumbnails for history storage if images exist
 		const historyImageUrls =

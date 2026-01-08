@@ -7,6 +7,9 @@ const gulp = require("gulp");
 const rename = require("gulp-rename");
 const sass = require("gulp-sass")(require("sass"));
 const cleanCSS = require("gulp-clean-css");
+const postcss = require("gulp-postcss");
+const tailwindcss = require("@tailwindcss/postcss");
+const cssnano = require("cssnano");
 const autoprefixer = require("gulp-autoprefixer");
 const header = require("gulp-header");
 
@@ -64,6 +67,23 @@ gulp.task("styles", function () {
 	);
 });
 
+gulp.task("tailwind", function () {
+	return (
+		gulp
+			.src(srcInput.css + "docsbot-tw.css")
+			.pipe(postcss([tailwindcss()]))
+			.pipe(gulp.dest(srcOutput.css))
+			.pipe(postcss([cssnano({
+				preset: "default",
+			})]))
+			.pipe(rename({ suffix: ".min" }))
+			.pipe(gulp.dest(srcOutput.css))
+			.on("finish", function () {
+				console.log("📦 Finished compiling Tailwind.");
+			})
+	);
+});
+
 /**
  * 🔥 Clean-up CSS
  *
@@ -83,6 +103,15 @@ gulp.task("clean", async function () {
  */
 gulp.task("watch", function () {
 	gulp.watch(srcInput.css + "**/**/**/*.scss", gulp.series(["styles"]));
+	// Watch Tailwind entry file, imported CSS files, and JSX components for class changes
+	gulp.watch(
+		[
+			srcInput.css + "docsbot-tw.css",
+			srcInput.css + "_utils/_tailwind/**/*.css",
+			"./src/components/**/*.{js,jsx}",
+		],
+		gulp.series(["tailwind"])
+	);
 });
 
 /**
@@ -90,4 +119,4 @@ gulp.task("watch", function () {
  *
  * Task written for production mode.
  */
-gulp.task("build", gulp.series(["clean", "styles"]));
+gulp.task("build", gulp.series(["clean", "tailwind", "styles"]));
