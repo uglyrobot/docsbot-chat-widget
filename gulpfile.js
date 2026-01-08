@@ -103,7 +103,15 @@ gulp.task("clean", async function () {
  */
 gulp.task("watch", function () {
 	gulp.watch(srcInput.css + "**/**/**/*.scss", gulp.series(["styles"]));
-	gulp.watch(srcInput.css + "docsbot-tw.css", gulp.series(["tailwind"]));
+	// Watch Tailwind entry file, imported CSS files, and JSX components for class changes
+	gulp.watch(
+		[
+			srcInput.css + "docsbot-tw.css",
+			srcInput.css + "_utils/_tailwind/**/*.css",
+			"./src/components/**/*.{js,jsx}",
+		],
+		gulp.series(["tailwind"])
+	);
 });
 
 /**
