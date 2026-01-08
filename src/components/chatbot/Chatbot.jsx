@@ -1197,9 +1197,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										botIcon && 'has-avatar'
 									)}
 								>
-									<span className="docsbot-chat-suggested-questions-title">
-										{labels.suggestions}
-									</span>
+								<span className="docsbot-chat-suggested-questions-title bg-slate-100 text-slate-800">
+									{labels.suggestions}
+								</span>
 									<div className="docsbot-chat-suggested-questions-grid">
 										{Object.keys(questions).map((index) => {
 											const question = questions[index];
