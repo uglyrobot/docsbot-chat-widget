@@ -47,7 +47,12 @@ export const LazyStreamdown = lazy(async () => {
 	];
 
 	const StreamdownWithPlugins = ({ children, ...props }) => (
-		<Streamdown {...props} remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins}>
+		<Streamdown
+			caret
+			{...props}
+			remarkPlugins={remarkPlugins}
+			rehypePlugins={rehypePlugins}
+		>
 			{children}
 		</Streamdown>
 	);
