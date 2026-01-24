@@ -534,6 +534,17 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							throw new FatalError(data.data);
 						}
 
+						// Skip reasoning and tool_call events - these don't contain answer content
+						// We keep the loading state until actual stream/answer events arrive
+						if (
+							data.event === 'reasoning' ||
+							data.event === 'tool_call'
+						) {
+							// Optionally log for debugging
+							// console.log('DOCSBOT: Received agent event:', data.event, data.data);
+							return;
+						}
+
 						if (data.event === 'stream') {
 							// Handle empty data fields as line breaks to preserve formatting
 							if (data.data === '') {
