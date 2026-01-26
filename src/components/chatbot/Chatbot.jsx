@@ -63,7 +63,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		useEscalation, // If escalation collection is enabled
 		useImageUpload, // If image upload is enabled
 		keepFooterVisible,
-		localDev
+		localDev,
+		allowedDomains
 	} = useConfig();
 	const ref = useRef();
 	const inputRef = useRef();
@@ -1505,6 +1506,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 														'docsbot-chat-credits--policy',
 														'docsbot-streamdown'
 													)}
+													allowedDomains={allowedDomains}
 													mode="static"
 												>
 													{parsedFooterText}
