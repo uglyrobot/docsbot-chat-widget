@@ -64,7 +64,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		useImageUpload, // If image upload is enabled
 		keepFooterVisible,
 		localDev,
-		allowedDomains
+		allowedDomains,
+		linkSafety,
+		linkSafetyEnabled
 	} = useConfig();
 	const ref = useRef();
 	const inputRef = useRef();
@@ -1507,6 +1509,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 														'docsbot-streamdown'
 													)}
 													allowedDomains={allowedDomains}
+													linkSafety={linkSafety}
+													linkSafetyEnabled={linkSafetyEnabled}
 													mode="static"
 												>
 													{parsedFooterText}

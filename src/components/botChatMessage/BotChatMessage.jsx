@@ -35,7 +35,9 @@ export const BotChatMessage = ({
 		identify,
 		showCopyButton,
 		localDev,
-		allowedDomains
+		allowedDomains,
+		linkSafety,
+		linkSafetyEnabled
 	} = useConfig();
 	const { dispatch, state } = useChatbot();
 	const headers = {
@@ -373,12 +375,14 @@ export const BotChatMessage = ({
 							<>
 				<div dir="auto" ref={streamdownRef}>
 					<Suspense fallback={<Loader />}>
-						<LazyStreamdown
-							className="docsbot-streamdown"
-							allowedDomains={allowedDomains}
-							mode={payload.streaming ? undefined : 'static'}
-							isAnimating={Boolean(payload.streaming)}
-						>
+							<LazyStreamdown
+								className="docsbot-streamdown"
+								allowedDomains={allowedDomains}
+								linkSafety={linkSafety}
+								linkSafetyEnabled={linkSafetyEnabled}
+								mode={payload.streaming ? undefined : 'static'}
+								isAnimating={Boolean(payload.streaming)}
+							>
 							{preprocessMath(payload.message || '')}
 						</LazyStreamdown>
 					</Suspense>

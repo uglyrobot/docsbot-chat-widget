@@ -95,6 +95,7 @@ export const LazyStreamdown = lazy(async () => {
 		children,
 		allowedDomains = [],
 		linkSafety,
+		linkSafetyEnabled = false,
 		...props
 	}) => {
 		const currentHost = window.location.hostname.toLowerCase();
@@ -105,18 +106,27 @@ export const LazyStreamdown = lazy(async () => {
 				.filter((domain) => Boolean(domain))
 		];
 
+		const isLinkSafetyEnabled =
+			typeof linkSafety?.enabled === 'boolean'
+				? linkSafety.enabled
+				: linkSafetyEnabled;
 		const baseLinkSafety = {
-			enabled: true,
-			onLinkCheck: (url) => isSafeLink(url, normalizedAllowedHosts)
+			enabled: isLinkSafetyEnabled,
+			onLinkCheck: (url) =>
+				isLinkSafetyEnabled
+					? isSafeLink(url, normalizedAllowedHosts)
+					: false
 		};
 
 		const mergedLinkSafety = linkSafety
 			? {
 					...baseLinkSafety,
 					...linkSafety,
-					onLinkCheck: async (url) => {
-						const baseResult = await baseLinkSafety.onLinkCheck(url);
-						if (baseResult) return true;
+						enabled: isLinkSafetyEnabled,
+						onLinkCheck: async (url) => {
+							if (!isLinkSafetyEnabled) return false;
+							const baseResult = await baseLinkSafety.onLinkCheck(url);
+							if (baseResult) return true;
 						if (linkSafety.onLinkCheck) {
 							return linkSafety.onLinkCheck(url);
 						}
