@@ -57,7 +57,7 @@ export const LazyStreamdown = lazy(async () => {
 		import('@streamdown/cjk')
 	]);
 
-	const { Streamdown } = streamdownModule;
+	const { Streamdown, defaultRemarkPlugins, defaultRehypePlugins } = streamdownModule;
 	const remarkExternalLinks =
 		remarkExternalLinksModule.default || remarkExternalLinksModule;
 	const { harden } = hardenModule;
@@ -74,13 +74,19 @@ export const LazyStreamdown = lazy(async () => {
 		}
 	];
 
-	const remarkPlugins = [externalLinksPlugin];
+	// Merge default remark plugins with our custom plugin
+	const remarkPlugins = [
+		...Object.values(defaultRemarkPlugins),
+		externalLinksPlugin
+	];
 
+	// Merge default rehype plugins with our custom plugin
 	const rehypePlugins = [
+		...Object.values(defaultRehypePlugins),
 		[
 			harden,
 			{
-				defaultOrigin: window.location.origin,
+				allowedLinkPrefixes: ['*'], // Allow all link prefixes (domains), but protocols are still restricted
 				allowedProtocols: [
 					'http',
 					'https',
@@ -94,7 +100,6 @@ export const LazyStreamdown = lazy(async () => {
 	const StreamdownWithPlugins = ({
 		children,
 		allowedDomains = [],
-		linkSafety,
 		linkSafetyEnabled = false,
 		...props
 	}) => {
@@ -106,39 +111,18 @@ export const LazyStreamdown = lazy(async () => {
 				.filter((domain) => Boolean(domain))
 		];
 
-		const isLinkSafetyEnabled =
-			typeof linkSafety?.enabled === 'boolean'
-				? linkSafety.enabled
-				: linkSafetyEnabled;
-		const baseLinkSafety = {
-			enabled: isLinkSafetyEnabled,
+		const linkSafety = {
+			enabled: linkSafetyEnabled,
 			onLinkCheck: (url) =>
-				isLinkSafetyEnabled
+				linkSafetyEnabled
 					? isSafeLink(url, normalizedAllowedHosts)
 					: false
 		};
 
-		const mergedLinkSafety = linkSafety
-			? {
-					...baseLinkSafety,
-					...linkSafety,
-						enabled: isLinkSafetyEnabled,
-						onLinkCheck: async (url) => {
-							if (!isLinkSafetyEnabled) return false;
-							const baseResult = await baseLinkSafety.onLinkCheck(url);
-							if (baseResult) return true;
-						if (linkSafety.onLinkCheck) {
-							return linkSafety.onLinkCheck(url);
-						}
-						return false;
-					}
-				}
-			: baseLinkSafety;
-
 		return (
 			<Streamdown
 				{...props}
-				linkSafety={mergedLinkSafety}
+				linkSafety={linkSafety}
 				plugins={{
 					code,
 					mermaid,

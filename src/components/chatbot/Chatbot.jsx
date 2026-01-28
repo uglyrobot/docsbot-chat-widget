@@ -65,7 +65,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		keepFooterVisible,
 		localDev,
 		allowedDomains,
-		linkSafety,
 		linkSafetyEnabled
 	} = useConfig();
 	const ref = useRef();
@@ -1509,7 +1508,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 														'docsbot-streamdown'
 													)}
 													allowedDomains={allowedDomains}
-													linkSafety={linkSafety}
 													linkSafetyEnabled={linkSafetyEnabled}
 													mode="static"
 												>

@@ -84,8 +84,8 @@ export function ConfigProvider(props = {}) {
             }
           }
 
-          // Create a clean copy of options without the labels property. No overwriting of branding.
-          const { labels: optionsLabels, branding, ...restOptions } = options || {};
+          // Create a clean copy of options without the labels property. No overwriting of branding or allowedDomains (security measure).
+          const { labels: optionsLabels, branding, allowedDomains: optionsAllowedDomains, ...restOptions } = options || {};
           
           // Merge labels ensuring undefined values in options.labels use defaults from data.labels
           const mergedLabels = optionsLabels
@@ -106,6 +106,7 @@ export function ConfigProvider(props = {}) {
             signature, 
             ...restOptions,
             labels: mergedLabels
+            // allowedDomains is intentionally not included from restOptions - it can only come from API response for security
           });
         })
         .catch((e) => {
