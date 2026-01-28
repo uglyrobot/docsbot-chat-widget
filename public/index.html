@@ -118,6 +118,9 @@
           isAgent: true, //false to test old websocket API
           useImageUpload: true,
           reasoningEffort: 'medium', // Optional reasoning effort setting for agent mode
+          // Link safety configuration - controls which links are considered safe in markdown content
+          linkSafetyEnabled: false, // Enable/disable link safety checking (default: false)
+          // Note: allowedDomains can only be set via API response, not via script options (security measure)
           labels: {
             poweredBy: 'Powered by',
             inputPlaceholder: 'Send a message...',

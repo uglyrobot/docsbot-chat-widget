@@ -25,17 +25,19 @@ export const BotChatMessage = ({
 		botId,
 		botIcon,
 		signature,
-                hideSources,
-                labels,
-                supportLink,
-                supportCallback,
-                isAgent, // If new agent api is enabled
-                useFeedback, // If feedback collection is enabled
-                useEscalation, // If escalation collection is enabled
-                identify,
-                showCopyButton,
-                localDev
-        } = useConfig();
+		hideSources,
+		labels,
+		supportLink,
+		supportCallback,
+		isAgent, // If new agent api is enabled
+		useFeedback, // If feedback collection is enabled
+		useEscalation, // If escalation collection is enabled
+		identify,
+		showCopyButton,
+		localDev,
+		allowedDomains,
+		linkSafetyEnabled
+	} = useConfig();
 	const { dispatch, state } = useChatbot();
 	const headers = {
 		Accept: 'application/json',
@@ -372,11 +374,13 @@ export const BotChatMessage = ({
 							<>
 				<div dir="auto" ref={streamdownRef}>
 					<Suspense fallback={<Loader />}>
-						<LazyStreamdown
-							className="docsbot-streamdown"
-							mode={payload.streaming ? undefined : 'static'}
-							isAnimating={Boolean(payload.streaming)}
-						>
+							<LazyStreamdown
+								className="docsbot-streamdown"
+								allowedDomains={allowedDomains}
+								linkSafetyEnabled={linkSafetyEnabled}
+								mode={payload.streaming ? undefined : 'static'}
+								isAnimating={Boolean(payload.streaming)}
+							>
 							{preprocessMath(payload.message || '')}
 						</LazyStreamdown>
 					</Suspense>
