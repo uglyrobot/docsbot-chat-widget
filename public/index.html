@@ -118,8 +118,39 @@
           isAgent: true, //false to test old websocket API
           useImageUpload: true,
           reasoningEffort: 'medium', // Optional reasoning effort setting for agent mode
+          // Lead collection schema
+          leadCollect: {
+            mode: 'before_response', // 'before_response' | 'before_escalation'
+            fields: [
+              { key: 'name', label: 'Name', type: 'text', required: true, placeholder: 'Jane Doe' },
+              { key: 'email', label: 'Email', type: 'email', required: true, placeholder: 'jane@company.com', autocomplete: 'email' },
+              { key: 'company', label: 'Company', type: 'text', placeholder: 'DocsBot' },
+              {
+                key: 'companySize',
+                label: 'Company Size',
+                type: 'select',
+                required: true,
+                placeholder: 'Select a size',
+                options: [
+                  { value: '1-10', label: '1-10' },
+                  { value: '11-50', label: '11-50' },
+                  { value: '51-200', label: '51-200' },
+                  { value: '200+', label: '200+' }
+                ]
+              },
+              {
+                key: 'notes',
+                label: 'Anything else?',
+                type: 'textarea',
+                rows: 4,
+                placeholder: 'Tell us more...'
+              },
+              { key: 'startDate', label: 'Start Date', type: 'date' },
+              { key: 'contactTime', label: 'Best Time', type: 'time' }
+            ]
+          },
           // Link safety configuration - controls which links are considered safe in markdown content
-          linkSafetyEnabled: false, // Enable/disable link safety checking (default: false)
+          linkSafetyEnabled: true, // Enable/disable link safety checking (default: false)
           // Note: allowedDomains can only be set via API response, not via script options (security measure)
           labels: {
             poweredBy: 'Powered by',

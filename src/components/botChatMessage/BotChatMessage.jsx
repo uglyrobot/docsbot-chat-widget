@@ -16,7 +16,13 @@ export const BotChatMessage = ({
 	messageBoxRef,
 	fetchAnswer,
 	chatContainerRef,
-	inputRef
+	inputRef,
+	onLeadCollectSubmit,
+	onLeadCollectRequest,
+	onLeadCollectEscalated,
+	onLeadCollectCancel,
+	leadCollectMode,
+	pendingLeadCapture
 }) => {
 	const [rating, setRating] = useState(payload.rating || 0);
 	const [ratingSubmitted, setRatingSubmitted] = useState(false);
@@ -50,6 +56,8 @@ export const BotChatMessage = ({
 	const streamdownRef = useRef(null);
 	const [isSupportLoading, setIsSupportLoading] = useState(false);
 	const [isCopied, setIsCopied] = useState(false);
+	const [leadFormValues, setLeadFormValues] = useState({});
+	const [leadFormTouched, setLeadFormTouched] = useState(false);
 
 	const copyContentToClipboard = async () => {
 		// payload.message contains raw markdown
@@ -143,7 +151,7 @@ export const BotChatMessage = ({
 		return currentIndex >= 0 && payload.variant === 'chatbot';
 	};
 
-        const runSupportCallback = async (e, history) => {
+        const runSupportCallback = async (e, history, metadataOverride) => {
 		setIsSupportLoading(true);
 
 		// Prevent default to ensure we complete the request before navigation, not really needed as they are not links anymore
@@ -182,7 +190,9 @@ export const BotChatMessage = ({
 				};
 
 				// Build metadata object and include conversation details in agent mode
-                                const metadata = mergeIdentifyMetadata(identify);
+                                const metadata =
+					metadataOverride ||
+					mergeIdentifyMetadata(identify);
 				if (isAgent && payload.conversationId) {
 					metadata.conversationId = payload.conversationId;
 					metadata.conversationUrl = `https://docsbot.ai/app/bots/${botId}/conversations?conversationId=${payload.conversationId}`;
@@ -304,6 +314,38 @@ export const BotChatMessage = ({
 		}
 	};
 
+	useEffect(() => {
+		if (!payload?.leadForm?.fields) return;
+		const nextValues = {};
+		payload.leadForm.fields.forEach((field) => {
+			if (!field?.key) return;
+			nextValues[field.key] =
+				leadFormValues[field.key] ??
+				(field.value !== undefined && field.value !== null
+					? String(field.value)
+					: '');
+		});
+		setLeadFormValues(nextValues);
+	}, [payload?.leadForm?.fields]);
+
+	useEffect(() => {
+		if (
+			pendingLeadCapture?.trigger &&
+			pendingLeadCapture?.type === 'support' &&
+			payload.type === 'support_escalation'
+		) {
+			runSupportCallback(
+				null,
+				pendingLeadCapture.history || state.chatHistory || [],
+				pendingLeadCapture.metadata
+			).finally(() => {
+				if (typeof onLeadCollectEscalated === 'function') {
+					onLeadCollectEscalated();
+				}
+			});
+		}
+	}, [pendingLeadCapture, payload.type, payload.isLast]);
+
 	// Scroll to bottom when showing the fallback support link (old support link for non-agent bots)
 	useEffect(() => {
 		if (
@@ -368,6 +410,247 @@ export const BotChatMessage = ({
 					{(() => {
 						if (payload.loading) {
 							return <Loader />;
+						}
+
+						if (payload.type === 'lead_collect') {
+							const fields =
+								Array.isArray(payload.leadForm?.fields) &&
+								payload.leadForm.fields.length > 0
+									? payload.leadForm.fields
+									: [];
+
+							return (
+								<div className="space-y-3">
+									<div dir="auto" className="text-sm">
+										{payload.message}
+									</div>
+									{fields.length > 0 ? (
+										<form
+											className="space-y-3"
+											onSubmit={(event) => {
+												event.preventDefault();
+												if (
+													event.currentTarget
+														.reportValidity &&
+													!event.currentTarget.reportValidity()
+												) {
+													return;
+												}
+												setLeadFormTouched(true);
+
+												const metadata = {};
+												fields.forEach((field, index) => {
+													if (!field?.key) return;
+													const fieldKey =
+														field.key ||
+														`field_${index}`;
+													const value =
+														leadFormValues[
+															field.key ||
+																fieldKey
+														];
+													if (
+														value !== undefined &&
+														value !== null &&
+														String(value).trim()
+															.length > 0
+													) {
+														metadata[field.key] =
+															String(value).trim();
+													}
+												});
+
+												if (
+													typeof onLeadCollectSubmit ===
+													'function'
+												) {
+													onLeadCollectSubmit({
+														metadata
+													});
+												}
+											}}
+										>
+											<div className="space-y-3">
+												{fields.map((field, index) => {
+													const fieldKey =
+														field.key ||
+														`field_${index}`;
+													const inputId = `${payload.id}-${fieldKey}`;
+													const label =
+														field.label ||
+														field.name ||
+														field.key ||
+														`Field ${index + 1}`;
+													const inputType =
+														field.type || 'text';
+													const fieldValue =
+														leadFormValues[
+															field.key ||
+																fieldKey
+														] || '';
+													const sharedProps = {
+														id: inputId,
+														name:
+															field.key ||
+															fieldKey,
+														required:
+															!!field.required,
+														placeholder:
+															field.placeholder ||
+															undefined,
+														autoComplete:
+															field.autocomplete ||
+															undefined,
+														className:
+															'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-slate-800',
+														value: fieldValue,
+														onChange: (event) => {
+															setLeadFormTouched(
+																true
+															);
+															setLeadFormValues(
+																(prev) => ({
+																	...prev,
+																	[field.key ||
+																		fieldKey]:
+																		event
+																			.target
+																			.value
+																})
+															);
+														}
+													};
+
+													return (
+														<label
+															key={inputId}
+															htmlFor={inputId}
+															className="block text-sm"
+														>
+															<span className="mb-1 block font-medium">
+																{label}
+															</span>
+															{inputType ===
+																'textarea' ? (
+																<textarea
+																	{...sharedProps}
+																	rows={
+																		field.rows ||
+																		3
+																	}
+																/>
+															) : inputType ===
+																'select' ? (
+																<select
+																	{...sharedProps}
+																>
+																	{field.placeholder && (
+																		<option
+																			value=""
+																			disabled={
+																				!!field.required
+																			}
+																		>
+																			{
+																				field.placeholder
+																			}
+																		</option>
+																	)}
+																	{(field.options ||
+																		[]).map(
+																		(
+																			option,
+																			optionIndex
+																		) => {
+																			const optionValue =
+																				typeof option ===
+																				'string'
+																					? option
+																					: option.value;
+																			const optionLabel =
+																				typeof option ===
+																				'string'
+																					? option
+																					: option.label ||
+																						option.value;
+																			return (
+																				<option
+																					key={`${inputId}-${optionIndex}`}
+																					value={
+																						optionValue
+																					}
+																				>
+																					{
+																						optionLabel
+																					}
+																				</option>
+																			);
+																		}
+																	)}
+																</select>
+															) : (
+																<input
+																	{...sharedProps}
+																	type={
+																		inputType
+																	}
+																/>
+															)}
+															{field.help && (
+																<span className="mt-1 block text-xs text-muted-foreground">
+																	{field.help}
+																</span>
+															)}
+														</label>
+													);
+												})}
+											</div>
+											<div className="flex items-center gap-2 pt-1">
+												<button
+													type="submit"
+													className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+												>
+													{labels.submit ||
+														'Submit'}
+												</button>
+												{typeof onLeadCollectCancel ===
+													'function' && (
+													<button
+														type="button"
+														className="rounded-md border border-border px-3 py-2 text-sm text-slate-800"
+														onClick={() => {
+															onLeadCollectCancel();
+														}}
+													>
+														{labels.cancel ||
+															'Cancel'}
+													</button>
+												)}
+											</div>
+											{leadFormTouched &&
+												fields.some(
+													(field) =>
+														field.required &&
+														!String(
+															leadFormValues[
+																field.key
+															] || ''
+														).trim()
+												) && (
+													<div className="text-xs text-red-700">
+														{labels.requiredField ||
+															'Please fill out required fields.'}
+													</div>
+												)}
+										</form>
+									) : (
+										<div className="text-xs text-muted-foreground">
+											{labels.leadCollectEmpty ||
+												'No fields configured.'}
+										</div>
+									)}
+								</div>
+							);
 						}
 
 						return (
@@ -593,10 +876,25 @@ export const BotChatMessage = ({
 							<button
 								disabled={isSupportLoading}
 								onClick={(e) =>
-									runSupportCallback(
-										e,
-										state.chatHistory || []
-									)
+									{
+										if (
+											leadCollectMode ===
+											'before_escalation'
+										) {
+											const didOpen =
+												typeof onLeadCollectRequest ===
+												'function' &&
+												onLeadCollectRequest({
+													history:
+														state.chatHistory || []
+												});
+											if (didOpen) return;
+										}
+										runSupportCallback(
+											e,
+											state.chatHistory || []
+										);
+									}
 								}
 							>
 								{isSupportLoading ? (

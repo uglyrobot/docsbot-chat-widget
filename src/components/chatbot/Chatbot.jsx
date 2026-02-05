@@ -65,7 +65,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		keepFooterVisible,
 		localDev,
 		allowedDomains,
-		linkSafetyEnabled
+		linkSafetyEnabled,
+		leadCollect,
+		updateIdentity
 	} = useConfig();
 	const ref = useRef();
 	const inputRef = useRef();
@@ -78,6 +80,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const requestIdCounterRef = useRef(0);
 	const activeRequestIdRef = useRef(null);
 	const hasConversationStarted = Object.keys(state.messages).length > 1;
+	const [pendingLeadCapture, setPendingLeadCapture] = useState(null);
+	const [isLeadCaptureLocked, setIsLeadCaptureLocked] = useState(false);
+	const [leadCollected, setLeadCollected] = useState(false);
 
 	const allowedSingleCharLanguages = ['ja', 'zh', 'ko'];
 	const allowSingleCharMessage = allowedSingleCharLanguages.some((lang) =>
@@ -247,6 +252,100 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		};
 	}, []);
 
+	const getLeadFieldPrefill = (field) => {
+		if (!field?.key) return '';
+		const metadata = mergeIdentifyMetadata(identify);
+		const value = metadata?.[field.key];
+		if (value === null || value === undefined) return '';
+		return String(value);
+	};
+
+	const isLeadCollectionSatisfied = () => {
+		if (!leadCollect || !Array.isArray(leadCollect.fields)) return false;
+		const metadata = mergeIdentifyMetadata(identify);
+		const requiredFields = leadCollect.fields.filter(
+			(field) => field?.required
+		);
+		const fieldsToCheck =
+			requiredFields.length > 0 ? requiredFields : leadCollect.fields;
+
+		return fieldsToCheck.every((field) => {
+			if (!field?.key) return false;
+			const value = metadata?.[field.key];
+			return (
+				value !== undefined &&
+				value !== null &&
+				String(value).trim().length > 0
+			);
+		});
+	};
+
+	const buildLeadFormMessage = (modeOverride = null) => {
+		if (!leadCollect || !Array.isArray(leadCollect.fields)) return null;
+		if (leadCollect.fields.length === 0) return null;
+
+		const fields = leadCollect.fields.map((field) => ({
+			...field,
+			value: getLeadFieldPrefill(field)
+		}));
+
+		return {
+			id: uuidv4(),
+			variant: 'chatbot',
+			type: 'lead_collect',
+			message: labels.leadCollectMessage || 'Let us know how to contact you?',
+			loading: false,
+			streaming: false,
+			timestamp: Date.now(),
+			leadForm: {
+				mode: modeOverride || leadCollect.mode,
+				fields
+			}
+		};
+	};
+
+	const finalizeLeadSubmission = (data, metadata) => {
+		setPendingLeadCapture(null);
+		setIsLeadCaptureLocked(false);
+		setLeadCollected(true);
+
+		dispatch({
+			type: 'add_message',
+			payload: {
+				id: uuidv4(),
+				variant: 'chatbot',
+				type: 'lead_collect_confirm',
+				message:
+					labels.leadCollectConfirmation ||
+					'Your details has been saved successfully!',
+				loading: false,
+				streaming: false,
+				timestamp: Date.now()
+			}
+		});
+
+		if (data?.nextAction === 'send_message') {
+			fetchAnswer(data.question, data.imageUrls || [], {
+				bypassLeadCollect: true
+			});
+			return;
+		}
+
+		if (data?.nextAction === 'support_escalation') {
+			setPendingLeadCapture((prev) => {
+				if (prev?.type === 'support') {
+					return {
+						...prev,
+						metadata,
+						trigger: true
+					};
+				}
+				return prev;
+			});
+			setIsLeadCaptureLocked(false);
+		}
+	};
+
 	const getConversationId = () => {
 		let conversationId = localStorage.getItem(
 			`DocsBot_${botId}_conversationId`
@@ -291,6 +390,21 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			});
 		}
 	};
+
+	const shouldRequireLeadBeforeSend = () => {
+		return (
+			leadCollect?.mode === 'before_response' &&
+			!isLeadCaptureLocked &&
+			!leadCollected &&
+			Array.isArray(leadCollect.fields) &&
+			leadCollect.fields.length > 0
+		);
+	};
+
+	useEffect(() => {
+		if (!leadCollect) return;
+		setLeadCollected(isLeadCollectionSatisfied());
+	}, [identify, leadCollect]);
 
 	useEffect(() => {
 		const addFirstMessage = async () => {
@@ -382,7 +496,27 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		}
 	}, [state.chatHistory]);
 
-	async function fetchAnswer(question, image_urls = []) {
+	async function fetchAnswer(question, image_urls = [], options = {}) {
+		if (!options.bypassLeadCollect && shouldRequireLeadBeforeSend()) {
+			setIsLeadCaptureLocked(true);
+			setPendingLeadCapture({
+				type: 'before_response',
+				question,
+				imageUrls: image_urls,
+				trigger: false
+			});
+			const leadMessage = buildLeadFormMessage('before_response');
+			if (leadMessage) {
+				dispatch({
+					type: 'add_message',
+					payload: leadMessage
+				});
+				scrollToBottom(ref);
+				return;
+			}
+			setIsLeadCaptureLocked(false);
+		}
+
 		const id = uuidv4();
 		setIsFetching(true);
 		let answerId = null;
@@ -1184,6 +1318,106 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										chatContainerRef={ref}
 										fetchAnswer={fetchAnswer}
 										inputRef={inputRef}
+										onLeadCollectSubmit={(data) => {
+											const metadata =
+												mergeIdentifyMetadata(identify);
+											const leadMetadata = {
+												...metadata,
+												...(data.metadata || {})
+											};
+											updateIdentity({
+												metadata: leadMetadata
+											});
+
+											if (
+												leadCollect?.mode ===
+												'before_escalation'
+											) {
+												setLeadCollected(true);
+												dispatch({
+													type: 'add_message',
+													payload: {
+														id: uuidv4(),
+														variant: 'chatbot',
+														type: 'lead_collect_confirm',
+														message:
+															labels.leadCollectConfirmation ||
+															'Your details has been saved successfully!',
+														loading: false,
+														streaming: false,
+														timestamp: Date.now()
+													}
+												});
+												setPendingLeadCapture((prev) => {
+													if (!prev) return prev;
+													return {
+														...prev,
+														metadata: leadMetadata,
+														trigger: true
+													};
+												});
+												return;
+											}
+
+											const isBeforeResponse =
+												pendingLeadCapture?.type ===
+												'before_response';
+											finalizeLeadSubmission(
+												{
+													...data,
+													question:
+														pendingLeadCapture?.question,
+													imageUrls:
+														pendingLeadCapture?.imageUrls,
+													nextAction: isBeforeResponse
+														? 'send_message'
+														: data.nextAction
+												},
+												leadMetadata
+											);
+										}}
+										onLeadCollectRequest={(data) => {
+											if (
+												leadCollect?.mode !==
+												'before_escalation'
+											) {
+												return false;
+											}
+											if (leadCollected) {
+												return false;
+											}
+
+											const leadMessage =
+												buildLeadFormMessage(
+													'before_escalation'
+												);
+											if (!leadMessage) return false;
+
+											setPendingLeadCapture({
+												type: 'support',
+												history:
+													data?.history ||
+													state.chatHistory ||
+													[],
+												trigger: false
+											});
+											dispatch({
+												type: 'add_message',
+												payload: leadMessage
+											});
+											scrollToBottom(ref);
+											return true;
+										}}
+										onLeadCollectEscalated={() => {
+											setPendingLeadCapture(null);
+											setIsLeadCaptureLocked(false);
+										}}
+										onLeadCollectCancel={() => {
+											setPendingLeadCapture(null);
+											setIsLeadCaptureLocked(false);
+										}}
+										leadCollectMode={leadCollect?.mode}
+										pendingLeadCapture={pendingLeadCapture}
 									/>
 									{message?.options ? (
 										<Options
