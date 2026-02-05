@@ -24,4 +24,30 @@
 			margin-top: $spacing-md;
 		}
 	}
+
+	.docsbot-color-field {
+		display: inline-flex;
+	}
+
+	input.docsbot-color-swatch[type='color'] {
+		-webkit-appearance: none;
+		appearance: none;
+		padding: 0;
+		border: 0;
+		background: transparent;
+	}
+
+	input.docsbot-color-swatch[type='color']::-webkit-color-swatch-wrapper {
+		padding: 0;
+	}
+
+	input.docsbot-color-swatch[type='color']::-webkit-color-swatch {
+		border: none;
+		border-radius: 6px;
+	}
+
+	input.docsbot-color-swatch[type='color']::-moz-color-swatch {
+		border: none;
+		border-radius: 6px;
+	}
 }

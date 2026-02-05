@@ -119,15 +119,24 @@
           leadCollect: {
             mode: 'before_response', // 'before_response' | 'before_escalation'
             fields: [
-              { key: 'name', label: 'Name', type: 'text', required: true, placeholder: 'Jane Doe' },
-              { key: 'email', label: 'Email', type: 'email', required: true, placeholder: 'jane@company.com', autocomplete: 'email' },
-              { key: 'company', label: 'Company', type: 'text', placeholder: 'DocsBot' },
+              { key: 'name', label: 'Name (text)', type: 'text', required: true, placeholder: 'Jane Doe', minLength: 2, maxLength: 80, autocomplete: 'name' },
+              { key: 'email', label: 'Email', type: 'email', required: true, placeholder: 'jane@company.com', autocomplete: 'email', maxLength: 120, help: 'Use your work email so we can follow up.' },
+              { key: 'phone', label: 'Phone (tel)', type: 'tel', placeholder: '+1 555 123 4567', autocomplete: 'tel', inputMode: 'tel', pattern: '^\\+?[0-9\\s\\-()]{7,20}$', help: 'Include country code if outside the US.' },
+              { key: 'website', label: 'Website (url)', type: 'url', placeholder: 'https://example.com', autocomplete: 'url', pattern: 'https?://.*', help: 'Must start with http:// or https://.' },
+              { key: 'teamSize', label: 'Team Size (number)', type: 'number', min: 1, max: 100000, step: 1, inputMode: 'numeric', help: 'Enter a whole number between 1 and 100000.' },
+              { key: 'favoriteColor', label: 'Favorite Color (color)', type: 'color' },
+              { key: 'startDate', label: 'Start Date (date)', type: 'date', min: '2025-01-01', max: '2030-12-31' },
+              { key: 'demoAt', label: 'Demo Time (datetime-local)', type: 'datetime-local', min: '2026-01-01T09:00', max: '2026-12-31T18:00', step: 900 },
+              { key: 'billingMonth', label: 'Billing Month (month)', type: 'month', min: '2025-01', max: '2030-12' },
+              { key: 'contactTime', label: 'Best Time (time)', type: 'time', min: '09:00', max: '18:00', step: 300 },
+              { key: 'sprintWeek', label: 'Sprint Week (week)', type: 'week', min: '2025-W01', max: '2030-W52' },
               {
                 key: 'companySize',
                 label: 'Company Size',
                 type: 'select',
                 required: true,
                 placeholder: 'Select a size',
+                help: 'Choose the closest range.',
                 options: [
                   { value: '1-10', label: '1-10' },
                   { value: '11-50', label: '11-50' },
@@ -139,11 +148,12 @@
                 key: 'notes',
                 label: 'Anything else?',
                 type: 'textarea',
-                rows: 4,
+                rows: 2,
+                minLength: 10,
+                maxLength: 500,
+                help: 'At least 10 characters. Max 500.',
                 placeholder: 'Tell us more...'
-              },
-              { key: 'startDate', label: 'Start Date', type: 'date' },
-              { key: 'contactTime', label: 'Best Time', type: 'time' }
+              }
             ]
           },
           // Link safety configuration - controls which links are considered safe in markdown content
@@ -164,7 +174,6 @@
             thinking: 'Thinking...',
             rateLimitMessage: 'You are sending messages too fast. Please slow down.',
             leadCollectMessage: "First let us know how to contact you.",
-            leadCollectConfirmation: "Your details has been saved successfully!",
             feedbackMessage: "Was this answer helpful?",
             feedbackYes: "Yes",
             feedbackNo: "No",

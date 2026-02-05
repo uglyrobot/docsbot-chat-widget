@@ -14,9 +14,7 @@ const defaultLabels = {
   submit: "Submit",
   cancel: "Cancel",
   requiredField: "Please fill out required fields.",
-  leadCollectEmpty: "No fields configured.",
-  leadCollectMessage: "First let us know how to contact you.",
-  leadCollectConfirmation: "Your details has been saved successfully!"
+  leadCollectMessage: "First let us know how to contact you."
 }
 
 const grabQuestions = (questions, limit = 3) => {

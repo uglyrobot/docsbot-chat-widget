@@ -15,6 +15,9 @@ export const LeadCollectMessage = ({
 		Array.isArray(payload.leadForm?.fields) && payload.leadForm.fields.length > 0
 			? payload.leadForm.fields
 			: [];
+	if (fields.length === 0) {
+		return null;
+	}
 	const hasMissingRequired = fields.some(
 		(field) =>
 			field.required &&
@@ -27,11 +30,13 @@ export const LeadCollectMessage = ({
 		payload.leadForm.fields.forEach((field, index) => {
 			const fieldKey = field.key || `field_${index}`;
 			const prefillValue = field.isPrefilled ? field.value : undefined;
+			const defaultValue =
+				field.type === 'color' ? '#000000' : '';
 			nextValues[fieldKey] =
 				leadFormValues[fieldKey] ??
 				(prefillValue !== undefined && prefillValue !== null
 					? String(prefillValue)
-					: '');
+					: defaultValue);
 		});
 		setLeadFormValues(nextValues);
 	}, [payload?.leadForm?.fields]);
@@ -43,7 +48,6 @@ export const LeadCollectMessage = ({
 				ref={messageBoxRef}
 			>
 					<div className="space-y-4 w-full">
-					{fields.length > 0 ? (
 						<form
 							className="space-y-4 w-full"
 							onSubmit={(event) => {
@@ -87,6 +91,26 @@ export const LeadCollectMessage = ({
 									const inputType = field.type || 'text';
 									const fieldValue = leadFormValues[field.key || fieldKey] || '';
 									const isLocked = Boolean(field.isPrefilled);
+									const normalizedColorValue =
+										inputType === 'color' &&
+										/^#[0-9a-fA-F]{6}$/.test(fieldValue)
+											? fieldValue
+											: '#000000';
+									const constraintProps = {
+										...(field.min !== undefined ? { min: field.min } : {}),
+										...(field.max !== undefined ? { max: field.max } : {}),
+										...(field.step !== undefined ? { step: field.step } : {}),
+										...(field.pattern !== undefined ? { pattern: field.pattern } : {}),
+										...(field.minLength !== undefined
+											? { minLength: field.minLength }
+											: {}),
+										...(field.maxLength !== undefined
+											? { maxLength: field.maxLength }
+											: {}),
+										...(field.inputMode !== undefined
+											? { inputMode: field.inputMode }
+											: {})
+									};
 									const sharedProps = {
 										id: inputId,
 										name: field.key || fieldKey,
@@ -95,7 +119,10 @@ export const LeadCollectMessage = ({
 										autoComplete: field.autocomplete || undefined,
 										className:
 											'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-slate-800 shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none',
-										value: fieldValue,
+										value:
+											inputType === 'color'
+												? normalizedColorValue
+												: fieldValue,
 										disabled: isLocked,
 										onChange: (event) => {
 											if (isLocked) return;
@@ -116,10 +143,48 @@ export const LeadCollectMessage = ({
 											<span className="mb-1 block font-semibold">
 												{label}
 											</span>
-											{inputType === 'textarea' ? (
+											{inputType === 'color' ? (
 												<>
-													<textarea
+													<div
+														className={`docsbot-color-field rounded-lg border border-border bg-background px-3 py-2 shadow-sm transition focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+														style={{ width: 'fit-content', maxWidth: '100%' }}
+													>
+														<div className="flex items-center gap-3">
+															<input
+																id={inputId}
+																name={field.key || fieldKey}
+																type="color"
+																value={normalizedColorValue}
+																disabled={isLocked}
+																onChange={(event) => {
+																	if (isLocked) return;
+																	setLeadFormTouched(true);
+																	setLeadFormValues((prev) => ({
+																		...prev,
+																		[field.key || fieldKey]:
+																			event.target.value
+																	}));
+																}}
+																className="docsbot-color-swatch h-8 w-14 shrink-0 cursor-pointer rounded-md border-0 bg-transparent p-0 disabled:cursor-not-allowed"
+															/>
+															<span className="whitespace-nowrap text-sm font-mono text-slate-700">
+																{normalizedColorValue.toUpperCase()}
+															</span>
+														</div>
+													</div>
+													{isLocked && (
+														<input
+															type="hidden"
+															name={field.key || fieldKey}
+															value={normalizedColorValue}
+														/>
+													)}
+												</>
+										) : inputType === 'textarea' ? (
+											<>
+												<textarea
 														{...sharedProps}
+														{...constraintProps}
 														rows={field.rows || 2}
 														className={sharedProps.className}
 													/>
@@ -178,6 +243,7 @@ export const LeadCollectMessage = ({
 												<>
 													<input
 														{...sharedProps}
+														{...constraintProps}
 														type={inputType}
 														className={sharedProps.className}
 													/>
@@ -227,13 +293,8 @@ export const LeadCollectMessage = ({
 								</button>
 							</div>
 						</form>
-					) : (
-						<div className="text-xs text-muted-foreground">
-							{labels.leadCollectEmpty || 'No fields configured.'}
-						</div>
-					)}
+					</div>
 				</div>
 			</div>
-		</div>
 	);
 };

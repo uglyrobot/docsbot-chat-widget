@@ -668,15 +668,10 @@ export const BotChatMessage = ({
 													</div>
 												)}
 										</form>
-									) : (
-										<div className="text-xs text-muted-foreground">
-											{labels.leadCollectEmpty ||
-												'No fields configured.'}
-										</div>
-									)}
-								</div>
-							);
-						}
+										) : null}
+									</div>
+								);
+							}
 
 						return (
 							<>
