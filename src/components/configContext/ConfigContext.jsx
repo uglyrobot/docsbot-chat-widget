@@ -15,7 +15,7 @@ const defaultLabels = {
   cancel: "Cancel",
   requiredField: "Please fill out required fields.",
   leadCollectEmpty: "No fields configured.",
-  leadCollectMessage: "Let us know how to contact you?",
+  leadCollectMessage: "First let us know how to contact you.",
   leadCollectConfirmation: "Your details has been saved successfully!"
 }
 
@@ -52,14 +52,12 @@ export function ConfigProvider(props = {}) {
     setConfig((prevConfig) => {
       const nextIdentify = {
         ...prevConfig.identify,
-        ...data
+        ...(data && typeof data === 'object' ? data : {})
       }
 
-      if (data && typeof data === 'object' && data.metadata) {
-        nextIdentify.metadata = {
-          ...(prevConfig.identify?.metadata || {}),
-          ...data.metadata
-        }
+      if (data && typeof data === 'object' && data.metadata && typeof data.metadata === 'object') {
+        Object.assign(nextIdentify, data.metadata)
+        delete nextIdentify.metadata
       }
 
       return {

@@ -1,0 +1,27 @@
+@use '../_utils/tokens' as *;
+
+.docsbot-chat-lead-message-container {
+	display: flex;
+	justify-content: flex-start;
+	width: 100%;
+	padding-left: 0;
+	padding-right: 0;
+
+	&:not(:first-child) {
+		margin-top: $spacing-md;
+	}
+}
+
+.docsbot-chat-lead-message {
+	width: 100%;
+	max-width: 100%;
+	border-radius: $spacing-xs * 3 !important;
+	padding: 16px !important;
+	overflow: hidden;
+
+	> .space-y-4 {
+		> * + * {
+			margin-top: $spacing-md;
+		}
+	}
+}

@@ -151,7 +151,7 @@ export const BotChatMessage = ({
 		return currentIndex >= 0 && payload.variant === 'chatbot';
 	};
 
-        const runSupportCallback = async (e, history, metadataOverride) => {
+	const runSupportCallback = async (e, history, metadataOverride) => {
 		setIsSupportLoading(true);
 
 		// Prevent default to ensure we complete the request before navigation, not really needed as they are not links anymore
@@ -171,8 +171,27 @@ export const BotChatMessage = ({
 			apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${payload.conversationId}/escalate`;
 		}
 
-		// Create a flag to track if we should open the link
+		// Track link behavior and reserve popup synchronously during the click event for Safari.
 		let shouldOpenLink = true;
+		const hasSupportLink = Boolean(supportLink && supportLink !== '#');
+		const supportWindow =
+			e && hasSupportLink ? window.open('', '_blank') : null;
+
+		const maybeOpenSupportLink = () => {
+			if (!hasSupportLink || !shouldOpenLink) {
+				if (supportWindow && !supportWindow.closed) {
+					supportWindow.close();
+				}
+				return;
+			}
+
+			if (supportWindow && !supportWindow.closed) {
+				supportWindow.location.href = supportLink;
+				return;
+			}
+
+			window.open(supportLink, '_blank');
+		};
 
 		try {
 			// Make the API call
@@ -183,14 +202,22 @@ export const BotChatMessage = ({
 
 			// run callback if provided
 			if (supportCallback && typeof supportCallback === 'function') {
-				// Create a synthetic event with its own preventDefault method
-				const syntheticEvent = e ? { ...e } : {};
+				// Create a synthetic event with a cancel hook for support link navigation
+				const syntheticEvent = e
+					? {
+							...e,
+							nativeEvent: e.nativeEvent || e
+						}
+					: {};
 				syntheticEvent.preventDefault = () => {
 					shouldOpenLink = false;
+					if (supportWindow && !supportWindow.closed) {
+						supportWindow.close();
+					}
 				};
 
 				// Build metadata object and include conversation details in agent mode
-                                const metadata =
+				const metadata =
 					metadataOverride ||
 					mergeIdentifyMetadata(identify);
 				if (isAgent && payload.conversationId) {
@@ -228,15 +255,9 @@ export const BotChatMessage = ({
 					}
 				}
 			}
-			// Open the link if it exists and shouldOpenLink is still true
-			if (shouldOpenLink && supportLink && supportLink !== '#') {
-				window.open(supportLink, '_blank');
-			}
+			maybeOpenSupportLink();
 		} catch (err) {
-			// Open the link if it exists and shouldOpenLink is still true
-			if (shouldOpenLink && supportLink && supportLink !== '#') {
-				window.open(supportLink, '_blank');
-			}
+			maybeOpenSupportLink();
 			console.warn(`DOCSBOT: Error recording support click: ${err}`);
 		} finally {
 			setIsSupportLoading(false);
@@ -387,6 +408,7 @@ export const BotChatMessage = ({
 		showCopyButton &&
 		!payload.loading &&
 		payload.message &&
+		payload.type !== 'lead_collect_message' &&
 		!isFirstBotMessage() &&
 		(isAgentLookupAnswer || (!isAgent && hasVisibleSources));
 
@@ -401,7 +423,9 @@ export const BotChatMessage = ({
 			>
 				{!repeatedBotMessage && <BotAvatar />}
 				<div
-					className="docsbot-chat-bot-message bg-slate-100 text-slate-800"
+					className={clsx(
+						'docsbot-chat-bot-message bg-slate-100 text-slate-800'
+					)}
 					{...(payload.error && {
 						style: { backgroundColor: '#FEFCE8', color: '#713F12' }
 					})}
@@ -420,13 +444,13 @@ export const BotChatMessage = ({
 									: [];
 
 							return (
-								<div className="space-y-3">
-									<div dir="auto" className="text-sm">
+								<div className="space-y-4 w-full">
+									<div dir="auto" className="text-sm font-medium text-slate-800">
 										{payload.message}
 									</div>
 									{fields.length > 0 ? (
 										<form
-											className="space-y-3"
+											className="space-y-4 w-full"
 											onSubmit={(event) => {
 												event.preventDefault();
 												if (
@@ -470,7 +494,7 @@ export const BotChatMessage = ({
 												}
 											}}
 										>
-											<div className="space-y-3">
+											<div className="space-y-4">
 												{fields.map((field, index) => {
 													const fieldKey =
 														field.key ||
@@ -502,7 +526,7 @@ export const BotChatMessage = ({
 															field.autocomplete ||
 															undefined,
 														className:
-															'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-slate-800',
+															'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-slate-800 shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20',
 														value: fieldValue,
 														onChange: (event) => {
 															setLeadFormTouched(
@@ -525,9 +549,9 @@ export const BotChatMessage = ({
 														<label
 															key={inputId}
 															htmlFor={inputId}
-															className="block text-sm"
+															className="block text-sm text-slate-800"
 														>
-															<span className="mb-1 block font-medium">
+															<span className="mb-1 block font-semibold">
 																{label}
 															</span>
 															{inputType ===
@@ -538,6 +562,7 @@ export const BotChatMessage = ({
 																		field.rows ||
 																		3
 																	}
+																	className={`${sharedProps.className} min-h-[120px]`}
 																/>
 															) : inputType ===
 																'select' ? (
@@ -605,10 +630,10 @@ export const BotChatMessage = ({
 													);
 												})}
 											</div>
-											<div className="flex items-center gap-2 pt-1">
+											<div className="flex flex-wrap items-center gap-2 pt-2">
 												<button
 													type="submit"
-													className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+													className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
 												>
 													{labels.submit ||
 														'Submit'}
@@ -617,7 +642,7 @@ export const BotChatMessage = ({
 													'function' && (
 													<button
 														type="button"
-														className="rounded-md border border-border px-3 py-2 text-sm text-slate-800"
+														className="rounded-md border border-border bg-background px-4 py-2 text-sm text-slate-800 shadow-sm transition hover:bg-slate-50"
 														onClick={() => {
 															onLeadCollectCancel();
 														}}

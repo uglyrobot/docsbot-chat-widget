@@ -27,6 +27,22 @@ module.exports = (_, { mode }) => {
         directory: path.join(__dirname, "public"),
       },
       port: 3000,
+      client: {
+        overlay: {
+          runtimeErrors: (error) => {
+            if (
+              error &&
+              typeof error.message === "string" &&
+              error.message.includes(
+                "ResizeObserver loop completed with undelivered notifications"
+              )
+            ) {
+              return false;
+            }
+            return true;
+          },
+        },
+      },
 	  watchFiles: ["src/assets/scss/**/*.scss"],
     },
     module: {
