@@ -146,7 +146,7 @@ export const LeadCollectMessage = ({
 											{inputType === 'color' ? (
 												<>
 													<div
-														className={`docsbot-color-field rounded-lg border border-border bg-background px-3 py-2 shadow-sm transition focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+														className={`docsbot-color-field rounded-lg border border-border bg-background pl-1.5 pr-3 py-1.5 shadow-sm transition focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
 														style={{ width: 'fit-content', maxWidth: '100%' }}
 													>
 														<div className="flex items-center gap-3">
@@ -165,7 +165,7 @@ export const LeadCollectMessage = ({
 																			event.target.value
 																	}));
 																}}
-																className="docsbot-color-swatch h-8 w-14 shrink-0 cursor-pointer rounded-md border-0 bg-transparent p-0 disabled:cursor-not-allowed"
+																className="docsbot-color-swatch h-7 w-14 shrink-0 cursor-pointer rounded-md border-0 bg-transparent p-0 disabled:cursor-not-allowed"
 															/>
 															<span className="whitespace-nowrap text-sm font-mono text-slate-700">
 																{normalizedColorValue.toUpperCase()}
