@@ -38,6 +38,14 @@ function chatbotReducer(state, action) {
           },
         },
       }
+    case "remove_message": {
+      const nextMessages = { ...state.messages };
+      delete nextMessages[action.payload.id];
+      return {
+        ...state,
+        messages: nextMessages
+      };
+    }
     case "load_conversation":
       return {
         messages: action.payload.savedConversation || [],

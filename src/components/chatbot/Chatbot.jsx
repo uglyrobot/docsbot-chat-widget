@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useChatbot } from '../chatbotContext/ChatbotContext';
 import { useConfig } from '../configContext/ConfigContext';
 import { BotChatMessage } from '../botChatMessage/BotChatMessage';
+import { LeadCollectMessage } from '../leadCollectMessage/LeadCollectMessage';
 import { UserChatMessage } from '../userChatMessage/UserChatMessage';
 import { Options } from '../options/Options';
 import clsx from 'clsx';
@@ -30,6 +31,20 @@ import { fetchEventSource } from '@microsoft/fetch-event-source';
 // Define error classes for fetchEventSource
 class RetriableError extends Error {}
 class FatalError extends Error {}
+
+// Wrapper component to coordinate a 2s loading delay on the bot message
+// before revealing both the lead collect message text and the form together.
+const LeadCollectBlock = ({ message, children }) => {
+	const [ready, setReady] = useState(false);
+
+	useEffect(() => {
+		setReady(false);
+		const timer = setTimeout(() => setReady(true), 1000);
+		return () => clearTimeout(timer);
+	}, [message.id]);
+
+	return children(ready);
+};
 
 export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const [chatInput, setChatInput] = useState('');
@@ -65,7 +80,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		keepFooterVisible,
 		localDev,
 		allowedDomains,
-		linkSafetyEnabled
+		linkSafetyEnabled,
+		leadCollect,
+		updateIdentity,
+		supportCallback,
+		supportLink
 	} = useConfig();
 	const ref = useRef();
 	const inputRef = useRef();
@@ -78,6 +97,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const requestIdCounterRef = useRef(0);
 	const activeRequestIdRef = useRef(null);
 	const hasConversationStarted = Object.keys(state.messages).length > 1;
+	const isLeadFormVisible = Object.values(state.messages || {}).some(
+		(message) =>
+			message?.variant === 'chatbot' && message?.type === 'lead_collect'
+	);
+	const [pendingLeadCapture, setPendingLeadCapture] = useState(null);
+	const [isLeadCaptureLocked, setIsLeadCaptureLocked] = useState(false);
+	const [leadCollected, setLeadCollected] = useState(false);
 
 	const allowedSingleCharLanguages = ['ja', 'zh', 'ko'];
 	const allowSingleCharMessage = allowedSingleCharLanguages.some((lang) =>
@@ -247,6 +273,222 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		};
 	}, []);
 
+	const getLeadFieldPrefill = (field) => {
+		if (!field?.key) return '';
+		const metadata = mergeIdentifyMetadata(identify);
+		const value = metadata?.[field.key];
+		if (value === null || value === undefined) return undefined;
+		if (typeof value === 'string' && value.trim().length === 0) {
+			return undefined;
+		}
+		return String(value);
+	};
+
+	const isLeadCollectionSatisfied = () => {
+		if (!leadCollect || !Array.isArray(leadCollect.fields)) return false;
+		const metadata = mergeIdentifyMetadata(identify);
+		const requiredFields = leadCollect.fields.filter(
+			(field) => field?.required
+		);
+		const fieldsToCheck =
+			requiredFields.length > 0 ? requiredFields : leadCollect.fields;
+
+		return fieldsToCheck.every((field) => {
+			if (!field?.key) return false;
+			const value = metadata?.[field.key];
+			return (
+				value !== undefined &&
+				value !== null &&
+				String(value).trim().length > 0
+			);
+		});
+	};
+
+	const buildLeadFormMessage = (modeOverride = null) => {
+		if (!leadCollect || !Array.isArray(leadCollect.fields)) return null;
+		if (leadCollect.fields.length === 0) return null;
+
+		const fields = leadCollect.fields.map((field) => {
+			const { value: _ignoredConfigValue, ...safeField } = field || {};
+			const prefillValue = getLeadFieldPrefill(safeField);
+			const isPrefilled =
+				prefillValue !== undefined &&
+				prefillValue !== null &&
+				!(
+					typeof prefillValue === 'string' &&
+					prefillValue.trim().length === 0
+				);
+
+			return {
+				...safeField,
+				value: prefillValue,
+				isPrefilled
+			};
+		});
+
+		return {
+			id: uuidv4(),
+			variant: 'chatbot',
+			type: 'lead_collect',
+			message: labels.leadCollectMessage || 'Let us know how to contact you?',
+			loading: false,
+			streaming: false,
+			timestamp: Date.now(),
+			leadForm: {
+				mode: modeOverride || leadCollect.mode,
+				fields
+			}
+		};
+	};
+
+	const updateConversationMetadata = async (metadata) => {
+		const conversationId = getConversationId();
+		const apiBase = localDev
+			? `http://127.0.0.1:9000`
+			: `https://api.docsbot.ai`;
+		const apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${conversationId}/lead`;
+
+		try {
+			await fetch(apiUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					accept: 'application/json',
+					...(signature && {
+						Authorization: `Bearer ${signature}`
+					})
+				},
+				body: JSON.stringify({ metadata, fullChange: false })
+			});
+		} catch (err) {
+			console.warn('DOCSBOT: Failed to capture lead metadata', err);
+		}
+	};
+
+	const triggerSupportEscalationFromLead = async (event, metadata) => {
+		const history = pendingLeadCapture?.history || state.chatHistory || [];
+		let shouldOpenLink = true;
+		const hasSupportLink = Boolean(supportLink && supportLink !== '#');
+		const supportWindow =
+			event && hasSupportLink ? window.open('', '_blank') : null;
+		const syntheticEvent = event
+			? {
+					...event,
+					nativeEvent: event.nativeEvent || event
+				}
+			: {};
+		syntheticEvent.preventDefault = () => {
+			shouldOpenLink = false;
+			if (supportWindow && !supportWindow.closed) {
+				supportWindow.close();
+			}
+		};
+
+		const maybeOpenSupportLink = () => {
+			if (!hasSupportLink || !shouldOpenLink) {
+				if (supportWindow && !supportWindow.closed) {
+					supportWindow.close();
+				}
+				return;
+			}
+
+			if (supportWindow && !supportWindow.closed) {
+				supportWindow.location.href = supportLink;
+				return;
+			}
+
+			window.open(supportLink, '_blank');
+		};
+
+		try {
+			if (supportCallback && typeof supportCallback === 'function') {
+				const paramCount = supportCallback.length;
+				if (paramCount <= 2) {
+					await supportCallback(syntheticEvent, history);
+				} else if (paramCount === 3) {
+					await supportCallback(syntheticEvent, history, metadata);
+				} else {
+					const apiBase = localDev
+						? `http://127.0.0.1:9000`
+						: `https://api.docsbot.ai`;
+					if (getConversationId() && isAgent) {
+						let ticket = null;
+						try {
+							const ticketResponse = await fetch(
+								`${apiBase}/teams/${teamId}/bots/${botId}/conversations/${getConversationId()}/ticket`
+							);
+							ticket = await ticketResponse.json();
+						} catch (_error) {
+							ticket = null;
+						}
+						await supportCallback(
+							syntheticEvent,
+							history,
+							metadata,
+							ticket
+						);
+					} else {
+						await supportCallback(
+							syntheticEvent,
+							history,
+							metadata,
+							null
+						);
+					}
+				}
+			}
+
+			maybeOpenSupportLink();
+		} catch (err) {
+			maybeOpenSupportLink();
+			console.warn(`DOCSBOT: Error in support callback: ${err}`);
+		}
+
+		const apiBase = localDev
+			? `http://127.0.0.1:9000`
+			: `https://api.docsbot.ai`;
+		const apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${getConversationId()}/escalate`;
+		fetch(apiUrl, {
+			method: 'PUT',
+			headers: {
+				'Content-Type': 'application/json',
+				accept: 'application/json',
+				...(signature && {
+					Authorization: `Bearer ${signature}`
+				})
+			}
+		}).catch((err) => {
+			console.warn(`DOCSBOT: Error recording support click: ${err}`);
+		});
+	};
+
+	const finalizeLeadSubmission = (data, metadata, options = {}) => {
+		const { messageId, event } = options;
+		setPendingLeadCapture(null);
+		setIsLeadCaptureLocked(false);
+		setLeadCollected(true);
+
+		if (messageId) {
+			dispatch({
+				type: 'remove_message',
+				payload: { id: messageId }
+			});
+		}
+
+		if (data?.nextAction === 'send_message') {
+			fetchAnswer(data.question, data.imageUrls || [], {
+				bypassLeadCollect: true,
+				metadataOverride: metadata
+			});
+			return;
+		}
+
+		if (data?.nextAction === 'support_escalation') {
+			triggerSupportEscalationFromLead(event, metadata);
+			setIsLeadCaptureLocked(false);
+		}
+	};
+
 	const getConversationId = () => {
 		let conversationId = localStorage.getItem(
 			`DocsBot_${botId}_conversationId`
@@ -277,6 +519,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		localStorage.removeItem(`DocsBot_${botId}_localChatHistory`);
 		localStorage.removeItem(`DocsBot_${botId}_conversationId`);
 
+		// Reset lead collection state so it can trigger again
+		setLeadCollected(isLeadCollectionSatisfied());
+		setIsLeadCaptureLocked(false);
+		setPendingLeadCapture(null);
+
 		// Add first message after clearing
 		if (labels.firstMessage) {
 			dispatch({
@@ -291,6 +538,21 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			});
 		}
 	};
+
+	const shouldRequireLeadBeforeSend = () => {
+		return (
+			leadCollect?.mode === 'before_response' &&
+			!isLeadCaptureLocked &&
+			!leadCollected &&
+			Array.isArray(leadCollect.fields) &&
+			leadCollect.fields.length > 0
+		);
+	};
+
+	useEffect(() => {
+		if (!leadCollect) return;
+		setLeadCollected(isLeadCollectionSatisfied());
+	}, [identify, leadCollect]);
 
 	useEffect(() => {
 		const addFirstMessage = async () => {
@@ -382,7 +644,34 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		}
 	}, [state.chatHistory]);
 
-	async function fetchAnswer(question, image_urls = []) {
+	async function fetchAnswer(question, image_urls = [], options = {}) {
+		if (!options.bypassLeadCollect && shouldRequireLeadBeforeSend()) {
+			setIsLeadCaptureLocked(true);
+			setPendingLeadCapture({
+				type: 'before_response',
+				question,
+				imageUrls: image_urls,
+				trigger: false
+			});
+			const leadMessage = buildLeadFormMessage('before_response');
+			if (leadMessage) {
+				dispatch({
+					type: 'add_message',
+					payload: {
+						...leadMessage,
+						leadContext: {
+							type: 'before_response',
+							question,
+							imageUrls: image_urls
+						}
+					}
+				});
+				scrollToBottom(ref);
+				return;
+			}
+			setIsLeadCaptureLocked(false);
+		}
+
 		const id = uuidv4();
 		setIsFetching(true);
 		let answerId = null;
@@ -417,7 +706,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 		let currentHeight = 0;
 		let answer = '';
-		const metadata = mergeIdentifyMetadata(identify);
+		// Use metadataOverride if provided (e.g. from lead form submission) to avoid
+		// stale closure over identify that hasn't re-rendered yet.
+		const metadata = options.metadataOverride || mergeIdentifyMetadata(identify);
 		if (!Object.prototype.hasOwnProperty.call(metadata, 'referrer')) {
 			metadata.referrer = window.location.href;
 		}
@@ -866,11 +1157,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		}
 	}
 
-        async function handleSubmit(event) {
-                event.preventDefault();
-                if (isFetching || chatInput.trim().length < minInputLength) {
-                        return;
-                }
+	async function handleSubmit(event) {
+		event.preventDefault();
+		if (
+			isFetching ||
+			isLeadFormVisible ||
+			chatInput.trim().length < minInputLength
+		) {
+			return;
+		}
 
 		// Extract thumbnails for history storage if images exist
 		const historyImageUrls =
@@ -1166,25 +1461,229 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					</div>
 
 					<div className="docsbot-chat-message-container" ref={ref}>
-						{Object.keys(state.messages).map((key) => {
+						{Object.keys(state.messages).map((key, index) => {
 							const message = state.messages[key];
 							message.isLast =
 								key === Object.keys(state.messages).pop();
 							messagesRefs.current[message.id] = createRef();
+							
 							return message.variant === 'chatbot' ? (
 								<div key={key}>
-									<BotChatMessage
-										payload={{
-											...message,
-											conversationId: getConversationId() //lets us escalate historic conversations
-										}}
-										messageBoxRef={
-											messagesRefs.current[message.id]
-										}
-										chatContainerRef={ref}
-										fetchAnswer={fetchAnswer}
-										inputRef={inputRef}
-									/>
+									{message.type === 'lead_collect' ? (
+										<LeadCollectBlock message={message}>
+											{(ready) => (
+												<>
+													<BotChatMessage
+														payload={{
+															...message,
+															type: 'lead_collect_message',
+															message: message.message,
+															leadForm: undefined,
+															loading: !ready,
+															conversationId: getConversationId()
+														}}
+														messageBoxRef={
+															messagesRefs.current[message.id]
+														}
+														chatContainerRef={ref}
+														fetchAnswer={fetchAnswer}
+														inputRef={inputRef}
+														onLeadCollectSubmit={() => {}}
+														onLeadCollectRequest={() => false}
+														onLeadCollectEscalated={() => {}}
+														onLeadCollectCancel={() => {}}
+														leadCollectMode={leadCollect?.mode}
+														pendingLeadCapture={pendingLeadCapture}
+													/>
+													{ready && (
+														<LeadCollectMessage
+															payload={{
+																...message,
+																conversationId: getConversationId()
+															}}
+															messageBoxRef={
+																messagesRefs.current[message.id]
+															}
+															onLeadCollectSubmit={(data, event) => {
+													const metadata =
+														mergeIdentifyMetadata(identify);
+													const leadMetadata = {
+														...metadata,
+														...(data.metadata || {})
+													};
+													const activeLeadContext =
+														pendingLeadCapture ||
+														message.leadContext ||
+														null;
+													updateIdentity(leadMetadata);
+													updateConversationMetadata(leadMetadata);
+
+													if (
+														leadCollect?.mode ===
+														'before_escalation'
+													) {
+														setLeadCollected(true);
+														finalizeLeadSubmission(
+															{
+																nextAction: 'support_escalation'
+															},
+															leadMetadata,
+															{
+																messageId: message.id,
+																event
+															}
+														);
+														return;
+													}
+
+													const isBeforeResponse =
+														activeLeadContext?.type ===
+														'before_response';
+													finalizeLeadSubmission(
+														{
+															...data,
+															question:
+																activeLeadContext?.question,
+															imageUrls:
+																activeLeadContext?.imageUrls,
+															nextAction: isBeforeResponse
+																? 'send_message'
+																: data.nextAction
+														},
+														leadMetadata,
+														{
+															messageId: message.id,
+															event
+														}
+													);
+												}}
+												onLeadCollectCancel={() => {
+													setPendingLeadCapture(null);
+													setIsLeadCaptureLocked(false);
+												}}
+											/>
+													)}
+												</>
+											)}
+										</LeadCollectBlock>
+									) : (
+										<BotChatMessage
+											payload={{
+												...message,
+												conversationId: getConversationId() //lets us escalate historic conversations
+											}}
+											messageBoxRef={
+												messagesRefs.current[message.id]
+											}
+											chatContainerRef={ref}
+											fetchAnswer={fetchAnswer}
+											inputRef={inputRef}
+											onLeadCollectSubmit={(data, event) => {
+												const metadata =
+													mergeIdentifyMetadata(identify);
+												const leadMetadata = {
+													...metadata,
+													...(data.metadata || {})
+												};
+												const activeLeadContext =
+													pendingLeadCapture ||
+													message.leadContext ||
+													null;
+												updateIdentity(leadMetadata);
+												updateConversationMetadata(leadMetadata);
+
+												if (
+													leadCollect?.mode ===
+													'before_escalation'
+												) {
+													setLeadCollected(true);
+													finalizeLeadSubmission(
+														{
+															nextAction: 'support_escalation'
+														},
+														leadMetadata,
+														{
+															messageId: message.id,
+															event
+														}
+													);
+													return;
+												}
+
+												const isBeforeResponse =
+													activeLeadContext?.type ===
+													'before_response';
+												finalizeLeadSubmission(
+													{
+														...data,
+														question:
+															activeLeadContext?.question,
+														imageUrls:
+															activeLeadContext?.imageUrls,
+														nextAction: isBeforeResponse
+															? 'send_message'
+															: data.nextAction
+													},
+													leadMetadata,
+													{
+														messageId: message.id,
+														event
+													}
+												);
+											}}
+											onLeadCollectRequest={(data) => {
+												if (
+													leadCollect?.mode !==
+													'before_escalation'
+												) {
+													return false;
+												}
+												if (leadCollected) {
+													return false;
+												}
+
+												const leadMessage =
+													buildLeadFormMessage(
+														'before_escalation'
+													);
+												if (!leadMessage) return false;
+
+												setPendingLeadCapture({
+													type: 'support',
+													history:
+														data?.history ||
+														state.chatHistory ||
+														[],
+													trigger: false
+												});
+												dispatch({
+													type: 'add_message',
+													payload: {
+														...leadMessage,
+														leadContext: {
+															type: 'support',
+															history:
+																data?.history ||
+																state.chatHistory ||
+																[]
+														}
+													}
+												});
+												scrollToBottom(ref);
+												return true;
+											}}
+											onLeadCollectEscalated={() => {
+												setPendingLeadCapture(null);
+												setIsLeadCaptureLocked(false);
+											}}
+											onLeadCollectCancel={() => {
+												setPendingLeadCapture(null);
+												setIsLeadCaptureLocked(false);
+											}}
+											leadCollectMode={leadCollect?.mode}
+											pendingLeadCapture={pendingLeadCapture}
+										/>
+									)}
 									{message?.options ? (
 										<Options
 											key={key + 'opts'}
@@ -1267,7 +1766,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						<div className="docsbot-chat-footer-inner-wrapper">
 							<div className="docsbot-chat-input-container">
 								<form
-									className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching ? 'has-disabled-submit' : ''}`}
+									className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching || isLeadFormVisible ? 'has-disabled-submit' : ''}`}
 									onSubmit={handleSubmit}
 									onDragEnter={
 										useImageUpload ? handleDragEnter : null
@@ -1413,6 +1912,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 												}
 											}}
 											ref={inputRef}
+											disabled={isLeadFormVisible}
 											maxLength={
 												inputLimit
 													? Math.min(inputLimit, 2000)
@@ -1464,7 +1964,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											className="docsbot-image-upload-btn"
 											disabled={
 												selectedImages.length >= 2 ||
-												isFetching
+												isFetching ||
+												isLeadFormVisible
 											}
 											aria-label="Upload image"
 										>
@@ -1484,7 +1985,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										})}
 										disabled={
 											chatInput.trim().length <
-												minInputLength || isFetching
+												minInputLength ||
+											isFetching ||
+											isLeadFormVisible
 										}
 									>
 										<FontAwesomeIcon

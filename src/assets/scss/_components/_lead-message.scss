@@ -1,0 +1,72 @@
+@use '../_utils/tokens' as *;
+
+.docsbot-chat-lead-message-container {
+	display: flex;
+	justify-content: flex-start;
+	width: 100%;
+	padding-left: 0;
+	padding-right: 0;
+
+	&:not(:first-child) {
+		margin-top: $spacing-md;
+	}
+}
+
+.docsbot-chat-lead-message {
+	width: 100%;
+	max-width: 100%;
+	border-radius: $spacing-xs * 3 !important;
+	padding: 16px !important;
+	overflow: hidden;
+
+	> .space-y-4 {
+		> * + * {
+			margin-top: $spacing-md;
+		}
+	}
+
+	.docsbot-lead-fields-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: $spacing-md;
+
+		// Remove the space-y-4 margin since grid gap handles spacing
+		> * + * {
+			margin-top: 0;
+		}
+	}
+
+	.docsbot-lead-field-full {
+		grid-column: 1 / -1;
+	}
+
+	&.docsbot-lead-wide .docsbot-lead-fields-grid {
+		grid-template-columns: repeat(2, 1fr);
+	}
+
+	.docsbot-color-field {
+		display: inline-flex;
+	}
+
+	input.docsbot-color-swatch[type='color'] {
+		-webkit-appearance: none;
+		appearance: none;
+		padding: 0;
+		border: 0;
+		background: transparent;
+	}
+
+	input.docsbot-color-swatch[type='color']::-webkit-color-swatch-wrapper {
+		padding: 0;
+	}
+
+	input.docsbot-color-swatch[type='color']::-webkit-color-swatch {
+		border: none;
+		border-radius: 6px;
+	}
+
+	input.docsbot-color-swatch[type='color']::-moz-color-swatch {
+		border: none;
+		border-radius: 6px;
+	}
+}

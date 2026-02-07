@@ -10,6 +10,13 @@ export function useConfig() {
   return context;
 }
 
+const defaultLabels = {
+  submit: "Submit",
+  cancel: "Cancel",
+  requiredField: "Please fill out required fields.",
+  leadCollectMessage: "First let us know how to contact you."
+}
+
 const grabQuestions = (questions, limit = 3) => {
   // grab at most `limit` unique questions from the bot
   if (questions) {
@@ -41,12 +48,19 @@ export function ConfigProvider(props = {}) {
   // update the identify object metadata in the config context. Called from lead collection tool response
   const updateIdentity = (data) => {
     setConfig((prevConfig) => {
+      const nextIdentify = {
+        ...prevConfig.identify,
+        ...(data && typeof data === 'object' ? data : {})
+      }
+
+      if (data && typeof data === 'object' && data.metadata && typeof data.metadata === 'object') {
+        Object.assign(nextIdentify, data.metadata)
+        delete nextIdentify.metadata
+      }
+
       return {
         ...prevConfig,
-        identify: {
-          ...prevConfig.identify,
-          ...data
-        }
+        identify: nextIdentify
       }
     })
   }
@@ -89,13 +103,13 @@ export function ConfigProvider(props = {}) {
           
           // Merge labels ensuring undefined values in options.labels use defaults from data.labels
           const mergedLabels = optionsLabels
-            ? { ...data.labels, ...Object.entries(optionsLabels).reduce((acc, [key, value]) => {
+            ? { ...defaultLabels, ...data.labels, ...Object.entries(optionsLabels).reduce((acc, [key, value]) => {
                 if (value !== undefined) {
                   acc[key] = value;
                 }
                 return acc;
               }, {}) }
-            : data.labels;
+            : { ...defaultLabels, ...data.labels };
 
           setConfig({ 
             ...data, 
