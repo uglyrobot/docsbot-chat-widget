@@ -32,6 +32,20 @@ import { fetchEventSource } from '@microsoft/fetch-event-source';
 class RetriableError extends Error {}
 class FatalError extends Error {}
 
+// Wrapper component to coordinate a 2s loading delay on the bot message
+// before revealing both the lead collect message text and the form together.
+const LeadCollectBlock = ({ message, children }) => {
+	const [ready, setReady] = useState(false);
+
+	useEffect(() => {
+		setReady(false);
+		const timer = setTimeout(() => setReady(true), 1000);
+		return () => clearTimeout(timer);
+	}, [message.id]);
+
+	return children(ready);
+};
+
 export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const [chatInput, setChatInput] = useState('');
 	const [selectedImages, setSelectedImages] = useState([]);
@@ -463,7 +477,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 		if (data?.nextAction === 'send_message') {
 			fetchAnswer(data.question, data.imageUrls || [], {
-				bypassLeadCollect: true
+				bypassLeadCollect: true,
+				metadataOverride: metadata
 			});
 			return;
 		}
@@ -503,6 +518,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		localStorage.removeItem(`DocsBot_${botId}_chatHistory`);
 		localStorage.removeItem(`DocsBot_${botId}_localChatHistory`);
 		localStorage.removeItem(`DocsBot_${botId}_conversationId`);
+
+		// Reset lead collection state so it can trigger again
+		setLeadCollected(isLeadCollectionSatisfied());
+		setIsLeadCaptureLocked(false);
+		setPendingLeadCapture(null);
 
 		// Add first message after clearing
 		if (labels.firstMessage) {
@@ -686,7 +706,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 		let currentHeight = 0;
 		let answer = '';
-		const metadata = mergeIdentifyMetadata(identify);
+		// Use metadataOverride if provided (e.g. from lead form submission) to avoid
+		// stale closure over identify that hasn't re-rendered yet.
+		const metadata = options.metadataOverride || mergeIdentifyMetadata(identify);
 		if (!Object.prototype.hasOwnProperty.call(metadata, 'referrer')) {
 			metadata.referrer = window.location.href;
 		}
@@ -1439,45 +1461,50 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					</div>
 
 					<div className="docsbot-chat-message-container" ref={ref}>
-						{Object.keys(state.messages).map((key) => {
+						{Object.keys(state.messages).map((key, index) => {
 							const message = state.messages[key];
 							message.isLast =
 								key === Object.keys(state.messages).pop();
 							messagesRefs.current[message.id] = createRef();
+							
 							return message.variant === 'chatbot' ? (
 								<div key={key}>
 									{message.type === 'lead_collect' ? (
-										<>
-											<BotChatMessage
-												payload={{
-													...message,
-													type: 'lead_collect_message',
-													message: message.message,
-													leadForm: undefined,
-													conversationId: getConversationId()
-												}}
-												messageBoxRef={
-													messagesRefs.current[message.id]
-												}
-												chatContainerRef={ref}
-												fetchAnswer={fetchAnswer}
-												inputRef={inputRef}
-												onLeadCollectSubmit={() => {}}
-												onLeadCollectRequest={() => false}
-												onLeadCollectEscalated={() => {}}
-												onLeadCollectCancel={() => {}}
-												leadCollectMode={leadCollect?.mode}
-												pendingLeadCapture={pendingLeadCapture}
-											/>
-											<LeadCollectMessage
-												payload={{
-													...message,
-													conversationId: getConversationId()
-												}}
-												messageBoxRef={
-													messagesRefs.current[message.id]
-												}
-												onLeadCollectSubmit={(data, event) => {
+										<LeadCollectBlock message={message}>
+											{(ready) => (
+												<>
+													<BotChatMessage
+														payload={{
+															...message,
+															type: 'lead_collect_message',
+															message: message.message,
+															leadForm: undefined,
+															loading: !ready,
+															conversationId: getConversationId()
+														}}
+														messageBoxRef={
+															messagesRefs.current[message.id]
+														}
+														chatContainerRef={ref}
+														fetchAnswer={fetchAnswer}
+														inputRef={inputRef}
+														onLeadCollectSubmit={() => {}}
+														onLeadCollectRequest={() => false}
+														onLeadCollectEscalated={() => {}}
+														onLeadCollectCancel={() => {}}
+														leadCollectMode={leadCollect?.mode}
+														pendingLeadCapture={pendingLeadCapture}
+													/>
+													{ready && (
+														<LeadCollectMessage
+															payload={{
+																...message,
+																conversationId: getConversationId()
+															}}
+															messageBoxRef={
+																messagesRefs.current[message.id]
+															}
+															onLeadCollectSubmit={(data, event) => {
 													const metadata =
 														mergeIdentifyMetadata(identify);
 													const leadMetadata = {
@@ -1535,7 +1562,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 													setIsLeadCaptureLocked(false);
 												}}
 											/>
-										</>
+													)}
+												</>
+											)}
+										</LeadCollectBlock>
 									) : (
 										<BotChatMessage
 											payload={{

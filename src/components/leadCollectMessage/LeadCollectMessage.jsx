@@ -142,6 +142,14 @@ export const LeadCollectMessage = ({
 										>
 											<span className="mb-1 block font-semibold">
 												{label}
+												{field.required && (
+													<span
+														className="ml-1 text-red-600"
+														aria-hidden="true"
+													>
+														*
+													</span>
+												)}
 											</span>
 											{inputType === 'color' ? (
 												<>
