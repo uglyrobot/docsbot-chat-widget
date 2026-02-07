@@ -358,7 +358,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						Authorization: `Bearer ${signature}`
 					})
 				},
-				body: JSON.stringify({ metadata, fullChange: false })
+				body: JSON.stringify({ metadata })
 			});
 		} catch (err) {
 			console.warn('DOCSBOT: Failed to capture lead metadata', err);
@@ -464,7 +464,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 	const finalizeLeadSubmission = (data, metadata, options = {}) => {
 		const { messageId, event } = options;
-		setPendingLeadCapture(null);
 		setIsLeadCaptureLocked(false);
 		setLeadCollected(true);
 
@@ -476,6 +475,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		}
 
 		if (data?.nextAction === 'send_message') {
+			setPendingLeadCapture(null);
 			fetchAnswer(data.question, data.imageUrls || [], {
 				bypassLeadCollect: true,
 				metadataOverride: metadata
@@ -484,9 +484,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		}
 
 		if (data?.nextAction === 'support_escalation') {
-			triggerSupportEscalationFromLead(event, metadata);
-			setIsLeadCaptureLocked(false);
+			// Set trigger: true so the useEffect in BotChatMessage picks it up
+			// and calls runSupportCallback (which shows the loader on the Yes button)
+			setPendingLeadCapture((prev) => ({
+				...(prev || {}),
+				type: 'support',
+				trigger: true,
+				metadata: metadata
+			}));
+			return;
 		}
+
+		setPendingLeadCapture(null);
 	};
 
 	const getConversationId = () => {
