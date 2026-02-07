@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useConfig } from '../configContext/ConfigContext';
 
 export const LeadCollectMessage = ({
@@ -10,6 +10,22 @@ export const LeadCollectMessage = ({
 	const { labels } = useConfig();
 	const [leadFormValues, setLeadFormValues] = useState({});
 	const [leadFormTouched, setLeadFormTouched] = useState(false);
+	const [isWide, setIsWide] = useState(false);
+	const leadMessageRef = useRef(null);
+
+	// Observe the container's own width to toggle 2-column layout
+	useEffect(() => {
+		const el = leadMessageRef.current;
+		if (!el) return;
+		const ro = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				const w = entry.contentBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
+				setIsWide(w >= 480);
+			}
+		});
+		ro.observe(el);
+		return () => ro.disconnect();
+	}, []);
 
 	const fields =
 		Array.isArray(payload.leadForm?.fields) && payload.leadForm.fields.length > 0
@@ -44,8 +60,12 @@ export const LeadCollectMessage = ({
 	return (
 		<div className="docsbot-chat-lead-message-container">
 			<div
-				className="docsbot-chat-lead-message border border-border bg-slate-100 text-slate-800 shadow-sm"
-				ref={messageBoxRef}
+				className={`docsbot-chat-lead-message border border-border bg-slate-100 text-slate-800 shadow-sm${isWide ? ' docsbot-lead-wide' : ''}`}
+				ref={(node) => {
+					leadMessageRef.current = node;
+					if (typeof messageBoxRef === 'function') messageBoxRef(node);
+					else if (messageBoxRef) messageBoxRef.current = node;
+				}}
 			>
 					<div className="space-y-4 w-full">
 						<form
@@ -79,67 +99,69 @@ export const LeadCollectMessage = ({
 								}
 							}}
 						>
-							<div className="space-y-4">
-								{fields.map((field, index) => {
-									const fieldKey = field.key || `field_${index}`;
-									const inputId = `${payload.id}-${fieldKey}`;
-									const label =
-										field.label ||
-										field.name ||
-										field.key ||
-										`Field ${index + 1}`;
-									const inputType = field.type || 'text';
-									const fieldValue = leadFormValues[field.key || fieldKey] || '';
-									const isLocked = Boolean(field.isPrefilled);
-									const normalizedColorValue =
-										inputType === 'color' &&
-										/^#[0-9a-fA-F]{6}$/.test(fieldValue)
-											? fieldValue
-											: '#000000';
-									const constraintProps = {
-										...(field.min !== undefined ? { min: field.min } : {}),
-										...(field.max !== undefined ? { max: field.max } : {}),
-										...(field.step !== undefined ? { step: field.step } : {}),
-										...(field.pattern !== undefined ? { pattern: field.pattern } : {}),
-										...(field.minLength !== undefined
-											? { minLength: field.minLength }
-											: {}),
-										...(field.maxLength !== undefined
-											? { maxLength: field.maxLength }
-											: {}),
-										...(field.inputMode !== undefined
-											? { inputMode: field.inputMode }
-											: {})
-									};
-									const sharedProps = {
-										id: inputId,
-										name: field.key || fieldKey,
-										required: !!field.required,
-										placeholder: field.placeholder || undefined,
-										autoComplete: field.autocomplete || undefined,
-										className:
-											'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-slate-800 shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none',
-										value:
-											inputType === 'color'
-												? normalizedColorValue
-												: fieldValue,
-										disabled: isLocked,
-										onChange: (event) => {
-											if (isLocked) return;
-											setLeadFormTouched(true);
-											setLeadFormValues((prev) => ({
-												...prev,
-												[field.key || fieldKey]: event.target.value
-											}));
-										}
-									};
+						<div className="docsbot-lead-fields-grid">
+							{fields.map((field, index) => {
+								const fieldKey = field.key || `field_${index}`;
+								const inputId = `${payload.id}-${fieldKey}`;
+								const label =
+									field.label ||
+									field.name ||
+									field.key ||
+									`Field ${index + 1}`;
+								const inputType = field.type || 'text';
+								const fieldValue = leadFormValues[field.key || fieldKey] || '';
+								const isLocked = Boolean(field.isPrefilled);
+								const normalizedColorValue =
+									inputType === 'color' &&
+									/^#[0-9a-fA-F]{6}$/.test(fieldValue)
+										? fieldValue
+										: '#000000';
+								const constraintProps = {
+									...(field.min !== undefined ? { min: field.min } : {}),
+									...(field.max !== undefined ? { max: field.max } : {}),
+									...(field.step !== undefined ? { step: field.step } : {}),
+									...(field.pattern !== undefined ? { pattern: field.pattern } : {}),
+									...(field.minLength !== undefined
+										? { minLength: field.minLength }
+										: {}),
+									...(field.maxLength !== undefined
+										? { maxLength: field.maxLength }
+										: {}),
+									...(field.inputMode !== undefined
+										? { inputMode: field.inputMode }
+										: {})
+								};
+								const sharedProps = {
+									id: inputId,
+									name: field.key || fieldKey,
+									required: !!field.required,
+									placeholder: field.placeholder || undefined,
+									autoComplete: field.autocomplete || undefined,
+									className:
+										'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-slate-800 shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none',
+									value:
+										inputType === 'color'
+											? normalizedColorValue
+											: fieldValue,
+									disabled: isLocked,
+									onChange: (event) => {
+										if (isLocked) return;
+										setLeadFormTouched(true);
+										setLeadFormValues((prev) => ({
+											...prev,
+											[field.key || fieldKey]: event.target.value
+										}));
+									}
+								};
 
-									return (
-										<label
-											key={inputId}
-											htmlFor={inputId}
-											className="block text-sm text-slate-800"
-										>
+								const isFullWidth = inputType === 'textarea';
+
+								return (
+									<label
+										key={inputId}
+										htmlFor={inputId}
+										className={`block text-sm text-slate-800${isFullWidth ? ' docsbot-lead-field-full' : ''}`}
+									>
 											<span className="mb-1 block font-semibold">
 												{label}
 												{field.required && (

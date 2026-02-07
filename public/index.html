@@ -117,7 +117,7 @@
           reasoningEffort: 'medium', // Optional reasoning effort setting for agent mode
           // Lead collection schema
           leadCollect: {
-            mode: 'before_response', // 'before_response' | 'before_escalation'
+            mode: 'before_escalation', // 'before_response' | 'before_escalation'
             fields: [
               { key: 'name', label: 'Name (text)', type: 'text', required: true, placeholder: 'Jane Doe', minLength: 2, maxLength: 80, autocomplete: 'name' },
               { key: 'email', label: 'Email', type: 'email', required: true, placeholder: 'jane@company.com', autocomplete: 'email', maxLength: 120, help: 'Use your work email so we can follow up.' },
@@ -173,7 +173,7 @@
             create: 'Create your own!',
             thinking: 'Thinking...',
             rateLimitMessage: 'You are sending messages too fast. Please slow down.',
-            leadCollectMessage: "First let us know how to contact you.",
+            leadCollectMessage: "First **let us know** how to contact you.",
             feedbackMessage: "Was this answer helpful?",
             feedbackYes: "Yes",
             feedbackNo: "No",

@@ -25,6 +25,25 @@
 		}
 	}
 
+	.docsbot-lead-fields-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: $spacing-md;
+
+		// Remove the space-y-4 margin since grid gap handles spacing
+		> * + * {
+			margin-top: 0;
+		}
+	}
+
+	.docsbot-lead-field-full {
+		grid-column: 1 / -1;
+	}
+
+	&.docsbot-lead-wide .docsbot-lead-fields-grid {
+		grid-template-columns: repeat(2, 1fr);
+	}
+
 	.docsbot-color-field {
 		display: inline-flex;
 	}
