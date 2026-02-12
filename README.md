@@ -8,6 +8,12 @@ Full documentation can be found at https://docsbot.ai/docs/embeddable-chat-widge
 
 When using the widget in agent mode with a signed request, you can control the reasoning depth of responses by supplying a `reasoningEffort` option. Valid values are `minimal`, `low`, `medium`, and `high`. The parameter is only sent to the API when a signature is present.
 
+### Search Tool Status
+
+In agent mode, the widget can show an animated search indicator next to the loading dots when a search tool is called. This is enabled by default and only appears during the bot loading state before response streaming starts.
+
+Use `options.showSearchToolStatus: false` to disable it.
+
 ## Development
 
 - `npm install` to install dependencies.

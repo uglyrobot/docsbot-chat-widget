@@ -40,6 +40,7 @@ export const BotChatMessage = ({
 		useEscalation, // If escalation collection is enabled
 		identify,
 		showCopyButton,
+		showSearchToolStatus, // Show search tool status while loading in agent mode
 		localDev,
 		allowedDomains,
 		linkSafetyEnabled
@@ -433,7 +434,19 @@ export const BotChatMessage = ({
 				>
 					{(() => {
 						if (payload.loading) {
-							return <Loader />;
+							const shouldShowSearchStatus =
+								isAgent &&
+								showSearchToolStatus !== false &&
+								payload.searchToolPending;
+							return (
+								<Loader
+									showSearchIndicator={shouldShowSearchStatus}
+									searchLabel={
+										labels.searchingDocumentation ||
+										'Searching documentation'
+									}
+								/>
+							);
 						}
 
 						if (payload.type === 'lead_collect') {

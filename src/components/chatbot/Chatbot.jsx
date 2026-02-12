@@ -77,6 +77,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
 		useImageUpload, // If image upload is enabled
+		showSearchToolStatus, // Show search tool status while loading in agent mode
 		keepFooterVisible,
 		localDev,
 		allowedDomains,
@@ -110,6 +111,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		navigator.language?.startsWith(lang)
 	);
 	const minInputLength = allowSingleCharMessage ? 1 : 2;
+	const isSearchToolStatusEnabled = showSearchToolStatus !== false;
+
+	const isSearchToolCall = (toolCallName) => {
+		if (typeof toolCallName !== 'string') return false;
+		const normalized = toolCallName
+			.trim()
+			.replace(/([a-z])([A-Z])/g, '$1_$2')
+			.toLowerCase();
+		if (!normalized) return false;
+		const tokens = normalized.split(/[^a-z0-9]+/).filter(Boolean);
+		return tokens.includes('search');
+	};
 
 	const handleImageSelect = (e) => {
 		if (!useImageUpload) return;
@@ -700,6 +713,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				message: null,
 				loading: true,
 				streaming: false,
+				searchToolPending: false,
 				timestamp: Date.now()
 			}
 		});
@@ -749,6 +763,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			// Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
 			let retryCount = 0;
 			const MAX_RETRIES = 2;
+
+			let hasAnswerStreamingStarted = false;
 
 			try {
 				//console.log(sse_req);
@@ -836,18 +852,45 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							throw new FatalError(data.data);
 						}
 
-						// Skip reasoning and tool_call events - these don't contain answer content
-						// We keep the loading state until actual stream/answer events arrive
-						if (
-							data.event === 'reasoning' ||
-							data.event === 'tool_call'
-						) {
-							// Optionally log for debugging
-							// console.log('DOCSBOT: Received agent event:', data.event, data.data);
+						// Skip reasoning events - these don't contain answer content.
+						// We keep the loading state until actual stream/answer events arrive.
+						if (data.event === 'reasoning') {
+							return;
+						}
+
+						if (data.event === 'tool_call') {
+							if (
+								isSearchToolStatusEnabled &&
+								!hasAnswerStreamingStarted
+							) {
+								try {
+									const toolCall = data.data
+										? JSON.parse(data.data)
+										: null;
+									if (
+										toolCall &&
+										isSearchToolCall(toolCall.name)
+									) {
+										dispatch({
+											type: 'update_message',
+											payload: {
+												id,
+												searchToolPending: true
+											}
+										});
+									}
+								} catch (parseError) {
+									console.warn(
+										'DOCSBOT: Failed to parse tool_call event:',
+										parseError
+									);
+								}
+							}
 							return;
 						}
 
 						if (data.event === 'stream') {
+							hasAnswerStreamingStarted = true;
 							// Handle empty data fields as line breaks to preserve formatting
 							if (data.data === '') {
 								answer += '\n';
@@ -862,7 +905,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									message: answer,
 									sources: null,
 									loading: false,
-									streaming: true
+									streaming: true,
+									searchToolPending: false
 								}
 							});
 
@@ -892,6 +936,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										conversationId: getConversationId(),
 										loading: false,
 										streaming: false,
+										searchToolPending: false,
 										responses: finalData.options || null
 									}
 								});
@@ -953,7 +998,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									loading: false,
 									error: true,
 									isRateLimitError,
-									streaming: false
+									streaming: false,
+									searchToolPending: false
 								}
 							});
 							setIsFetching(false);
@@ -974,7 +1020,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											'Failed to connect after several attempts. Please try again later.',
 										loading: false,
 										error: true,
-										streaming: false
+										streaming: false,
+										searchToolPending: false
 									}
 								});
 								setIsFetching(false);
@@ -1012,7 +1059,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						loading: false,
 						error: true,
 						isRateLimitError,
-						streaming: false
+						streaming: false,
+						searchToolPending: false
 					}
 				});
 				setIsFetching(false);
