@@ -138,7 +138,7 @@ export const LeadCollectMessage = ({
 									placeholder: field.placeholder || undefined,
 									autoComplete: field.autocomplete || undefined,
 									className:
-										'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-slate-800 shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none',
+										'w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm text-slate-800 shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none',
 									value:
 										inputType === 'color'
 											? normalizedColorValue
