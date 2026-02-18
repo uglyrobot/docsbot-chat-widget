@@ -13,12 +13,17 @@ export default class EmbeddableWidget {
   static el;
   static teamId;
   static botId;
+  static isEmbedded = false;
 
   static isChatbotOpen = false;
 
   static open() {
     return new Promise((resolve) => {
       this.isChatbotOpen = true;
+      if (this.isEmbedded) {
+        resolve(true);
+        return;
+      }
       Emitter.emit("docsbot_open");
       Emitter.once("docsbot_open_complete", resolve);
     });
@@ -27,6 +32,10 @@ export default class EmbeddableWidget {
   static close() {
     return new Promise((resolve) => {
       this.isChatbotOpen = false;
+      if (this.isEmbedded) {
+        resolve(true);
+        return;
+      }
       Emitter.emit("docsbot_close");
       Emitter.once("docsbot_close_complete", resolve);
     });
@@ -35,6 +44,10 @@ export default class EmbeddableWidget {
   static toggle() {
     return new Promise((resolve) => {
       this.isChatbotOpen = !this.isChatbotOpen;
+      if (this.isEmbedded) {
+        resolve(true);
+        return;
+      }
       Emitter.emit("docsbot_toggle", { isChatbotOpen: this.isChatbotOpen });
       Emitter.once("docsbot_toggle_complete", resolve);
     });
@@ -49,11 +62,25 @@ export default class EmbeddableWidget {
       }
 
       if (send) {
-        await this.open();
+        if (!this.isEmbedded) {
+          await this.open();
+        }
       }
 
-      Emitter.emit("docsbot_add_user_message", { message, send });
-      Emitter.once("docsbot_add_user_message_complete", resolve);
+      const emitMessage = () => {
+        Emitter.emit("docsbot_add_user_message", { message, send });
+        Emitter.once("docsbot_add_user_message_complete", resolve);
+      };
+
+      if (Emitter.listenerCount("docsbot_add_user_message") > 0) {
+        emitMessage();
+      } else {
+        const waitAndEmit = () => {
+          Emitter.off("docsbot_ready", waitAndEmit);
+          emitMessage();
+        };
+        Emitter.on("docsbot_ready", waitAndEmit);
+      }
     });
   }
 
@@ -65,8 +92,20 @@ export default class EmbeddableWidget {
         return;
       }
 
-      Emitter.emit("docsbot_add_bot_message", { message });
-      Emitter.once("docsbot_add_bot_message_complete", resolve);
+      const emitMessage = () => {
+        Emitter.emit("docsbot_add_bot_message", { message });
+        Emitter.once("docsbot_add_bot_message_complete", resolve);
+      };
+
+      if (Emitter.listenerCount("docsbot_add_bot_message") > 0) {
+        emitMessage();
+      } else {
+        const waitAndEmit = () => {
+          Emitter.off("docsbot_ready", waitAndEmit);
+          emitMessage();
+        };
+        Emitter.on("docsbot_ready", waitAndEmit);
+      }
     });
   }
 
@@ -78,10 +117,11 @@ export default class EmbeddableWidget {
         this.teamId = teamId;
         this.botId = botId;
       }
-      
+
       const embeddedChatElement = document.getElementById(
         "docsbot-widget-embed"
       );
+      this.isEmbedded = !!embeddedChatElement;
       const component = (
         <ConfigProvider {...props}>
           {embeddedChatElement ? (
