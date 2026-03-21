@@ -24,6 +24,7 @@ import {
 	scrollToBottom,
 	mergeIdentifyMetadata
 } from '../../utils/utils';
+import { agentActivityFromSseEvent } from '../../utils/agentActivityFromSse';
 import { LazyStreamdown } from '../streamdown/LazyStreamdown';
 import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
@@ -73,6 +74,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		inputLimit,
 		contextItems,
 		isAgent, // If new agent api is enabled
+		showAgentActivity, // false hides reasoning/tool_call status line (default true)
 		reasoningEffort, // Optional reasoning_effort override
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
@@ -829,21 +831,45 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									message: data.data,
 									loading: false,
 									error: true,
-									streaming: false
+									streaming: false,
+									agentActivity: null
 								}
 							});
 							scrollToBottom(ref);
 							throw new FatalError(data.data);
 						}
 
-						// Skip reasoning and tool_call events - these don't contain answer content
-						// We keep the loading state until actual stream/answer events arrive
-						if (
-							data.event === 'reasoning' ||
-							data.event === 'tool_call'
-						) {
-							// Optionally log for debugging
-							// console.log('DOCSBOT: Received agent event:', data.event, data.data);
+						// Agent SSE: reasoning + tool_call use JSON `data`; stream uses plain text (see agentActivityFromSse.js)
+						if (data.event === 'tool_call') {
+							const activity = agentActivityFromSseEvent(
+								'tool_call',
+								data.data
+							);
+							if (
+								activity &&
+								showAgentActivity !== false
+							) {
+								dispatch({
+									type: 'update_message',
+									payload: { id, agentActivity: activity }
+								});
+							}
+							return;
+						}
+						if (data.event === 'reasoning') {
+							const activity = agentActivityFromSseEvent(
+								'reasoning',
+								data.data
+							);
+							if (
+								activity &&
+								showAgentActivity !== false
+							) {
+								dispatch({
+									type: 'update_message',
+									payload: { id, agentActivity: activity }
+								});
+							}
 							return;
 						}
 
@@ -862,7 +888,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									message: answer,
 									sources: null,
 									loading: false,
-									streaming: true
+									streaming: true,
+									agentActivity: null
 								}
 							});
 
@@ -892,7 +919,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										conversationId: getConversationId(),
 										loading: false,
 										streaming: false,
-										responses: finalData.options || null
+										responses: finalData.options || null,
+										agentActivity: null
 									}
 								});
 
@@ -953,7 +981,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									loading: false,
 									error: true,
 									isRateLimitError,
-									streaming: false
+									streaming: false,
+									agentActivity: null
 								}
 							});
 							setIsFetching(false);
@@ -974,17 +1003,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											'Failed to connect after several attempts. Please try again later.',
 										loading: false,
 										error: true,
-										streaming: false
+										streaming: false,
+										agentActivity: null
 									}
 								});
 								setIsFetching(false);
 								scrollToBottom(ref);
 								throw new FatalError('Max retries exceeded');
 							}
-
-							console.log(
-								`DOCSBOT: Retrying connection... Attempt ${retryCount}/${MAX_RETRIES}`
-							);
 
 							// Return delay with exponential backoff (in ms)
 							return Math.min(1000 * 2 ** retryCount, 10000);
@@ -1012,7 +1038,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						loading: false,
 						error: true,
 						isRateLimitError,
-						streaming: false
+						streaming: false,
+						agentActivity: null
 					}
 				});
 				setIsFetching(false);

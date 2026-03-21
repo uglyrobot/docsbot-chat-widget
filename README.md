@@ -6,7 +6,21 @@ Full documentation can be found at https://docsbot.ai/docs/embeddable-chat-widge
 
 ### Reasoning Effort
 
-When using the widget in agent mode with a signed request, you can control the reasoning depth of responses by supplying a `reasoningEffort` option. Valid values are `minimal`, `low`, `medium`, and `high`. The parameter is only sent to the API when a signature is present.
+When using the widget in agent mode with a signed request, you can control the reasoning depth of responses by supplying a `reasoningEffort` option. Valid values are `minimal`, `low`, `medium`, and `high`. The parameter is only sent to the API when `signature` is set.
+
+### `signature`: legacy HMAC or JWT (Stripe tools, private bots)
+
+Pass **`signature`** in `DocsBotAI.mount` / `init`. It may be either the **legacy expiring HMAC** string or an **HS256 JWT** signed with your bot’s **signature key** (Widget embed page). The widget sends `Authorization: Bearer <signature>` on chat-agent and related API calls.
+
+For **Stripe Actions**, put `priv_stripe_customer_id` only inside the JWT payload (`metadata.priv_stripe_customer_id`). Do **not** put it in client-side `identify` or public `metadata`.
+
+Generate a test token locally:
+
+```bash
+DOCSBOT_SIGNATURE_KEY="…" node scripts/docsbot-sign-metadata-jwt.mjs
+```
+
+Optional env vars: `DOCSBOT_TEAM_ID`, `DOCSBOT_BOT_ID`, `STRIPE_CUSTOMER_ID`, `DOCSBOT_JWT_TTL_SEC`.
 
 ## Development
 

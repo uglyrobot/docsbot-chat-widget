@@ -10,11 +10,60 @@ export function useConfig() {
   return context;
 }
 
+/**
+ * Default English strings for `labels` (merged with bot API + widget `options.labels`).
+ *
+ * Chat Agent activity line (`tool_call` → agentActivity), configurable per bot/widget:
+ * - agentActivityThinking — reasoning with empty text (default "Thinking…")
+ * - agentActivityTool — generic fallback for unknown tools (default "Working…")
+ * - agentActivitySearchDocumentation — DocsBot search (default "Searching documentation…")
+ * - agentActivityWebSearch — OpenAI web search (default "Searching the web…")
+ * - agentActivityCodeInterpreter — OpenAI Code Interpreter (default "Running code…")
+ * Stripe tools (agent graph):
+ * - agentActivityStripeRecentInvoicesAndSubscriptions — stripe_recent_invoices_and_subscriptions
+ * - agentActivityStripeBillingPortal — stripe_billing_portal
+ * - agentActivityStripeRefundLatestPayment — stripe_refund_latest_payment
+ * - agentActivityStripeCancelSubscription — stripe_cancel_subscription
+ *
+ * Visibility (remote widget JSON and/or `DocsBotAI` `options`; options win on merge):
+ * - showAgentActivity — optional boolean; default true when omitted. Set `false` to hide the status line above the agent reply.
+ */
 const defaultLabels = {
+  poweredBy: "Powered by",
+  inputPlaceholder: "Send a message...",
+  firstMessage: "What can I help you with?",
+  sources: "Sources",
+  helpful: "Rate as helpful",
+  unhelpful: "Rate as unhelpful",
+  getSupport: "Contact support",
+  floatingButton: "Help",
+  suggestions: "Not sure what to ask?",
+  close: "Close",
+  create: "Create your own!",
   submit: "Submit",
   cancel: "Cancel",
+  rateLimitMessage: "You are sending messages too fast. Please slow down.",
+  leadCollectMessage: "Before we continue, could you share a few details?",
   requiredField: "Please fill out required fields.",
-  leadCollectMessage: "First let us know how to contact you."
+  continue: "Continue",
+  leadCollectEmpty: "No fields configured.",
+  selectOption: "Select an option",
+  feedbackMessage: "Was this answer helpful?",
+  feedbackYes: "Yes",
+  feedbackNo: "No",
+  resetChat: "Reset conversation",
+  footerMessage: "",
+  copyResponse: "Copy response",
+  copied: "Copied!",
+  agentActivityThinking: "Thinking…",
+  agentActivityTool: "Working…",
+  agentActivitySearchDocumentation: "Searching documentation…",
+  agentActivityWebSearch: "Searching the web…",
+  agentActivityCodeInterpreter: "Running code…",
+  agentActivityStripeRecentInvoicesAndSubscriptions: "Fetching account data…",
+  agentActivityStripeBillingPortal: "Creating billing portal link…",
+  agentActivityStripeRefundLatestPayment: "Processing refund…",
+  agentActivityStripeCancelSubscription: "Processing cancellation…",
 }
 
 const grabQuestions = (questions, limit = 3) => {
@@ -117,7 +166,7 @@ export function ConfigProvider(props = {}) {
             botId,
             supportCallback, 
             identify: identify || {}, 
-            signature, 
+            signature,
             ...restOptions,
             labels: mergedLabels
             // allowedDomains is intentionally not included from restOptions - it can only come from API response for security
