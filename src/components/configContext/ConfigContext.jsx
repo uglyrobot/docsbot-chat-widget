@@ -66,28 +66,41 @@ const defaultLabels = {
   agentActivityStripeCancelSubscription: "Processing cancellation…",
 }
 
+function normalizeSuggestedQuestionItem(item) {
+  if (typeof item === 'string') {
+    const s = item.trim()
+    return s ? { label: s, question: s } : null
+  }
+  if (item && typeof item === 'object') {
+    const question = typeof item.question === 'string' ? item.question.trim() : ''
+    const label = typeof item.label === 'string' ? item.label.trim() : ''
+    const q = question || label
+    const l = label || question
+    return q ? { label: l, question: q } : null
+  }
+  return null
+}
+
 const grabQuestions = (questions, limit = 3) => {
-  // grab at most `limit` unique questions from the bot
-  if (questions) {
-    const randomQuestions = []
-    const questionsLimit = questions.length > limit ? limit : questions.length
+  if (!questions?.length) return []
 
-    for (let i = 0; i < questionsLimit; i++) {
-      const randomIndex = Math.floor(Math.random() * questions.length)
+  const cap = Math.min(limit, questions.length)
+  const picked = []
+  const seen = new Set()
+  let guard = 0
+  const maxGuard = cap * questions.length * 8 + questions.length
 
-      // check if question is already included
-      if (randomQuestions.includes(questions[randomIndex])) {
-        i--
-        continue
-      }
-
-      randomQuestions.push(questions[randomIndex])
-    }
-
-    return randomQuestions
+  while (picked.length < cap && guard < maxGuard) {
+    guard++
+    const randomIndex = Math.floor(Math.random() * questions.length)
+    const item = questions[randomIndex]
+    const key = item.question
+    if (seen.has(key)) continue
+    seen.add(key)
+    picked.push(item)
   }
 
-  return []
+  return picked
 }
 
 export function ConfigProvider(props = {}) {
@@ -127,11 +140,11 @@ export function ConfigProvider(props = {}) {
       })
         .then((response) => response.json())
         .then((data) => {
-          if (data.questions) {
-            data.questions = grabQuestions(data.questions, options?.suggestedQuestions) // limit the number of questions
-          } else {
-            data.questions = []
-          }
+          const rawQuestions = Array.isArray(data.questions) ? data.questions : []
+          const normalizedQuestions = rawQuestions
+            .map(normalizeSuggestedQuestionItem)
+            .filter(Boolean)
+          data.questions = grabQuestions(normalizedQuestions, options?.suggestedQuestions)
 
           //check that current domain is in the list of allowed domains
           if (data.allowedDomains && data.allowedDomains.length > 0) {

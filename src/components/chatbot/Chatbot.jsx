@@ -1750,7 +1750,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								</span>
 									<div className="docsbot-chat-suggested-questions-grid">
 										{Object.keys(questions).map((index) => {
-											const question = questions[index];
+											const suggestion = questions[index];
+											const prompt =
+												typeof suggestion === 'string'
+													? suggestion
+													: suggestion?.question;
+											const chipLabel =
+												typeof suggestion === 'string'
+													? suggestion
+													: suggestion?.label ?? prompt;
 											return (
 												<button
 													key={'question' + index}
@@ -1761,20 +1769,19 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 															type: 'add_message',
 															payload: {
 																variant: 'user',
-																message:
-																	question,
+																message: prompt,
 																loading: false,
 																timestamp:
 																	Date.now()
 															}
 														});
-														fetchAnswer(question);
+														fetchAnswer(prompt);
 														setChatInput('');
 														inputRef.current.focus();
 													}}
 													className="docsbot-chat-suggested-questions-button"
 												>
-													{question}
+													{chipLabel}
 												</button>
 											);
 										})}
