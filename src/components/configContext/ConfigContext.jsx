@@ -20,7 +20,8 @@ export function useConfig() {
  * - agentActivityWebSearch — OpenAI web search (default "Searching the web…")
  * - agentActivityCodeInterpreter — OpenAI Code Interpreter (default "Running code…")
  * Stripe tools (agent graph):
- * - agentActivityStripeRecentInvoicesAndSubscriptions — stripe_recent_invoices_and_subscriptions
+ * - agentActivityStripeRecentInvoices — stripe_recent_invoices
+ * - agentActivityStripeCustomerSubscriptions — stripe_customer_subscriptions
  * - agentActivityStripeBillingPortal — stripe_billing_portal
  * - agentActivityStripeRefundLatestPayment — stripe_refund_latest_payment
  * - agentActivityStripeCancelSubscription — stripe_cancel_subscription
@@ -60,10 +61,34 @@ const defaultLabels = {
   agentActivitySearchDocumentation: "Searching documentation…",
   agentActivityWebSearch: "Searching the web…",
   agentActivityCodeInterpreter: "Running code…",
-  agentActivityStripeRecentInvoicesAndSubscriptions: "Fetching account data…",
+  agentActivityStripeRecentInvoices: "Fetching recent invoices…",
+  agentActivityStripeCustomerSubscriptions: "Fetching subscriptions…",
   agentActivityStripeBillingPortal: "Creating billing portal link…",
   agentActivityStripeRefundLatestPayment: "Processing refund…",
   agentActivityStripeCancelSubscription: "Processing cancellation…",
+  stripeInvoice: "Invoice",
+  stripeAmountDue: "Due",
+  stripeAmountPaid: "Paid",
+  stripeDate: "Date",
+  stripeViewInvoice: "View Invoice",
+	stripeHideLineItems: "Hide line items",
+	stripeViewLineItems: "View {count} line item(s)",
+	stripeItem: "Item",
+  stripeQty: "Qty",
+  stripeSubscription: "Subscription",
+  stripeCurrentPeriod: "Current Period",
+  stripeTrialEnds: "Trial Ends",
+  stripeTrialDayLeft: "day left",
+  stripeTrialDaysLeft: "days left",
+  stripeCancelsAtPeriodEnd: "Cancels at end of billing period",
+  stripeIntervalDay: "day",
+  stripeIntervalWeek: "week",
+  stripeIntervalMonth: "month",
+  stripeIntervalYear: "year",
+  stripeIntervalDays: "days",
+  stripeIntervalWeeks: "weeks",
+  stripeIntervalMonths: "months",
+  stripeIntervalYears: "years",
 }
 
 function normalizeSuggestedQuestionItem(item) {

@@ -63,8 +63,8 @@ export function agentActivityFromSseEvent(eventName, rawData) {
 
 /** Stripe tool names → config label key (translations). Unmapped stripe_* falls through to generic tool. */
 const STRIPE_TOOL_CONFIG_KEYS = {
-	stripe_recent_invoices_and_subscriptions:
-		'agentActivityStripeRecentInvoicesAndSubscriptions',
+	stripe_recent_invoices: 'agentActivityStripeRecentInvoices',
+	stripe_customer_subscriptions: 'agentActivityStripeCustomerSubscriptions',
 	stripe_billing_portal: 'agentActivityStripeBillingPortal',
 	stripe_refund_latest_payment: 'agentActivityStripeRefundLatestPayment',
 	stripe_cancel_subscription: 'agentActivityStripeCancelSubscription'

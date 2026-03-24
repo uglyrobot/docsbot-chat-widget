@@ -920,7 +920,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										loading: false,
 										streaming: false,
 										responses: finalData.options || null,
-										agentActivity: null
+										agentActivity: null,
+										stripeBilling: finalData.stripeBilling || null
 									}
 								});
 
@@ -1149,7 +1150,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								answerId: finalData.id,
 								rating: finalData.rating,
 								loading: false,
-								streaming: false
+								streaming: false,
+								stripeBilling: finalData.stripeBilling || null
 							}
 						});
 						dispatch({

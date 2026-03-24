@@ -22,6 +22,8 @@ import {
 	faFileCode
 } from '@fortawesome/free-regular-svg-icons';
 
+import { StripeBilling } from '../stripeBilling/StripeBilling';
+
 /**
  * Config `labels` keys when agent activity uses configKey (all tools except reasoning).
  * Fallback when configKey is missing (legacy).
@@ -830,6 +832,11 @@ export const BotChatMessage = ({
                                                 );
                                         })()}
 					</div>
+					{payload.stripeBilling && (
+						<div className="w-full">
+							<StripeBilling data={payload.stripeBilling} />
+						</div>
+					)}
 				</div>
                         </div>
 
