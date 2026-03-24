@@ -86,7 +86,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		leadCollect,
 		updateIdentity,
 		supportCallback,
-		supportLink
+		supportLink,
+		browserLocaleTag
 	} = useConfig();
 	const ref = useRef();
 	const inputRef = useRef();
@@ -108,8 +109,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const [leadCollected, setLeadCollected] = useState(false);
 
 	const allowedSingleCharLanguages = ['ja', 'zh', 'ko'];
-	const allowSingleCharMessage = allowedSingleCharLanguages.some((lang) =>
-		navigator.language?.startsWith(lang)
+	const navLangList =
+		typeof navigator !== 'undefined' && Array.isArray(navigator.languages)
+			? navigator.languages
+			: typeof navigator !== 'undefined' && navigator.language
+				? [navigator.language]
+				: [];
+	const allowSingleCharMessage = navLangList.some((tag) =>
+		allowedSingleCharLanguages.some((lang) =>
+			typeof tag === 'string' && tag.toLowerCase().startsWith(lang)
+		)
 	);
 	const minInputLength = allowSingleCharMessage ? 1 : 2;
 
@@ -737,7 +746,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				conversationId: getConversationId(),
 				context_items: contextItems || 6,
 				autocut: 2,
-				default_language: navigator.language,
+				default_language: browserLocaleTag,
 				image_urls:
 					image_urls.length > 0 && useImageUpload
 						? image_urls

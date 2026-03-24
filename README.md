@@ -22,6 +22,10 @@ DOCSBOT_SIGNATURE_KEY="…" node scripts/docsbot-sign-metadata-jwt.mjs
 
 Optional env vars: `DOCSBOT_TEAM_ID`, `DOCSBOT_BOT_ID`, `STRIPE_CUSTOMER_ID`, `DOCSBOT_JWT_TTL_SEC`.
 
+## Locales
+
+Non-English strings live under **`src/locales/`** (one module per language). English defaults are in **`src/constants/defaultLabels.mjs`**. At runtime the widget merges defaults with the lazy-loaded locale. To add a language, add **`src/locales/<code>.js`** and register it in **`src/utils/localeImports.js`**. Run **`npm run test:labels`** to verify every locale has required keys and differs from English where expected (see **`src/utils/localeLabelAllowlist.mjs`** for allowed English matches).
+
 ## Development
 
 - `npm install` to install dependencies.

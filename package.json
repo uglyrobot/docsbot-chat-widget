@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "test:labels": "node --test src/utils/mergeWidgetLabels.test.mjs src/utils/localeLabelCompleteness.test.mjs",
     "build": "gulp build && webpack --mode production",
     "start": "gulp build && npm-run-all --parallel dev:web dev:css",
     "dev:web": "webpack serve --mode development --port=3005",

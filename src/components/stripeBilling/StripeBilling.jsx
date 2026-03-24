@@ -38,6 +38,16 @@ const formatDate = (dateString) => {
 	}
 };
 
+/** Maps Stripe invoice/subscription status enum to `stripeStatus*` label keys. */
+const stripeStatusLabel = (status, labels) => {
+	if (!status || typeof status !== 'string') return '';
+	const camel = status.toLowerCase().replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+	const key = `stripeStatus${camel.charAt(0).toUpperCase() + camel.slice(1)}`;
+	const translated = labels[key];
+	if (translated) return translated;
+	return status.replace(/_/g, ' ');
+};
+
 const getStatusColor = (status) => {
 	switch (status?.toLowerCase()) {
 		case 'paid':
@@ -118,7 +128,7 @@ const InvoiceItem = ({ invoice, labels }) => {
 					</div>
 					<span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border flex items-center justify-center gap-1.5 ${getStatusColor(invoice.status)}`}>
 						<FontAwesomeIcon icon={getStatusIcon(invoice.status)} className="w-3 h-3" />
-						<span className="capitalize">{invoice.status?.replace(/_/g, ' ')}</span>
+						<span>{stripeStatusLabel(invoice.status, labels)}</span>
 					</span>
 				</div>
 
@@ -248,7 +258,7 @@ const SubscriptionItem = ({ subscription, labels }) => {
 					</div>
 					<span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border flex items-center justify-center gap-1.5 ${getStatusColor(subscription.status)}`}>
 						<FontAwesomeIcon icon={getStatusIcon(subscription.status)} className="w-3 h-3" />
-						<span className="capitalize">{subscription.status?.replace(/_/g, ' ')}</span>
+						<span>{stripeStatusLabel(subscription.status, labels)}</span>
 					</span>
 				</div>
 
