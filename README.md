@@ -22,6 +22,13 @@ DOCSBOT_SIGNATURE_KEY="…" node scripts/docsbot-sign-metadata-jwt.mjs
 
 Optional env vars: `DOCSBOT_TEAM_ID`, `DOCSBOT_BOT_ID`, `STRIPE_CUSTOMER_ID`, `DOCSBOT_JWT_TTL_SEC`.
 
+## Locale packs (`strings.constants.js`)
+
+Translations are generated from a root-level **`strings.constants.js`** that exports `export const i18n = { en: { labels: {...} }, ja: {...}, ... }`.
+
+- Japanese must use the key **`ja`** (not `jp`); the build script rewrites `jp` → `ja` if present.
+- After adding or updating that file, run **`npm run build:locales`**. This refreshes **`src/locales/*.js`** (partial overrides; missing keys fall back to **`src/constants/defaultLabels.js`** at runtime) and **`src/utils/localeImports.js`**.
+
 ## Development
 
 - `npm install` to install dependencies.

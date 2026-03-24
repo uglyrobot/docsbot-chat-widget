@@ -12,6 +12,9 @@ module.exports = (_, { mode }) => {
       path: path.resolve(__dirname, "build"),
       publicPath: isProduction ? "https://widget.docsbot.ai/" : "/",
       filename: "chat.js",
+      chunkFilename: isProduction
+        ? "[name].[contenthash:8].js"
+        : "[name].js",
       library: "DocsBotAI",
       libraryExport: "default",
       libraryTarget: "window",

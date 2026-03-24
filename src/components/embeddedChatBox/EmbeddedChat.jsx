@@ -13,24 +13,30 @@ import linkListStyles from "!../../assets/css/LinkList.min.css?raw";
 import embeddedChatStyles from "!../../assets/css/embeddedChat.min.css?raw";
 
 const EmbeddedChat = () => {
-  const { customCSS } = useConfig();
+  const { customCSS, textDirection } = useConfig();
 
+  const dir = textDirection === "rtl" ? "rtl" : "ltr";
   return (
     <ReactShadowRoot>
-      <style type="text/css">{fontAwesomeStyles}</style>
-      <style type="text/css">{katexStyles}</style>
-      <style type="text/css">{reactTailwindStyles}</style>
-      <style type="text/css">{reactChatbotStyles}</style>
-      <style type="text/css">{floatingButtonStyles}</style>
-      <style type="text/css">{optionsStyles}</style>
-      <style type="text/css">{linkListStyles}</style>
-      <style type="text/css">{embeddedChatStyles}</style>
-      {customCSS ? <style type="text/css">{customCSS}</style> : null}
+      <div
+        dir={dir}
+        lang={typeof navigator !== "undefined" ? navigator.language : undefined}
+      >
+        <style type="text/css">{fontAwesomeStyles}</style>
+        <style type="text/css">{katexStyles}</style>
+        <style type="text/css">{reactTailwindStyles}</style>
+        <style type="text/css">{reactChatbotStyles}</style>
+        <style type="text/css">{floatingButtonStyles}</style>
+        <style type="text/css">{optionsStyles}</style>
+        <style type="text/css">{linkListStyles}</style>
+        <style type="text/css">{embeddedChatStyles}</style>
+        {customCSS ? <style type="text/css">{customCSS}</style> : null}
 
-      <div className="docsbot-iframe-box">
-        <ChatbotProvider>
-          <Chatbot isEmbeddedBox={true} />
-        </ChatbotProvider>
+        <div className="docsbot-iframe-box">
+          <ChatbotProvider>
+            <Chatbot isEmbeddedBox={true} />
+          </ChatbotProvider>
+        </div>
       </div>
     </ReactShadowRoot>
   );

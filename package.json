@@ -1,5 +1,7 @@
 {
   "scripts": {
+    "test:labels": "node src/utils/mergeWidgetLabels.test.mjs",
+    "build:locales": "node scripts/build-locale-modules.mjs",
     "build": "gulp build && webpack --mode production",
     "start": "gulp build && npm-run-all --parallel dev:web dev:css",
     "dev:web": "webpack serve --mode development --port=3005",
