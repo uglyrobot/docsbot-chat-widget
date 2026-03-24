@@ -260,6 +260,9 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
           // Link safety configuration - controls which links are considered safe in markdown content
           linkSafetyEnabled: true, // Enable/disable link safety checking (default: false)
           // Note: allowedDomains can only be set via API response, not via script options (security measure)
+          labels: {
+            poweredBy: 'Powered by',
+          },
           /* Commented out so the demo uses browser locale packs + API labels (test i18n). Uncomment to force English overrides.
           labels: {
             poweredBy: 'Powered by',
