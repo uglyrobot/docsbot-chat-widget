@@ -6,6 +6,7 @@ import {
   normalizeBotLanguage,
   pickBrowserLanguageTag,
   resolveBrowserLocale,
+  resolveEffectiveRequestLanguageTag,
   resolveExplicitLocaleString,
 } from "../../utils/mergeWidgetLabels.mjs";
 
@@ -163,6 +164,8 @@ export function ConfigProvider(props = {}) {
           typeof navigator !== "undefined" ? navigator.languages : undefined;
         const browserLocale = resolveEffectiveBrowserLocale(options);
         const browserLocaleTag = pickBrowserLanguageTag(navLangs, browserLocale);
+        const browserRequestLanguageTag =
+          resolveEffectiveRequestLanguageTag(navLangs, options);
         const botLanguage = normalizeBotLanguage(data.language);
         const localeMod = await loadLocaleModule(browserLocale);
 
@@ -191,6 +194,7 @@ export function ConfigProvider(props = {}) {
           textDirection,
           browserLocale,
           browserLocaleTag,
+          browserRequestLanguageTag,
         });
       })
       .catch((e) => {

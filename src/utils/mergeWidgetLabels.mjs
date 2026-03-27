@@ -58,6 +58,39 @@ export function pickBrowserLanguageTag(preferenceList, resolvedBaseCode) {
 }
 
 /**
+ * First valid BCP-47-ish tag from preferences, without clamping to shipped widget locale packs.
+ * Use for API request language (e.g. agent default_language), not for choosing a UI locale module.
+ * @param {string[]} [preferenceList]
+ * @returns {string}
+ */
+export function pickPrimaryBrowserLanguageTag(preferenceList) {
+  const list = normalizeLanguagePreferenceList(preferenceList);
+  for (const raw of list) {
+    if (typeof raw !== "string") continue;
+    const t = raw.trim();
+    if (!t) continue;
+    if (toBaseLanguageCode(t)) return t;
+  }
+  return "en";
+}
+
+/**
+ * Language tag for backend/agent requests: embed `locale` when set (non-auto), else primary browser tag.
+ * Unlike {@link resolveBrowserLocale}, does not fall back to supported UI packs only.
+ * @param {string[]} [preferenceList]
+ * @param {{ locale?: string | null }} [options]
+ * @returns {string}
+ */
+export function resolveEffectiveRequestLanguageTag(preferenceList, options) {
+  const mode = options?.locale;
+  if (typeof mode === "string" && mode.trim() && mode !== "auto") {
+    const t = mode.trim();
+    if (toBaseLanguageCode(t)) return t;
+  }
+  return pickPrimaryBrowserLanguageTag(preferenceList);
+}
+
+/**
  * @param {string[]} [preferenceList] e.g. navigator.languages
  * @param {ReadonlySet<string> | string[]} [supportedCodes] defaults to shipped locale packs + en
  * @returns {string} 2-char code, default 'en'

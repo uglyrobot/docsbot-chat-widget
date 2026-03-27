@@ -87,7 +87,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		updateIdentity,
 		supportCallback,
 		supportLink,
-		browserLocaleTag
+		browserLocaleTag,
+		browserRequestLanguageTag
 	} = useConfig();
 	const ref = useRef();
 	const inputRef = useRef();
@@ -746,7 +747,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				conversationId: getConversationId(),
 				context_items: contextItems || 6,
 				autocut: 2,
-				default_language: browserLocaleTag,
+				default_language: browserRequestLanguageTag,
 				image_urls:
 					image_urls.length > 0 && useImageUpload
 						? image_urls

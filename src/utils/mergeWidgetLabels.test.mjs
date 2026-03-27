@@ -14,7 +14,9 @@ import {
   mergeWidgetLabels,
   normalizeBotLanguage,
   pickBrowserLanguageTag,
+  pickPrimaryBrowserLanguageTag,
   resolveBrowserLocale,
+  resolveEffectiveRequestLanguageTag,
   resolveExplicitLocaleString,
   toBaseLanguageCode,
 } from "./mergeWidgetLabels.mjs";
@@ -100,6 +102,28 @@ test("resolveBrowserLocale skips unsupported until a shipped locale", () => {
 test("pickBrowserLanguageTag preserves first matching tag", () => {
   assert.equal(pickBrowserLanguageTag(["zu", "fr-CA", "en"], "fr"), "fr-CA");
   assert.equal(pickBrowserLanguageTag(["de"], "en"), "en");
+});
+
+test("pickPrimaryBrowserLanguageTag keeps unsupported locales for API", () => {
+  assert.equal(pickPrimaryBrowserLanguageTag(["sq-AL", "en"]), "sq-AL");
+  assert.equal(pickPrimaryBrowserLanguageTag(["zu", "fr-FR"]), "zu");
+  assert.equal(pickPrimaryBrowserLanguageTag(["en-US"]), "en-US");
+});
+
+test("resolveEffectiveRequestLanguageTag separates API language from UI clamping", () => {
+  assert.equal(
+    resolveEffectiveRequestLanguageTag(["sq-AL"], {}),
+    "sq-AL"
+  );
+  assert.equal(resolveBrowserLocale(["sq-AL"]), "en");
+  assert.equal(
+    resolveEffectiveRequestLanguageTag(["sq-AL"], { locale: "auto" }),
+    "sq-AL"
+  );
+  assert.equal(
+    resolveEffectiveRequestLanguageTag(["en"], { locale: "fr-CA" }),
+    "fr-CA"
+  );
 });
 
 test("resolveExplicitLocaleString clamps unknown codes to en", () => {
