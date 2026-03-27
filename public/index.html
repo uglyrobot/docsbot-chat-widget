@@ -68,10 +68,111 @@
     <script>
       window.DocsBotAI=window.DocsBotAI||{},DocsBotAI.init=function(e){return new Promise((t,r)=>{var n=document.createElement("script");n.type="text/javascript",n.async=!0,n.src="/chat.js";let o=document.getElementsByTagName("script")[0];o.parentNode.insertBefore(n,o),n.addEventListener("load",()=>{let n;Promise.all([new Promise((t,r)=>{window.DocsBotAI.mount(Object.assign({}, e)).then(t).catch(r)}),(n=function e(t){return new Promise(e=>{if(document.querySelector(t))return e(document.querySelector(t));let r=new MutationObserver(n=>{if(document.querySelector(t))return e(document.querySelector(t)),r.disconnect()});r.observe(document.body,{childList:!0,subtree:!0})})})("#docsbotai-root"),]).then(()=>t()).catch(r)}),n.addEventListener("error",e=>{r(e.message)})})};
     </script>
+    <details style="max-width: 720px; margin: 1rem 0; padding: 0.75rem 1rem; background: var(--secondary-bg); border: 1px solid #333;">
+      <summary style="cursor: pointer; color: var(--accent-color);">Server: sign JWT with Stripe customer ID (Node)</summary>
+      <p style="margin: 0.75rem 0 0.5rem; font-size: 0.9rem;">
+        Use your Widget embed <strong>signature key</strong> as the HMAC secret. This page also mints a test JWT in the browser (see <code>DOCSBOT_TEST_SIGNATURE_KEY</code> in the script below)—for production, sign only on your server.
+      </p>
+      <pre style="overflow: auto; font-size: 0.75rem; margin: 0;"><code>const jwt = require('jsonwebtoken')
+
+const teamId = 'nG4F5A3BFSBzdYc5TZIX'
+const botId = 'uy8srweloFNgRadNtwvf'
+const stripeCustomerId = 'cus_MjCntOVjGjAqYq' // never put this in client identify/metadata
+
+const payload = {
+  exp: Math.floor(Date.now() / 1000) + 3600,
+  iat: Math.floor(Date.now() / 1000),
+  team_id: teamId,
+  bot_id: botId,
+  metadata: {
+    priv_stripe_customer_id: stripeCustomerId,
+  },
+}
+
+const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 'HS256' })
+// Pass token to the page as init.signature</code></pre>
+    </details>
+
     <script>
-      DocsBotAI.init({
-        id: "ZrbLG98bbxZ9EFqiPvyl/N2mWls8WYE6VxTmObjr3", // production
-        //id: "nG4F5A3BFSBzdYc5TZIX/uy8srweloFNgRadNtwvf", // staging
+(function () {
+  var textEnc = new TextEncoder();
+
+  function b64urlFromBytes(bytes) {
+    var binary = "";
+    for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+  }
+
+  function b64urlJson(obj) {
+    return b64urlFromBytes(textEnc.encode(JSON.stringify(obj)));
+  }
+
+  async function signDocsbotMetadataJwt(secret, teamId, botId, stripeCustomerId, ttlSec) {
+    var header = { alg: "HS256", typ: "JWT" };
+    var now = Math.floor(Date.now() / 1000);
+    var payload = {
+      exp: now + ttlSec,
+      iat: now,
+      team_id: teamId,
+      bot_id: botId,
+      metadata: { priv_stripe_customer_id: stripeCustomerId }
+    };
+    var encHeader = b64urlJson(header);
+    var encPayload = b64urlJson(payload);
+    var key = await crypto.subtle.importKey(
+      "raw",
+      textEnc.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    var sigBuf = await crypto.subtle.sign(
+      "HMAC",
+      key,
+      textEnc.encode(encHeader + "." + encPayload)
+    );
+    return encHeader + "." + encPayload + "." + b64urlFromBytes(new Uint8Array(sigBuf));
+  }
+
+  /**
+   * Local HTML demo only: mint HS256 JWT in the browser. Production must sign on your server.
+   * Stripe ID belongs in metadata.priv_stripe_customer_id (below), never in identify/public metadata.
+   */
+  var DOCSBOT_TEST_SIGNATURE_KEY = "c51c9ff86521faa60b7a6a4147b3b99f2ca776f9a9fb01347989273a477f8a7f";
+
+  var DOCSBOT_SIGNATURE = "";
+
+  document.addEventListener("docsbot_fetching_answer", function (event) {
+    console.log("Fetching answer for question: " + event.detail.question);
+  });
+
+  document.addEventListener("docsbot_fetching_answer_complete", function (event) {
+    console.log("Answer fetched:", event.detail);
+  });
+
+  function buildTestSignature() {
+    if (!DOCSBOT_TEST_SIGNATURE_KEY) {
+      return Promise.resolve("");
+    }
+    return signDocsbotMetadataJwt(
+      DOCSBOT_TEST_SIGNATURE_KEY,
+      "nG4F5A3BFSBzdYc5TZIX",
+      "uy8srweloFNgRadNtwvf",
+      "cus_MjCntOVjGjAqYq",
+      3600
+    ).catch(function (err) {
+      console.warn("DOCSBOT: test JWT signing failed", err);
+      return "";
+    });
+  }
+
+  buildTestSignature().then(function (jwt) {
+    DOCSBOT_SIGNATURE = jwt;
+    return DocsBotAI.init({
+        // id: "ZrbLG98bbxZ9EFqiPvyl/N2mWls8WYE6VxTmObjr3", // production
+        id: "nG4F5A3BFSBzdYc5TZIX/uy8srweloFNgRadNtwvf", // staging
+        // Legacy HMAC or HS256 JWT (Stripe: metadata.priv_stripe_customer_id in JWT only)
+        signature: DOCSBOT_SIGNATURE,
         supportCallback: function (event, history, metadata, ticket) {
           event.preventDefault();
           // Alert the details for debugging
@@ -88,13 +189,13 @@
           name: 'Steve Aoki',
           email: 'steve@aoki.com',
         },
-        //signature: 'hmachash:expiry',
         options: {
-          localDev: false,
+          // Widget config: http://localhost:3000/api/... | Chat agent: http://127.0.0.1:9000/...
+          localDev: true,
           alignment: 'left',
           horizontalMargin: 20,
           verticalMargin: 20,
-          showCopyButton: true,
+          showCopyButton: false,
           //hideSources: ['qa'],
           //color: "#0891b8",
           //botIcon: "https://webstockreview.net/images/user-icon-png-4.png",
@@ -161,6 +262,10 @@
           // Note: allowedDomains can only be set via API response, not via script options (security measure)
           labels: {
             poweredBy: 'Powered by',
+          },
+          /* Commented out so the demo uses browser locale packs + API labels (test i18n). Uncomment to force English overrides.
+          labels: {
+            poweredBy: 'Powered by',
             inputPlaceholder: 'Send a message...',
             firstMessage: 'What can I help you with?',
             sources: 'Sources',
@@ -179,9 +284,11 @@
             feedbackNo: "No",
             resetChat: "Reset conversation",
             footerMessage: "By starting a conversation, you agree to our [Privacy Policy](/legal/privacy-policy).", //supports markdown. If empty/missing, the footer will not be shown.
-          }, // Override all the default labels for your own language.
+          },
+          */
         }
-      }).then(() => {
+      });
+  }).then(function () {
         //DocsBotAI.open();
         //  Script is safely loaded, you can do whatever you want from here with bot
         const openBtn = document.getElementById("open-btn");
@@ -208,7 +315,10 @@
         const reinitBtn = document.getElementById("reinit-btn");
         reinitBtn.addEventListener("click", () => {
           DocsBotAI.mount({
-            id: "ZrbLG98bbxZ9EFqiPvyl/N2mWls8WYE6VxTmObjr3",
+            // id: "ZrbLG98bbxZ9EFqiPvyl/N2mWls8WYE6VxTmObjr3", // production
+            id: "nG4F5A3BFSBzdYc5TZIX/uy8srweloFNgRadNtwvf",
+            signature: DOCSBOT_SIGNATURE,
+            options: { localDev: true, isAgent: true },
             supportCallback: function (event, history) {
               event.preventDefault();
               console.log(history, DocsBotAI);
@@ -243,15 +353,8 @@
             messageInput.value = "";
           }
         });
-      });
-
-      document.addEventListener("docsbot_fetching_answer", (event) => {
-        console.log(`Fetching answer for question: ${event.detail.question}`);
-      });
-
-      document.addEventListener("docsbot_fetching_answer_complete", (event) => {
-        console.log("Answer fetched:", event.detail);
-      });
+  });
+})();
     </script>
 
     <p>

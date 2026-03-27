@@ -1,5 +1,8 @@
 import React, { lazy } from 'react';
 
+/** Hosts always treated as safe when link safety is on (apex + subdomains via isAllowedHost). */
+const LINK_SAFETY_ALWAYS_ALLOWED_HOSTS = ['stripe.com'];
+
 const getHostname = (value) => {
 	if (!value) return null;
 	const trimmed = value.trim().toLowerCase();
@@ -106,6 +109,7 @@ export const LazyStreamdown = lazy(async () => {
 		const currentHost = window.location.hostname.toLowerCase();
 		const normalizedAllowedHosts = [
 			currentHost,
+			...LINK_SAFETY_ALWAYS_ALLOWED_HOSTS,
 			...allowedDomains
 				.map(getHostname)
 				.filter((domain) => Boolean(domain))

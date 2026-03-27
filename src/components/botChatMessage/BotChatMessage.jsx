@@ -10,6 +10,62 @@ import { scrollToBottom, mergeIdentifyMetadata } from '../../utils/utils';
 import clsx from 'clsx';
 import { LazyStreamdown } from '../streamdown/LazyStreamdown';
 import { preprocessMath } from '../../utils/markdown';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+	faBrain,
+	faMagnifyingGlass,
+	faVial,
+	faGlobe
+} from '@fortawesome/free-solid-svg-icons';
+import {
+	faCreditCard,
+	faFileCode
+} from '@fortawesome/free-regular-svg-icons';
+
+import { StripeBilling } from '../stripeBilling/StripeBilling';
+
+/**
+ * Config `labels` keys when agent activity uses configKey (all tools except reasoning).
+ * Fallback when configKey is missing (legacy).
+ */
+const AGENT_ACTIVITY_CONFIG_LABEL_KEYS = {
+	reasoning: 'agentActivityThinking',
+	web_search: 'agentActivityWebSearch',
+	code_interpreter: 'agentActivityCodeInterpreter',
+	search_docs: 'agentActivitySearchDocumentation',
+	stripe: 'agentActivityTool', // unmapped stripe_* fallback
+	tool: 'agentActivityTool'
+};
+
+function iconForAgentActivity(kind) {
+	switch (kind) {
+		case 'reasoning':
+			return faBrain;
+		case 'search_docs':
+			return faMagnifyingGlass;
+		case 'web_search':
+			return faGlobe;
+		case 'code_interpreter':
+			return faFileCode;
+		case 'stripe':
+			return faCreditCard;
+		default:
+			return faVial;
+	}
+}
+
+function resolveAgentActivityLabel(agentActivity, labels) {
+	if (agentActivity.label != null && agentActivity.label !== '') {
+		return agentActivity.label;
+	}
+	const key =
+		agentActivity.configKey ||
+		AGENT_ACTIVITY_CONFIG_LABEL_KEYS[agentActivity.kind];
+	if (key && labels && labels[key]) {
+		return labels[key];
+	}
+	return '';
+}
 
 export const BotChatMessage = ({
 	payload,
@@ -36,6 +92,7 @@ export const BotChatMessage = ({
 		supportLink,
 		supportCallback,
 		isAgent, // If new agent api is enabled
+		showAgentActivity, // false hides agent status line (default true)
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
 		identify,
@@ -422,15 +479,44 @@ export const BotChatMessage = ({
 				)}
 			>
 				{!repeatedBotMessage && <BotAvatar />}
-				<div
-					className={clsx(
-						'docsbot-chat-bot-message bg-slate-100 text-slate-800'
+				<div className="docsbot-chat-bot-message-column">
+					{isAgent &&
+						showAgentActivity !== false &&
+						payload.agentActivity && (
+						<div
+							className="docsbot-agent-activity"
+							aria-live="polite"
+						>
+							<FontAwesomeIcon
+								icon={iconForAgentActivity(
+									payload.agentActivity.kind
+								)}
+								className="docsbot-agent-activity-icon"
+								fixedWidth
+							/>
+							<span
+								dir="auto"
+								className="docsbot-agent-activity-label"
+							>
+								{resolveAgentActivityLabel(
+									payload.agentActivity,
+									labels
+								)}
+							</span>
+						</div>
 					)}
-					{...(payload.error && {
-						style: { backgroundColor: '#FEFCE8', color: '#713F12' }
-					})}
-					ref={messageBoxRef}
-				>
+					<div
+						className={clsx(
+							'docsbot-chat-bot-message bg-slate-100 text-slate-800'
+						)}
+						{...(payload.error && {
+							style: {
+								backgroundColor: '#FEFCE8',
+								color: '#713F12'
+							}
+						})}
+						ref={messageBoxRef}
+					>
 					{(() => {
 						if (payload.loading) {
 							return <Loader />;
@@ -745,7 +831,13 @@ export const BotChatMessage = ({
                                                         </>
                                                 );
                                         })()}
-                                </div>
+					</div>
+					{payload.stripeBilling && (
+						<div className="w-full">
+							<StripeBilling data={payload.stripeBilling} />
+						</div>
+					)}
+				</div>
                         </div>
 
 			{/*

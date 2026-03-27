@@ -3,10 +3,28 @@
 .docsbot-chat-bot-message {
 	@include bubble-message('left');
 
+	// Content-sized when short; cap to column width for long strings / code (column is flex:1 min-width:0)
+	width: fit-content;
+	max-width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
+
 	// Ensure long text does not overflow the bubble
 	word-wrap: break-word;
 	overflow-wrap: break-word;
 	word-break: break-word;
+
+	pre {
+		max-width: 100%;
+		overflow-x: auto;
+		box-sizing: border-box;
+	}
+
+	[data-streamdown='code-block'] {
+		max-width: 100%;
+		overflow-x: auto;
+		box-sizing: border-box;
+	}
 
 	// Handle text alignment based on content direction
 	span[dir='auto'] {
@@ -90,6 +108,7 @@
 		display: flex;
 		justify-content: flex-start;
 		padding-right: $spacing-sm;
+		min-width: 0; // flex child of scroll area: allow shrinking so % / max-width resolve
 
 		&:not(:first-child) {
 			margin-top: $spacing-sm;
@@ -99,6 +118,43 @@
 		&.has-avatar:not(:has(.docsbot-chat-bot-avatar)) {
 			padding-left: #{$spacing-lg + $spacing-sm};
 		}
+	}
+}
+
+// Use remaining row width as the cap (min-width:0 + flex:1) but keep bubble content-width via align-items + bubble max-width.
+.docsbot-chat-bot-message-column {
+	flex: 1 1 0;
+	min-width: 0;
+	max-width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: $spacing-xs;
+}
+
+.docsbot-agent-activity {
+	display: flex;
+	align-items: flex-start;
+	gap: $spacing-xs;
+	max-width: 100%;
+	min-width: 0;
+	font-size: 0.8125rem;
+	line-height: 1.35;
+	color: $color-secondary-100;
+
+	.docsbot-agent-activity-icon {
+		flex-shrink: 0;
+		margin-top: 0.1em;
+		opacity: 0.85;
+	}
+
+	.docsbot-agent-activity-label {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
 	}
 }
 

@@ -19,7 +19,7 @@ import { useConfig } from "../configContext/ConfigContext";
 
 function App() {
   const [isOpen, setIsOpen] = useState(false);
-  const { customCSS } = useConfig();
+  const { customCSS, textDirection, browserLocaleTag } = useConfig();
   useEffect(() => {
     const handleOpen = async () => {
       await setIsOpen(true);
@@ -57,24 +57,30 @@ function App() {
     };
   }, []);
 
+  const dir = textDirection === "rtl" ? "rtl" : "ltr";
   return (
     <ReactShadowRoot>
-      <style type="text/css">{fontAwesomeStyles}</style>
-      <style type="text/css">{katexStyles}</style>
-      <style type="text/css">{reactTailwindStyles}</style>
-      <style type="text/css">{reactChatbotStyles}</style>
-      <style type="text/css">{appStyles}</style>
-      <style type="text/css">{floatingButtonStyles}</style>
-      <style type="text/css">{optionsStyles}</style>
-      <style type="text/css">{linkListStyles}</style>
-      {customCSS ? <style type="text/css">{customCSS}</style> : null}
+      <div
+        dir={dir}
+        lang={browserLocaleTag}
+      >
+        <style type="text/css">{fontAwesomeStyles}</style>
+        <style type="text/css">{katexStyles}</style>
+        <style type="text/css">{reactTailwindStyles}</style>
+        <style type="text/css">{reactChatbotStyles}</style>
+        <style type="text/css">{appStyles}</style>
+        <style type="text/css">{floatingButtonStyles}</style>
+        <style type="text/css">{optionsStyles}</style>
+        <style type="text/css">{linkListStyles}</style>
+        {customCSS ? <style type="text/css">{customCSS}</style> : null}
 
-      <FloatingButton {...{isOpen, setIsOpen}} />
-      {isOpen ? (
-        <ChatbotProvider>
-          <Chatbot {...{isOpen, setIsOpen}} />
-        </ChatbotProvider>
-      ) : null}
+        <FloatingButton {...{ isOpen, setIsOpen }} />
+        {isOpen ? (
+          <ChatbotProvider>
+            <Chatbot {...{ isOpen, setIsOpen }} />
+          </ChatbotProvider>
+        ) : null}
+      </div>
     </ReactShadowRoot>
   );
 }

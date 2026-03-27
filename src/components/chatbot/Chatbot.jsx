@@ -24,6 +24,7 @@ import {
 	scrollToBottom,
 	mergeIdentifyMetadata
 } from '../../utils/utils';
+import { agentActivityFromSseEvent } from '../../utils/agentActivityFromSse';
 import { LazyStreamdown } from '../streamdown/LazyStreamdown';
 import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
@@ -73,6 +74,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		inputLimit,
 		contextItems,
 		isAgent, // If new agent api is enabled
+		showAgentActivity, // false hides reasoning/tool_call status line (default true)
 		reasoningEffort, // Optional reasoning_effort override
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
@@ -84,7 +86,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		leadCollect,
 		updateIdentity,
 		supportCallback,
-		supportLink
+		supportLink,
+		browserLocaleTag,
+		browserRequestLanguageTag
 	} = useConfig();
 	const ref = useRef();
 	const inputRef = useRef();
@@ -106,8 +110,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const [leadCollected, setLeadCollected] = useState(false);
 
 	const allowedSingleCharLanguages = ['ja', 'zh', 'ko'];
-	const allowSingleCharMessage = allowedSingleCharLanguages.some((lang) =>
-		navigator.language?.startsWith(lang)
+	const navLangList =
+		typeof navigator !== 'undefined' && Array.isArray(navigator.languages)
+			? navigator.languages
+			: typeof navigator !== 'undefined' && navigator.language
+				? [navigator.language]
+				: [];
+	const allowSingleCharMessage = navLangList.some((tag) =>
+		allowedSingleCharLanguages.some((lang) =>
+			typeof tag === 'string' && tag.toLowerCase().startsWith(lang)
+		)
 	);
 	const minInputLength = allowSingleCharMessage ? 1 : 2;
 
@@ -735,7 +747,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				conversationId: getConversationId(),
 				context_items: contextItems || 6,
 				autocut: 2,
-				default_language: navigator.language,
+				default_language: browserRequestLanguageTag,
 				image_urls:
 					image_urls.length > 0 && useImageUpload
 						? image_urls
@@ -829,21 +841,45 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									message: data.data,
 									loading: false,
 									error: true,
-									streaming: false
+									streaming: false,
+									agentActivity: null
 								}
 							});
 							scrollToBottom(ref);
 							throw new FatalError(data.data);
 						}
 
-						// Skip reasoning and tool_call events - these don't contain answer content
-						// We keep the loading state until actual stream/answer events arrive
-						if (
-							data.event === 'reasoning' ||
-							data.event === 'tool_call'
-						) {
-							// Optionally log for debugging
-							// console.log('DOCSBOT: Received agent event:', data.event, data.data);
+						// Agent SSE: reasoning + tool_call use JSON `data`; stream uses plain text (see agentActivityFromSse.js)
+						if (data.event === 'tool_call') {
+							const activity = agentActivityFromSseEvent(
+								'tool_call',
+								data.data
+							);
+							if (
+								activity &&
+								showAgentActivity !== false
+							) {
+								dispatch({
+									type: 'update_message',
+									payload: { id, agentActivity: activity }
+								});
+							}
+							return;
+						}
+						if (data.event === 'reasoning') {
+							const activity = agentActivityFromSseEvent(
+								'reasoning',
+								data.data
+							);
+							if (
+								activity &&
+								showAgentActivity !== false
+							) {
+								dispatch({
+									type: 'update_message',
+									payload: { id, agentActivity: activity }
+								});
+							}
 							return;
 						}
 
@@ -862,7 +898,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									message: answer,
 									sources: null,
 									loading: false,
-									streaming: true
+									streaming: true,
+									agentActivity: null
 								}
 							});
 
@@ -892,7 +929,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										conversationId: getConversationId(),
 										loading: false,
 										streaming: false,
-										responses: finalData.options || null
+										responses: finalData.options || null,
+										agentActivity: null,
+										stripeBilling: finalData.stripeBilling || null
 									}
 								});
 
@@ -953,7 +992,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									loading: false,
 									error: true,
 									isRateLimitError,
-									streaming: false
+									streaming: false,
+									agentActivity: null
 								}
 							});
 							setIsFetching(false);
@@ -974,17 +1014,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											'Failed to connect after several attempts. Please try again later.',
 										loading: false,
 										error: true,
-										streaming: false
+										streaming: false,
+										agentActivity: null
 									}
 								});
 								setIsFetching(false);
 								scrollToBottom(ref);
 								throw new FatalError('Max retries exceeded');
 							}
-
-							console.log(
-								`DOCSBOT: Retrying connection... Attempt ${retryCount}/${MAX_RETRIES}`
-							);
 
 							// Return delay with exponential backoff (in ms)
 							return Math.min(1000 * 2 ** retryCount, 10000);
@@ -1012,7 +1049,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						loading: false,
 						error: true,
 						isRateLimitError,
-						streaming: false
+						streaming: false,
+						agentActivity: null
 					}
 				});
 				setIsFetching(false);
@@ -1122,7 +1160,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								answerId: finalData.id,
 								rating: finalData.rating,
 								loading: false,
-								streaming: false
+								streaming: false,
+								stripeBilling: finalData.stripeBilling || null
 							}
 						});
 						dispatch({
@@ -1723,7 +1762,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								</span>
 									<div className="docsbot-chat-suggested-questions-grid">
 										{Object.keys(questions).map((index) => {
-											const question = questions[index];
+											const suggestion = questions[index];
+											const prompt =
+												typeof suggestion === 'string'
+													? suggestion
+													: suggestion?.question;
+											const chipLabel =
+												typeof suggestion === 'string'
+													? suggestion
+													: suggestion?.label ?? prompt;
 											return (
 												<button
 													key={'question' + index}
@@ -1734,20 +1781,19 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 															type: 'add_message',
 															payload: {
 																variant: 'user',
-																message:
-																	question,
+																message: prompt,
 																loading: false,
 																timestamp:
 																	Date.now()
 															}
 														});
-														fetchAnswer(question);
+														fetchAnswer(prompt);
 														setChatInput('');
 														inputRef.current.focus();
 													}}
 													className="docsbot-chat-suggested-questions-button"
 												>
-													{question}
+													{chipLabel}
 												</button>
 											);
 										})}
