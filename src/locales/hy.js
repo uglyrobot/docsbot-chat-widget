@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Ստեղծում է վճարման պորտալի հղում…",
     "agentActivityStripeRefundLatestPayment": "Մշակում է վերադարձը…",
     "agentActivityStripeCancelSubscription": "Մշակում է չեղարկումը…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Գումար",
     "stripeInvoice": "Հաշիվ",
     "stripeAmountDue": "Պարտք",

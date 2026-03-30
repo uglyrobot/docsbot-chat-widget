@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Creez linkul pentru portalul de facturare…",
     "agentActivityStripeRefundLatestPayment": "Procesez rambursarea…",
     "agentActivityStripeCancelSubscription": "Anulez abonamentul…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Sumă",
     "stripeInvoice": "Factură",
     "stripeAmountDue": "Datorat",

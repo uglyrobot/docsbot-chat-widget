@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "बिलिङ पोर्टल लिङ्क बनाउँदै…",
     "agentActivityStripeRefundLatestPayment": "फिर्ता प्रक्रिया गर्दै…",
     "agentActivityStripeCancelSubscription": "रद्द प्रक्रिया गर्दै…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "रकम",
     "stripeInvoice": "इनभ्वाइस",
     "stripeAmountDue": "बाँकी",

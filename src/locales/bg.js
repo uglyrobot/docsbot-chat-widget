@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Създава връзка към портала за фактуриране…",
     "agentActivityStripeRefundLatestPayment": "Обработва възстановяване…",
     "agentActivityStripeCancelSubscription": "Обработва отказ…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Сума",
     "stripeInvoice": "Фактура",
     "stripeAmountDue": "Дължимо",

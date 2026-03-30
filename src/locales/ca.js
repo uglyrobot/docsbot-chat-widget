@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Creant enllaç al portal de facturació…",
     "agentActivityStripeRefundLatestPayment": "Processant el reemborsament…",
     "agentActivityStripeCancelSubscription": "Processant la cancel·lació…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Import",
     "stripeInvoice": "Factura",
     "stripeAmountDue": "Pendent",

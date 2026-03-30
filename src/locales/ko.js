@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "청구 포털 링크를 만드는 중…",
     "agentActivityStripeRefundLatestPayment": "환불 처리 중…",
     "agentActivityStripeCancelSubscription": "취소 처리 중…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "금액",
     "stripeInvoice": "청구서",
     "stripeAmountDue": "미결제",

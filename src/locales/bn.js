@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "বিলিং পোর্টাল লিংক তৈরি করছে…",
     "agentActivityStripeRefundLatestPayment": "রিফান্ড প্রক্রিয়া করছে…",
     "agentActivityStripeCancelSubscription": "বাতিলকরণ প্রক্রিয়া করছে…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "পরিমাণ",
     "stripeInvoice": "চালান",
     "stripeAmountDue": "বাকি",

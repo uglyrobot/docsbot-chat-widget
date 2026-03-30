@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Luon laskutusportaalilinkin…",
     "agentActivityStripeRefundLatestPayment": "Käsittelen hyvitystä…",
     "agentActivityStripeCancelSubscription": "Käsittelen peruutusta…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Summa",
     "stripeInvoice": "Lasku",
     "stripeAmountDue": "Erääntyy",

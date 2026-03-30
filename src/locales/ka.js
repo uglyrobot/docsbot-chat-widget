@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "ბილინგის პორტალის ბმულის შექმნა…",
     "agentActivityStripeRefundLatestPayment": "დაბრუნების დამუშავება…",
     "agentActivityStripeCancelSubscription": "გაუქმების დამუშავება…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "თანხა",
     "stripeInvoice": "ინვოისი",
     "stripeAmountDue": "გადასახდელი",

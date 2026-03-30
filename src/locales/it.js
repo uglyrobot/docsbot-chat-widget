@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Creo il link al portale di fatturazione…",
     "agentActivityStripeRefundLatestPayment": "Elaboro il rimborso…",
     "agentActivityStripeCancelSubscription": "Elaboro l'annullamento…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Importo",
     "stripeInvoice": "Fattura",
     "stripeAmountDue": "Dovuto",

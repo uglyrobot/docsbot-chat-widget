@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "බිල්පත් දොරටුවේ සබැඳිය සාදමින්…",
     "agentActivityStripeRefundLatestPayment": "ආපසු ගෙවීම සැකසමින්…",
     "agentActivityStripeCancelSubscription": "අවලංගු කිරීම සැකසමින්…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "මුදල",
     "stripeInvoice": "ඉන්වොයිසිය",
     "stripeAmountDue": "ගෙවිය යුතු",

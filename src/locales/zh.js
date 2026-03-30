@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "正在创建客户门户链接…",
     "agentActivityStripeRefundLatestPayment": "正在处理退款…",
     "agentActivityStripeCancelSubscription": "正在取消订阅…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "金额",
     "stripeInvoice": "发票",
     "stripeAmountDue": "应付",

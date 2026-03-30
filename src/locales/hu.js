@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Létrehozom a számlázási portál linkjét…",
     "agentActivityStripeRefundLatestPayment": "Feldolgozom a visszatérítést…",
     "agentActivityStripeCancelSubscription": "Feldolgozom a lemondást…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Összeg",
     "stripeInvoice": "Számla",
     "stripeAmountDue": "Esedékes",

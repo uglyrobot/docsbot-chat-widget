@@ -40,6 +40,8 @@ export const defaultLabels = {
   agentActivityStripeBillingPortal: "Creating billing portal link…",
   agentActivityStripeRefundLatestPayment: "Processing refund…",
   agentActivityStripeCancelSubscription: "Processing cancellation…",
+  bookingStatusBooked: "Booked",
+  bookingStatusRescheduled: "Rescheduled",
   stripeAmount: "Amount",
   stripeInvoice: "Invoice",
   stripeAmountDue: "Due",

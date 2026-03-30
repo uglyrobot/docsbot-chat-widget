@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Vytvářím odkaz na fakturační portál…",
     "agentActivityStripeRefundLatestPayment": "Zpracovávám vrácení platby…",
     "agentActivityStripeCancelSubscription": "Zpracovávám zrušení…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Částka",
     "stripeInvoice": "Faktura",
     "stripeAmountDue": "Splatné",

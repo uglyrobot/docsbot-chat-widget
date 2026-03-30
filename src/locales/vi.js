@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Đang tạo liên kết cổng thanh toán…",
     "agentActivityStripeRefundLatestPayment": "Đang xử lý hoàn tiền…",
     "agentActivityStripeCancelSubscription": "Đang xử lý hủy…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Số tiền",
     "stripeInvoice": "Hóa đơn",
     "stripeAmountDue": "Còn phải trả",

@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "請求ポータルのリンクを作成中…",
     "agentActivityStripeRefundLatestPayment": "返金を処理中…",
     "agentActivityStripeCancelSubscription": "キャンセルを処理中…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "金額",
     "stripeInvoice": "請求書",
     "stripeAmountDue": "未払い",

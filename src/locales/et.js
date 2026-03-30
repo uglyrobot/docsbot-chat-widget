@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Loon arveldusportaali lingi…",
     "agentActivityStripeRefundLatestPayment": "Töötlen tagasimakset…",
     "agentActivityStripeCancelSubscription": "Töötlen tühistamist…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Summa",
     "stripeInvoice": "Arve",
     "stripeAmountDue": "Tasumisele",

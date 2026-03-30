@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "جارٍ إنشاء رابط بوابة الفوترة…",
     "agentActivityStripeRefundLatestPayment": "جارٍ معالجة الاسترداد…",
     "agentActivityStripeCancelSubscription": "جارٍ معالجة الإلغاء…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "المبلغ",
     "stripeInvoice": "فاتورة",
     "stripeAmountDue": "مستحق",

@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Opretter link til faktureringsportal…",
     "agentActivityStripeRefundLatestPayment": "Behandler refusion…",
     "agentActivityStripeCancelSubscription": "Behandler annullering…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Beløb",
     "stripeInvoice": "Faktura",
     "stripeAmountDue": "Forfaldent",

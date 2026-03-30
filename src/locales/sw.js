@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Ninaunda kiungo cha portal ya malipo…",
     "agentActivityStripeRefundLatestPayment": "Ninashughulikia marejesho…",
     "agentActivityStripeCancelSubscription": "Ninaghairi usajili…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Kiasi",
     "stripeInvoice": "Ankara",
     "stripeAmountDue": "Kinachodaiwa",

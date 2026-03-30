@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Veidoju saiti uz norēķinu portālu…",
     "agentActivityStripeRefundLatestPayment": "Apstrādāju atmaksu…",
     "agentActivityStripeCancelSubscription": "Apstrādāju atcelšanu…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Summa",
     "stripeInvoice": "Rēķins",
     "stripeAmountDue": "Jāmaksā",

@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Création du lien vers le portail de facturation…",
     "agentActivityStripeRefundLatestPayment": "Traitement du remboursement…",
     "agentActivityStripeCancelSubscription": "Traitement de l’annulation…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Montant",
     "stripeInvoice": "Facture",
     "stripeAmountDue": "Dû",

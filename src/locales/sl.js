@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Ustvarjam povezavo do portala za obračun…",
     "agentActivityStripeRefundLatestPayment": "Obdelujem vračilo…",
     "agentActivityStripeCancelSubscription": "Obdelujem preklic…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Znesek",
     "stripeInvoice": "Račun",
     "stripeAmountDue": "Zapadlo",

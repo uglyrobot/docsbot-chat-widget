@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "יוצר קישור לפורטל החיוב…",
     "agentActivityStripeRefundLatestPayment": "מעבד החזר כספי…",
     "agentActivityStripeCancelSubscription": "מעבד ביטול…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "סכום",
     "stripeInvoice": "חשבונית",
     "stripeAmountDue": "לתשלום",

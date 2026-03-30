@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Skep skakel na faktureringsportaal…",
     "agentActivityStripeRefundLatestPayment": "Verwerk terugbetaling…",
     "agentActivityStripeCancelSubscription": "Verwerk kansellasie…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Bedrag",
     "stripeInvoice": "Faktuur",
     "stripeAmountDue": "Verskuldig",

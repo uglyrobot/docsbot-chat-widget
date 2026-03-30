@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Erstelle Link zum Abrechnungsportal…",
     "agentActivityStripeRefundLatestPayment": "Verarbeite Rückerstattung…",
     "agentActivityStripeCancelSubscription": "Verarbeite Kündigung…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Betrag",
     "stripeInvoice": "Rechnung",
     "stripeAmountDue": "Fällig",

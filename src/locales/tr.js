@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Faturalandırma portalı bağlantısı oluşturuluyor…",
     "agentActivityStripeRefundLatestPayment": "İade işleniyor…",
     "agentActivityStripeCancelSubscription": "Abonelik iptal ediliyor…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Tutar",
     "stripeInvoice": "Fatura",
     "stripeAmountDue": "Ödenecek",

@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "در حال ایجاد لینک پورتال صورتحساب…",
     "agentActivityStripeRefundLatestPayment": "در حال پردازش بازپرداخت…",
     "agentActivityStripeCancelSubscription": "در حال پردازش لغو…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "مبلغ",
     "stripeInvoice": "صورتحساب",
     "stripeAmountDue": "سررسید",

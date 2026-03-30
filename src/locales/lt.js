@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Kuriama sąskaitų portalo nuoroda…",
     "agentActivityStripeRefundLatestPayment": "Apdorojamas grąžinimas…",
     "agentActivityStripeCancelSubscription": "Apdorojamas atšaukimas…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Suma",
     "stripeInvoice": "Sąskaita",
     "stripeAmountDue": "Mokėtina",

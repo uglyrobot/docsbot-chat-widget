@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Bý til hlekk á greiðsluveitu…",
     "agentActivityStripeRefundLatestPayment": "Vinn úr endurgreiðslu…",
     "agentActivityStripeCancelSubscription": "Vinn úr uppsögn…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Upphæð",
     "stripeInvoice": "Reikningur",
     "stripeAmountDue": "Gjaldfallið",

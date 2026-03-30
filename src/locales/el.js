@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Δημιουργώ σύνδεσμο πύλης χρέωσης…",
     "agentActivityStripeRefundLatestPayment": "Επεξεργάζομαι επιστροφή χρημάτων…",
     "agentActivityStripeCancelSubscription": "Επεξεργάζομαι την ακύρωση…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Ποσό",
     "stripeInvoice": "Τιμολόγιο",
     "stripeAmountDue": "Οφειλόμενο",

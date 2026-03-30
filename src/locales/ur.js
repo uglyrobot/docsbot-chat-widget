@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "بلنگ پورٹل لنک بنا رہا ہے…",
     "agentActivityStripeRefundLatestPayment": "رقم واپسی پر کارروائی…",
     "agentActivityStripeCancelSubscription": "منسوخی پر کارروائی…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "رقم",
     "stripeInvoice": "انوائس",
     "stripeAmountDue": "واجب الادا",

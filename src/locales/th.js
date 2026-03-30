@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "กำลังสร้างลิงก์พอร์ทัลการเรียกเก็บเงิน…",
     "agentActivityStripeRefundLatestPayment": "กำลังดำเนินการคืนเงิน…",
     "agentActivityStripeCancelSubscription": "กำลังยกเลิกการสมัคร…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "จำนวนเงิน",
     "stripeInvoice": "ใบแจ้งหนี้",
     "stripeAmountDue": "ค้างชำระ",

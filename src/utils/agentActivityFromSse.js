@@ -32,14 +32,7 @@ export function agentActivityFromSseEvent(eventName, rawData) {
 	}
 
 	if (eventName === 'tool_call') {
-		let payload = rawData;
-		if (typeof payload === 'string') {
-			try {
-				payload = JSON.parse(payload);
-			} catch {
-				payload = { name: '', params: '' };
-			}
-		}
+		const payload = parseToolCallPayload(rawData);
 		const name = (payload && payload.name) || '';
 		const openAiKind = openAiBuiltinToolKind(name);
 		if (openAiKind === 'web_search') {
@@ -55,10 +48,39 @@ export function agentActivityFromSseEvent(eventName, rawData) {
 		if (name === 'search_documentation') {
 			return { kind: 'search_docs', configKey: 'agentActivitySearchDocumentation' };
 		}
+		if (bookingToolActivityKind(name)) {
+			return { kind: 'booking', configKey: 'agentActivityTool' };
+		}
 		return { kind: 'tool', configKey: 'agentActivityTool' };
 	}
 
 	return null;
+}
+
+export function parseToolCallPayload(rawData) {
+	let payload = rawData;
+	if (typeof payload === 'string') {
+		try {
+			payload = JSON.parse(payload);
+		} catch {
+			payload = { name: '', params: '' };
+		}
+	}
+	return payload && typeof payload === 'object'
+		? payload
+		: { name: '', params: '' };
+}
+
+export function isCalendlyToolCallName(name) {
+	return typeof name === 'string' && /calendly/i.test(name);
+}
+
+export function isCalComToolCallName(name) {
+	return typeof name === 'string' && /cal(?:\.|_)?com/i.test(name);
+}
+
+export function isTidyCalToolCallName(name) {
+	return typeof name === 'string' && /tidycal/i.test(name);
 }
 
 /** Stripe tool names → config label key (translations). Unmapped stripe_* falls through to generic tool. */
@@ -72,6 +94,10 @@ const STRIPE_TOOL_CONFIG_KEYS = {
 
 function stripeToolConfigKey(name) {
 	return name && STRIPE_TOOL_CONFIG_KEYS[name] || null;
+}
+
+function bookingToolActivityKind(name) {
+	return typeof name === 'string' && /^book_/i.test(name);
 }
 
 /** Maps OpenAI Responses / tools naming to widget activity kinds (labels from bot config). */
@@ -97,4 +123,3 @@ function formatReasoningLabel(text) {
 	const one = line.trim();
 	return one.length > 140 ? `${one.slice(0, 137)}…` : one;
 }
-

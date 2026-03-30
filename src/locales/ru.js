@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Создаю ссылку на портал биллинга…",
     "agentActivityStripeRefundLatestPayment": "Обрабатываю возврат…",
     "agentActivityStripeCancelSubscription": "Отменяю подписку…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Сумма",
     "stripeInvoice": "Счёт",
     "stripeAmountDue": "К оплате",

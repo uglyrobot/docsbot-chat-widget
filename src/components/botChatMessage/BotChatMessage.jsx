@@ -13,6 +13,7 @@ import { preprocessMath } from '../../utils/markdown';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
 	faBrain,
+	faCalendarDays,
 	faMagnifyingGlass,
 	faVial,
 	faGlobe
@@ -23,6 +24,9 @@ import {
 } from '@fortawesome/free-regular-svg-icons';
 
 import { StripeBilling } from '../stripeBilling/StripeBilling';
+import { CalendlyEmbed } from '../calendlyEmbed/CalendlyEmbed';
+import { CalComEmbed } from '../calComEmbed/CalComEmbed';
+import { TidyCalEmbed } from '../tidyCalEmbed/TidyCalEmbed';
 
 /**
  * Config `labels` keys when agent activity uses configKey (all tools except reasoning).
@@ -34,6 +38,7 @@ const AGENT_ACTIVITY_CONFIG_LABEL_KEYS = {
 	code_interpreter: 'agentActivityCodeInterpreter',
 	search_docs: 'agentActivitySearchDocumentation',
 	stripe: 'agentActivityTool', // unmapped stripe_* fallback
+	booking: 'agentActivityTool',
 	tool: 'agentActivityTool'
 };
 
@@ -45,6 +50,8 @@ function iconForAgentActivity(kind) {
 			return faMagnifyingGlass;
 		case 'web_search':
 			return faGlobe;
+		case 'booking':
+			return faCalendarDays;
 		case 'code_interpreter':
 			return faFileCode;
 		case 'stripe':
@@ -77,8 +84,11 @@ export const BotChatMessage = ({
 	onLeadCollectRequest,
 	onLeadCollectEscalated,
 	onLeadCollectCancel,
+	onSchedulerBookingMetadata,
 	leadCollectMode,
-	pendingLeadCapture
+	pendingLeadCapture,
+	isCalendlyScriptReady,
+	isTidyCalScriptReady
 }) => {
 	const [rating, setRating] = useState(payload.rating || 0);
 	const [ratingSubmitted, setRatingSubmitted] = useState(false);
@@ -99,7 +109,8 @@ export const BotChatMessage = ({
 		showCopyButton,
 		localDev,
 		allowedDomains,
-		linkSafetyEnabled
+		linkSafetyEnabled,
+		browserLocaleTag
 	} = useConfig();
 	const { dispatch, state } = useChatbot();
 	const headers = {
@@ -443,6 +454,12 @@ export const BotChatMessage = ({
 		chatContainerRef
 	]);
 
+	useEffect(() => {
+		if (payload?.schedulerEmbed && !payload.loading && payload.message) {
+			scrollToBottom(chatContainerRef);
+		}
+	}, [payload?.schedulerEmbed, payload.loading, payload.message, chatContainerRef]);
+
 	// Check if this message has been replied to by looking for the next message
 	const hasNextMessage = () => {
 		const messageIds = Object.keys(state.messages);
@@ -468,6 +485,65 @@ export const BotChatMessage = ({
 		payload.type !== 'lead_collect_message' &&
 		!isFirstBotMessage() &&
 		(isAgentLookupAnswer || (!isAgent && hasVisibleSources));
+
+	const handleCalendlyBookingScheduled = ({
+		eventName,
+		payload: calendlyPayload,
+		url,
+		path
+	}) => {
+		const metadata = buildCalendlyBookingMetadata({
+			eventName,
+			payload: calendlyPayload,
+			url,
+			path,
+			locale: browserLocaleTag
+		});
+		persistSchedulerMetadata(metadata);
+	};
+
+	const handleCalComBookingSuccessful = ({ eventName, payload: calPayload, url }) => {
+		const metadata = buildCalComBookingMetadata({
+			eventName,
+			payload: calPayload,
+			url,
+			locale: browserLocaleTag
+		});
+		persistSchedulerMetadata(metadata);
+	};
+
+	const handleTidyCalBookingEvent = ({ eventName, payload, url }) => {
+		const metadata = buildTidyCalBookingMetadata({
+			eventName,
+			payload,
+			url,
+			locale: browserLocaleTag
+		});
+		persistSchedulerMetadata(metadata);
+	};
+
+	const persistSchedulerMetadata = (metadata) => {
+		if (
+			!metadata ||
+			typeof metadata !== 'object' ||
+			typeof onSchedulerBookingMetadata !== 'function'
+		) {
+			return;
+		}
+		dispatch({
+			type: 'update_message',
+			payload: {
+				id: payload.id,
+				schedulerEmbedCompleted: true,
+				bookingSummary: buildBookingSummary(metadata)
+			}
+		});
+		console.log('Scheduler Metadata Saved:', metadata);
+		onSchedulerBookingMetadata(metadata);
+		if (inputRef?.current) {
+			inputRef.current.focus();
+		}
+	};
 
 	return (
 		<>
@@ -832,8 +908,36 @@ export const BotChatMessage = ({
                                                 );
                                         })()}
 					</div>
+					{payload.schedulerEmbed?.path &&
+						!payload.loading &&
+						payload.message &&
+							<div className="docsbot-full-width-row-block">
+								{renderSchedulerEmbed({
+									schedulerEmbed: payload.schedulerEmbed,
+									messageId: payload.id,
+									isCalendlyScriptReady,
+									isTidyCalScriptReady,
+									onCalendlyBookingScheduled:
+										handleCalendlyBookingScheduled,
+									onCalComBookingSuccessful:
+										handleCalComBookingSuccessful,
+									onTidyCalBookingEvent:
+										handleTidyCalBookingEvent
+								})}
+							</div>}
+					{!payload.schedulerEmbed?.path &&
+						payload.bookingSummary &&
+						!payload.loading &&
+						payload.message && (
+							<div className="docsbot-full-width-row-block">
+									{renderBookingSummaryCard(
+										payload.bookingSummary,
+										labels
+									)}
+								</div>
+							)}
 					{payload.stripeBilling && (
-						<div className="w-full">
+						<div className="docsbot-full-width-row-block">
 							<StripeBilling data={payload.stripeBilling} />
 						</div>
 					)}
@@ -1099,3 +1203,498 @@ export const BotChatMessage = ({
 		</>
 	);
 };
+
+function buildCalendlyBookingMetadata({
+	eventName,
+	payload,
+	url,
+	path,
+	locale
+}) {
+	const metadata = {
+		booking_state: 'booked'
+	};
+
+	const startTime = extractCalendlyField(payload, [
+		['event', 'start_time'],
+		['invitee', 'start_time'],
+		['event', 'start_time_pretty'],
+		['invitee', 'scheduled_at'],
+		['event', 'startTime'],
+		['invitee', 'startTime'],
+		['scheduled_at']
+	]);
+	if (startTime) {
+		metadata.booking_start_time = startTime;
+		metadata.booking_start_time_local = formatCalendlyDate(
+			startTime,
+			locale
+		);
+	}
+
+	const endTime = extractCalendlyField(payload, [
+		['event', 'end_time'],
+		['invitee', 'end_time'],
+		['event', 'endTime'],
+		['invitee', 'endTime']
+	]);
+	if (endTime) {
+		metadata.booking_end_time = endTime;
+		metadata.booking_end_time_local = formatCalendlyDate(
+			endTime,
+			locale
+		);
+	}
+
+	const eventNameValue =
+		extractCalendlyField(payload, [
+		['event_type', 'name'],
+		['event_type', 'kind'],
+		['event_type', 'slug'],
+		['event_type', 'event_type_name'],
+		['event', 'event_type_name'],
+		['event', 'name'],
+		['event', 'event_type'],
+		['invitee', 'event_type_name'],
+		['invitee', 'name'],
+		['event_name']
+	]) || inferSchedulerTitleFromPath(path || url);
+	if (eventNameValue) {
+		metadata.booking_title = eventNameValue;
+	}
+
+	return compactSchedulerMetadata(metadata);
+}
+
+function buildCalComBookingMetadata({ eventName, payload, url, locale }) {
+	const metadata = {
+		booking_state:
+			eventName === 'rescheduleBookingSuccessfulV2'
+				? 'rescheduled'
+				: 'booked'
+	};
+
+	if (typeof payload?.title === 'string' && payload.title.trim()) {
+		metadata.booking_title = payload.title.trim();
+	}
+
+	if (payload?.startTime) {
+		metadata.booking_start_time = payload.startTime;
+		metadata.booking_start_time_local = formatCalendlyDate(
+			payload.startTime,
+			locale
+		);
+	}
+
+	if (payload?.endTime) {
+		metadata.booking_end_time = payload.endTime;
+		metadata.booking_end_time_local = formatCalendlyDate(
+			payload.endTime,
+			locale
+		);
+	}
+
+	return compactSchedulerMetadata(metadata);
+}
+
+function buildTidyCalBookingMetadata({ eventName, payload, url, locale }) {
+	const metadata = {
+		booking_state: inferTidyCalState(eventName)
+	};
+
+	const title = extractNestedString(payload, [
+		['title'],
+		['eventTypeName'],
+		['bookingTypeName'],
+		['event_name'],
+		['data', 'title'],
+		['data', 'booking_type', 'title'],
+		['data', 'booking_type', 'name'],
+		['data', 'booking', 'title'],
+		['data', 'booking', 'booking_type_title'],
+		['data', 'booking', 'booking_type_name'],
+		['data', 'bookings', 0, 'title'],
+		['data', 'bookings', 0, 'booking_type_title'],
+		['data', 'bookings', 0, 'booking_type_name']
+	]);
+	if (title) {
+		metadata.booking_title = title;
+	} else {
+		const inferredTitle = inferSchedulerTitleFromPath(url);
+		if (inferredTitle) {
+			metadata.booking_title = inferredTitle;
+		}
+	}
+
+	const startTime = extractNestedString(payload, [
+		['startTime'],
+		['start_time'],
+		['dateTime'],
+		['scheduledAt'],
+		['data', 'startTime'],
+		['data', 'start_time'],
+		['data', 'starts_at'],
+		['data', 'booking', 'startTime'],
+		['data', 'booking', 'start_time'],
+		['data', 'booking', 'starts_at'],
+		['data', 'bookings', 0, 'startTime'],
+		['data', 'bookings', 0, 'start_time'],
+		['data', 'bookings', 0, 'starts_at']
+	]);
+	if (startTime) {
+		metadata.booking_start_time = startTime;
+		metadata.booking_start_time_local = formatCalendlyDate(
+			startTime,
+			locale
+		);
+	}
+
+	const endTime = extractNestedString(payload, [
+		['endTime'],
+		['end_time'],
+		['data', 'endTime'],
+		['data', 'end_time'],
+		['data', 'ends_at'],
+		['data', 'booking', 'endTime'],
+		['data', 'booking', 'end_time'],
+		['data', 'booking', 'ends_at'],
+		['data', 'bookings', 0, 'endTime'],
+		['data', 'bookings', 0, 'end_time'],
+		['data', 'bookings', 0, 'ends_at']
+	]);
+	if (endTime) {
+		metadata.booking_end_time = endTime;
+		metadata.booking_end_time_local = formatCalendlyDate(
+			endTime,
+			locale
+		);
+	}
+
+	return compactSchedulerMetadata(metadata);
+}
+
+function compactSchedulerMetadata(metadata) {
+	return Object.entries(metadata || {}).reduce((acc, [key, value]) => {
+		if (
+			value !== undefined &&
+			value !== null &&
+			!(typeof value === 'string' && value.trim() === '')
+		) {
+			acc[key] = value;
+		}
+		return acc;
+	}, {});
+}
+
+function buildBookingSummary(metadata) {
+	if (!metadata || typeof metadata !== 'object') {
+		return null;
+	}
+
+	const state = firstString(metadata.booking_state);
+	if (!state) {
+		return null;
+	}
+
+	return compactSchedulerMetadata({
+		state,
+		title: firstString(metadata.booking_title),
+		startTime: firstString(
+			metadata.booking_start_time_local,
+			metadata.booking_start_time
+		),
+		endTime: firstString(
+			metadata.booking_end_time_local,
+			metadata.booking_end_time
+		)
+	});
+}
+
+function firstString(...values) {
+	for (const value of values) {
+		if (typeof value === 'string' && value.trim()) {
+			return value.trim();
+		}
+	}
+	return null;
+}
+
+function extractNestedString(payload, pathOptions) {
+	for (const path of pathOptions) {
+		let current = payload;
+		for (const segment of path) {
+			if (current === null || current === undefined) {
+				current = null;
+				break;
+			}
+			current = current[segment];
+		}
+		if (typeof current === 'string' && current.trim()) {
+			return current.trim();
+		}
+		if (typeof current === 'number' && Number.isFinite(current)) {
+			return String(current);
+		}
+	}
+	return null;
+}
+
+function inferTidyCalState(eventName) {
+	return eventName === 'bookingComplete' ? 'booked' : 'selected';
+}
+
+function extractCalendlyField(payload, pathOptions) {
+	for (const path of pathOptions) {
+		let current = payload;
+		for (const segment of path) {
+			if (!current || typeof current !== 'object') {
+				current = null;
+				break;
+			}
+			current = current[segment];
+		}
+		if (typeof current === 'string' && current.trim()) {
+			return current.trim();
+		}
+	}
+	return null;
+}
+
+function inferSchedulerTitleFromPath(pathOrUrl) {
+	if (!pathOrUrl || typeof pathOrUrl !== 'string') {
+		return null;
+	}
+	const value = pathOrUrl.trim();
+	if (!value) {
+		return null;
+	}
+
+	let lastSegment = value;
+	try {
+		const parsed = new URL(value);
+		const segments = parsed.pathname.split('/').filter(Boolean);
+		lastSegment = segments[segments.length - 1] || value;
+	} catch {
+		const segments = value.split('/').filter(Boolean);
+		lastSegment = segments[segments.length - 1] || value;
+	}
+
+	const normalized = lastSegment
+		.replace(/[-_]+/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+	if (!normalized) {
+		return null;
+	}
+
+	const lower = normalized.toLowerCase();
+	const exactMap = {
+		'15m': '15 Minute Meeting',
+		'15min': '15 Minute Meeting',
+		'15mins': '15 Minute Meeting',
+		'30m': '30 Minute Meeting',
+		'30min': '30 Minute Meeting',
+		'30mins': '30 Minute Meeting',
+		'45m': '45 Minute Meeting',
+		'45min': '45 Minute Meeting',
+		'45mins': '45 Minute Meeting',
+		'60m': '60 Minute Meeting',
+		'60min': '60 Minute Meeting',
+		'60mins': '60 Minute Meeting',
+		'90m': '90 Minute Meeting',
+		'90min': '90 Minute Meeting',
+		'90mins': '90 Minute Meeting'
+	};
+	if (exactMap[lower]) {
+		return exactMap[lower];
+	}
+
+	const humanized = normalized
+		.split(' ')
+		.map((part) => humanizeSchedulerSlugPart(part))
+		.filter(Boolean)
+		.join(' ')
+		.trim();
+
+	return humanized || null;
+}
+
+function humanizeSchedulerSlugPart(part) {
+	if (!part) return '';
+	const value = String(part).trim();
+	if (!value) return '';
+	const lower = value.toLowerCase();
+
+	if (/^\d+(m|min|mins)$/.test(lower)) {
+		const minutes = lower.match(/^\d+/)?.[0];
+		return minutes ? `${minutes} Minute` : '';
+	}
+
+	const tokenMap = {
+		mtg: 'Meeting',
+		mtgs: 'Meetings',
+		intro: 'Intro',
+		demo: 'Demo',
+		consult: 'Consult',
+		consultation: 'Consultation',
+		call: 'Call',
+		meeting: 'Meeting',
+		session: 'Session',
+		min: 'Minute',
+		mins: 'Minutes',
+		hr: 'Hour',
+		hrs: 'Hours'
+	};
+	if (tokenMap[lower]) {
+		return tokenMap[lower];
+	}
+
+	if (/^\d+$/.test(lower)) {
+		return lower;
+	}
+
+	return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+function renderBookingSummaryCard(summary, labels) {
+	const state = String(summary?.state || '').toLowerCase();
+	const isRescheduled = state === 'rescheduled';
+	const badgeClasses = isRescheduled
+		? 'bg-amber-100 text-amber-800 border-amber-200'
+		: 'bg-emerald-100 text-emerald-800 border-emerald-200';
+	const heading = isRescheduled
+		? labels?.bookingStatusRescheduled || 'Rescheduled'
+		: labels?.bookingStatusBooked || 'Booked';
+
+	return (
+		<div className="w-full border border-slate-200 rounded-lg bg-white overflow-hidden shadow-sm min-w-0">
+			<div className="p-3 sm:p-4">
+				<div className="flex justify-between items-start mb-2 gap-2">
+					<div className="flex items-center gap-2 min-w-0">
+						<FontAwesomeIcon
+							icon={faCalendarDays}
+							className="text-slate-400 w-4 h-4 shrink-0"
+						/>
+						<span className="font-semibold text-slate-800 text-sm sm:text-base truncate">
+							{heading}
+						</span>
+					</div>
+					<span
+						className={clsx(
+							'shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border',
+							badgeClasses
+						)}
+					>
+						{heading}
+					</span>
+				</div>
+
+					<div className="text-sm text-slate-600 space-y-2">
+						{summary?.title && (
+							<div className="min-w-0">
+								<span className="block text-xs text-slate-400 truncate">
+									Event
+								</span>
+								<span className="font-medium text-slate-800 truncate block">
+									{summary.title}
+								</span>
+							</div>
+						)}
+						{(summary?.startTime || summary?.endTime) && (
+							<div className="grid grid-cols-2 gap-2">
+								{summary?.startTime && (
+									<div className="min-w-0">
+										<span className="block text-xs text-slate-400 truncate">
+											Starts
+										</span>
+										<span className="font-medium text-slate-800 truncate block">
+											{summary.startTime}
+										</span>
+									</div>
+								)}
+								{summary?.endTime && (
+									<div className="min-w-0">
+										<span className="block text-xs text-slate-400 truncate">
+											Ends
+										</span>
+										<span className="truncate block">{summary.endTime}</span>
+									</div>
+								)}
+							</div>
+						)}
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+function formatCalendlyDate(value, locale) {
+	if (!value) {
+		return '';
+	}
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) {
+		return value;
+	}
+
+	try {
+		return new Intl.DateTimeFormat(locale || undefined, {
+			dateStyle: 'medium',
+			timeStyle: 'short'
+		}).format(date);
+	} catch {
+		return date.toLocaleString();
+	}
+}
+
+function renderSchedulerEmbed({
+	schedulerEmbed,
+	messageId,
+	isCalendlyScriptReady,
+	isTidyCalScriptReady,
+	onCalendlyBookingScheduled,
+	onCalComBookingSuccessful,
+	onTidyCalBookingEvent
+}) {
+	if (schedulerEmbed?.provider === 'calendly') {
+		return (
+			<div className="w-full">
+				<CalendlyEmbed
+					path={schedulerEmbed.path}
+					hideEventDetails={schedulerEmbed.hideEventDetails}
+					hideCookieBanner={schedulerEmbed.hideCookieBanner}
+					scriptReady={isCalendlyScriptReady}
+					onBookingScheduled={onCalendlyBookingScheduled}
+				/>
+			</div>
+		);
+	}
+
+	if (schedulerEmbed?.provider === 'calcom') {
+		return (
+			<div className="w-full">
+				<CalComEmbed
+					path={schedulerEmbed.path}
+					hideEventDetails={schedulerEmbed.hideEventDetails}
+					messageId={messageId}
+					onBookingSuccessful={onCalComBookingSuccessful}
+				/>
+			</div>
+		);
+	}
+
+	if (schedulerEmbed?.provider === 'tidycal') {
+		return (
+			<div className="w-full">
+				<TidyCalEmbed
+					path={schedulerEmbed.path}
+					hideEventDetail={schedulerEmbed.hideEventDetail}
+					scriptReady={isTidyCalScriptReady}
+					onBookingEvent={onTidyCalBookingEvent}
+				/>
+			</div>
+		);
+	}
+
+	return null;
+}

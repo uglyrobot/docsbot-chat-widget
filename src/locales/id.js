@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "Membuat tautan portal penagihan…",
     "agentActivityStripeRefundLatestPayment": "Memproses pengembalian dana…",
     "agentActivityStripeCancelSubscription": "Memproses pembatalan…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "Jumlah",
     "stripeInvoice": "Faktur",
     "stripeAmountDue": "Jatuh tempo",

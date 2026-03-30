@@ -39,6 +39,8 @@ export default {
     "agentActivityStripeBillingPortal": "பில்லிங் போர்ட்டல் இணைப்பை உருவாக்குகிறது…",
     "agentActivityStripeRefundLatestPayment": "பணத்தைத் திரும்பச் செயலாக்குகிறது…",
     "agentActivityStripeCancelSubscription": "ரத்துசெய்தலைச் செயலாக்குகிறது…",
+    "bookingStatusBooked": "Booked",
+    "bookingStatusRescheduled": "Rescheduled",
     "stripeAmount": "தொகை",
     "stripeInvoice": "விலைப்பட்டியல்",
     "stripeAmountDue": "செலுத்த வேண்டியது",
