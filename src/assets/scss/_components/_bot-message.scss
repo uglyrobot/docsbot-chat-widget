@@ -121,6 +121,16 @@
 	}
 }
 
+.docsbot-full-width-row-block {
+	width: calc(100% + #{$spacing-sm});
+	max-width: calc(100% + #{$spacing-sm});
+	margin-right: calc(-1 * #{$spacing-sm});
+}
+
+.docsbot-full-width-row-block .docsbot-scheduler-embed-container {
+	max-width: none;
+}
+
 // Use remaining row width as the cap (min-width:0 + flex:1) but keep bubble content-width via align-items + bubble max-width.
 .docsbot-chat-bot-message-column {
 	flex: 1 1 0;
@@ -156,6 +166,51 @@
 		-webkit-line-clamp: 2;
 		-webkit-box-orient: vertical;
 	}
+}
+
+.docsbot-scheduler-embed-container {
+	width: 100%;
+	max-width: min(100%, 760px);
+}
+
+.docsbot-scheduler-embed-shell {
+	width: 100%;
+	border: 1px solid rgba(15, 23, 42, 0.12);
+	border-radius: 14px;
+	background: #ffffff;
+	box-shadow: none;
+	overflow: hidden;
+	position: relative;
+
+	&.is-loading {
+		min-height: 320px;
+	}
+}
+
+.docsbot-scheduler-embed-loading {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: clamp(64px, 12vh, 120px) $spacing-md;
+	box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.78);
+	backdrop-filter: blur(2px);
+	z-index: 1;
+}
+
+.docsbot-scheduler-embed-body,
+.docsbot-calcom-embed {
+	width: 100%;
+	min-width: 320px;
+}
+
+.docsbot-calendly-embed iframe,
+.docsbot-calcom-embed iframe,
+.docsbot-tidycal-embed iframe {
+	width: 100%;
+	border: 0;
 }
 
 /* Target consecutive bot messages with higher specificity */

@@ -24,7 +24,15 @@ import {
 	scrollToBottom,
 	mergeIdentifyMetadata
 } from '../../utils/utils';
-import { agentActivityFromSseEvent } from '../../utils/agentActivityFromSse';
+import {
+	agentActivityFromSseEvent,
+	parseToolCallPayload,
+	isCalendlyToolCallName,
+	isCalComToolCallName,
+	isTidyCalToolCallName
+} from '../../utils/agentActivityFromSse';
+import { loadCalendlyWidgetScript } from '../../utils/calendly';
+import { loadTidyCalWidgetScript } from '../../utils/tidycal';
 import { LazyStreamdown } from '../streamdown/LazyStreamdown';
 import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
@@ -32,6 +40,132 @@ import { fetchEventSource } from '@microsoft/fetch-event-source';
 // Define error classes for fetchEventSource
 class RetriableError extends Error {}
 class FatalError extends Error {}
+
+function resolveSchedulerEmbedForToolCall(toolCall, enabledProviders) {
+	const toolName = toolCall?.name;
+	const params = parseSchedulerPayload(toolCall?.params);
+	if (!params?.eventPath) {
+		return null;
+	}
+
+	if (
+		enabledProviders?.calendly &&
+		isCalendlyToolCallName(toolName)
+	) {
+		return buildSchedulerEmbed('calendly', params);
+	}
+
+	if (enabledProviders?.calcom && isCalComToolCallName(toolName)) {
+		return buildSchedulerEmbed('calcom', params);
+	}
+
+	if (enabledProviders?.tidycal && isTidyCalToolCallName(toolName)) {
+		return buildSchedulerEmbed('tidycal', params);
+	}
+
+	return null;
+}
+
+function resolveSchedulerEmbedForEventType(eventType, eventData, enabledProviders) {
+	const normalized = String(eventType || '').trim().toLowerCase();
+	if (!normalized) return null;
+	const payload = parseSchedulerPayload(eventData);
+	if (!payload?.eventPath) return null;
+
+	if (enabledProviders?.calendly && normalized === 'calendly') {
+		return buildSchedulerEmbed('calendly', payload);
+	}
+
+	if (enabledProviders?.calcom && normalized === 'calcom') {
+		return buildSchedulerEmbed('calcom', payload);
+	}
+
+	if (enabledProviders?.tidycal && normalized === 'tidycal') {
+		return buildSchedulerEmbed('tidycal', payload);
+	}
+
+	return null;
+}
+
+function buildSchedulerEmbed(provider, payload) {
+	const eventPath =
+		typeof payload?.eventPath === 'string' ? payload.eventPath.trim() : '';
+	if (!eventPath) {
+		return null;
+	}
+
+	return {
+		provider,
+		path: eventPath,
+		hideEventDetails: Boolean(payload?.hideEventDetails),
+		hideCookieBanner: Boolean(payload?.hideCookieBanner),
+		hideEventDetail: Boolean(payload?.hideEventDetail)
+	};
+}
+
+function parseSchedulerPayload(payload) {
+	if (!payload) return null;
+	if (typeof payload === 'string') {
+		try {
+			return JSON.parse(payload);
+		} catch {
+			return null;
+		}
+	}
+	return typeof payload === 'object' ? payload : null;
+}
+
+function parseToolCallDataPayload(params) {
+	if (params == null) return null;
+	if (typeof params === 'string') {
+		try {
+			return JSON.parse(params);
+		} catch {
+			return params;
+		}
+	}
+	return typeof params === 'object' ? params : null;
+}
+
+function isSchedulerEnabled(toggleOrPath) {
+	if (toggleOrPath === true) return true;
+	if (toggleOrPath === false || toggleOrPath == null) return false;
+	return typeof toggleOrPath === 'string' && Boolean(toggleOrPath.trim());
+}
+
+function isSameSchedulerEmbed(a, provider, path) {
+	return (
+		a &&
+		a.provider === provider &&
+		a.path === path
+	);
+}
+
+function sanitizeRestoredConversation(savedConversation) {
+	if (!savedConversation || typeof savedConversation !== 'object') {
+		return savedConversation;
+	}
+
+	return Object.fromEntries(
+		Object.entries(savedConversation).map(([id, message]) => {
+			if (
+				message &&
+				typeof message === 'object' &&
+				message.schedulerEmbedCompleted === true
+			) {
+				return [
+					id,
+					{
+						...message,
+						schedulerEmbed: null
+					}
+				];
+			}
+
+			return [id, message];
+		})
+	);
+}
 
 // Wrapper component to coordinate a 2s loading delay on the bot message
 // before revealing both the lead collect message text and the form together.
@@ -79,6 +213,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
 		useImageUpload, // If image upload is enabled
+		useCalendly,
+		useCalCom,
+		useTidyCal,
 		keepFooterVisible,
 		localDev,
 		allowedDomains,
@@ -97,6 +234,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const messagesRefs = useRef({});
 	const [isFetching, setIsFetching] = useState(false);
 	const [isAtBottom, setIsAtBottom] = useState(true);
+	const [isCalendlyScriptReady, setIsCalendlyScriptReady] = useState(false);
+	const [isTidyCalScriptReady, setIsTidyCalScriptReady] = useState(false);
 	const [streamController, setStreamController] = useState(null);
 	const requestIdCounterRef = useRef(0);
 	const activeRequestIdRef = useRef(null);
@@ -122,6 +261,38 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		)
 	);
 	const minInputLength = allowSingleCharMessage ? 1 : 2;
+	const isCalendlyEnabled = isSchedulerEnabled(useCalendly);
+	const isCalComEnabled = isSchedulerEnabled(useCalCom);
+	const isTidyCalEnabled = isSchedulerEnabled(useTidyCal);
+
+	const removeExistingSchedulerEmbeds = (
+		schedulerEmbed,
+		excludeMessageId = null
+	) => {
+		if (!schedulerEmbed?.provider || !schedulerEmbed?.path) return;
+
+	Object.values(state.messages || {}).forEach((message) => {
+		if (
+			message?.id === excludeMessageId ||
+			message?.variant !== 'chatbot' ||
+				!isSameSchedulerEmbed(
+					message?.schedulerEmbed,
+					schedulerEmbed.provider,
+					schedulerEmbed.path
+				)
+		) {
+			return;
+		}
+
+		dispatch({
+			type: 'update_message',
+			payload: {
+				id: message.id,
+				schedulerEmbed: null
+			}
+		});
+	});
+};
 
 	const handleImageSelect = (e) => {
 		if (!useImageUpload) return;
@@ -358,11 +529,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		const apiBase = localDev
 			? `http://127.0.0.1:9000`
 			: `https://api.docsbot.ai`;
-		const apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${conversationId}/lead`;
+		const apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${conversationId}`;
+		console.log('Updating Conversation Metadata:', {
+			conversationId,
+			metadata,
+			fullChange: false
+		});
 
 		try {
-			await fetch(apiUrl, {
-				method: 'POST',
+			const response = await fetch(apiUrl, {
+				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json',
 					accept: 'application/json',
@@ -370,10 +546,28 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						Authorization: `Bearer ${signature}`
 					})
 				},
-				body: JSON.stringify({ metadata })
+				body: JSON.stringify({
+					metadata,
+					fullChange: false
+				})
+			});
+			let responseBody = null;
+			try {
+				responseBody = await response.clone().json();
+			} catch {
+				try {
+					responseBody = await response.text();
+				} catch {
+					responseBody = null;
+				}
+			}
+			console.log('Conversation Metadata Update Response:', {
+				ok: response.ok,
+				status: response.status,
+				body: responseBody
 			});
 		} catch (err) {
-			console.warn('DOCSBOT: Failed to capture lead metadata', err);
+			console.warn('DOCSBOT: Failed to update conversation metadata', err);
 		}
 	};
 
@@ -620,7 +814,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					} else {
 						dispatch({
 							type: 'load_conversation',
-							payload: { savedConversation: savedConversation }
+							payload: {
+								savedConversation:
+									sanitizeRestoredConversation(
+										savedConversation
+									)
+							}
 						});
 					}
 				} else {
@@ -664,6 +863,44 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			);
 		}
 	}, [state.chatHistory]);
+
+	useEffect(() => {
+		if (!isCalendlyEnabled) return;
+
+		let cancelled = false;
+		loadCalendlyWidgetScript()
+			.then(() => {
+				if (!cancelled) {
+					setIsCalendlyScriptReady(true);
+				}
+			})
+			.catch((error) => {
+				console.warn('DOCSBOT: Failed to load Calendly widget', error);
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [isCalendlyEnabled]);
+
+	useEffect(() => {
+		if (!isTidyCalEnabled) return;
+
+		let cancelled = false;
+		loadTidyCalWidgetScript()
+			.then(() => {
+				if (!cancelled) {
+					setIsTidyCalScriptReady(true);
+				}
+			})
+			.catch((error) => {
+				console.warn('DOCSBOT: Failed to load TidyCal widget', error);
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [isTidyCalEnabled]);
 
 	async function fetchAnswer(question, image_urls = [], options = {}) {
 		if (!options.bypassLeadCollect && shouldRequireLeadBeforeSend()) {
@@ -727,6 +964,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 		let currentHeight = 0;
 		let answer = '';
+		let pendingSchedulerEmbed = null;
 		// Use metadataOverride if provided (e.g. from lead form submission) to avoid
 		// stale closure over identify that hasn't re-rendered yet.
 		const metadata = options.metadataOverride || mergeIdentifyMetadata(identify);
@@ -742,6 +980,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				human_escalation: useEscalation ? true : false,
 				followup_rating: useFeedback ? true : false,
 				document_retriever: true,
+				calendly: isCalendlyEnabled,
+				calcom: isCalComEnabled,
+				tidycal: isTidyCalEnabled,
 				full_source: false,
 				metadata,
 				conversationId: getConversationId(),
@@ -851,6 +1092,42 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 						// Agent SSE: reasoning + tool_call use JSON `data`; stream uses plain text (see agentActivityFromSse.js)
 						if (data.event === 'tool_call') {
+							const toolCall = parseToolCallPayload(data.data);
+							document.dispatchEvent(
+								new CustomEvent('docsbot_tool_call', {
+									detail: {
+										name:
+											typeof toolCall?.name === 'string'
+												? toolCall.name
+												: '',
+										data: parseToolCallDataPayload(
+											toolCall?.params
+										)
+									}
+								})
+							);
+								const schedulerEmbedFromTool = resolveSchedulerEmbedForToolCall(
+									toolCall,
+									{
+										calendly: isCalendlyEnabled,
+										calcom: isCalComEnabled,
+										tidycal: isTidyCalEnabled
+									}
+								);
+								if (schedulerEmbedFromTool) {
+									removeExistingSchedulerEmbeds(
+										schedulerEmbedFromTool,
+										id
+									);
+									pendingSchedulerEmbed = schedulerEmbedFromTool;
+									dispatch({
+										type: 'update_message',
+									payload: {
+										id,
+										schedulerEmbed: pendingSchedulerEmbed
+									}
+								});
+							}
 							const activity = agentActivityFromSseEvent(
 								'tool_call',
 								data.data
@@ -905,11 +1182,27 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 							scrollToBottom(ref);
 						} else {
-							if (data.data) {
-								const finalData = JSON.parse(data.data);
-								//console.log(finalData);
+								if (data.data) {
+									const finalData = JSON.parse(data.data);
+										const eventSchedulerEmbed =
+											resolveSchedulerEmbedForEventType(
+												data.event,
+												finalData,
+												{
+													calendly: isCalendlyEnabled,
+													calcom: isCalComEnabled,
+													tidycal: isTidyCalEnabled
+												}
+											);
+										if (eventSchedulerEmbed) {
+											removeExistingSchedulerEmbeds(
+												eventSchedulerEmbed,
+												id
+											);
+										}
+										//console.log(finalData);
 
-								dispatch({
+									dispatch({
 									type:
 										data.event === 'is_resolved_question'
 											? 'add_message'
@@ -931,7 +1224,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										streaming: false,
 										responses: finalData.options || null,
 										agentActivity: null,
-										stripeBilling: finalData.stripeBilling || null
+										stripeBilling: finalData.stripeBilling || null,
+										schedulerEmbed:
+											pendingSchedulerEmbed ||
+											eventSchedulerEmbed
 									}
 								});
 
@@ -1728,8 +2024,31 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 												setPendingLeadCapture(null);
 												setIsLeadCaptureLocked(false);
 											}}
+											onSchedulerBookingMetadata={async (
+												metadata
+											) => {
+												if (
+													!metadata ||
+													typeof metadata !==
+														'object'
+												) {
+													return;
+												}
+												updateIdentity({
+													metadata
+												});
+												await updateConversationMetadata(
+													metadata
+												);
+											}}
 											leadCollectMode={leadCollect?.mode}
 											pendingLeadCapture={pendingLeadCapture}
+											isCalendlyScriptReady={
+												isCalendlyScriptReady
+											}
+											isTidyCalScriptReady={
+												isTidyCalScriptReady
+											}
 										/>
 									)}
 									{message?.options ? (

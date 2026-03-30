@@ -150,6 +150,10 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
     console.log("Answer fetched:", event.detail);
   });
 
+  document.addEventListener("docsbot_tool_call", function (event) {
+    console.log("Tool call received:", event.detail.name, event.detail.data);
+  });
+
   function buildTestSignature() {
     if (!DOCSBOT_TEST_SIGNATURE_KEY) {
       return Promise.resolve("");
@@ -196,6 +200,9 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
           horizontalMargin: 20,
           verticalMargin: 20,
           showCopyButton: false,
+          //useCalendly: "uglyrobot/30min",
+          //useCalCom: false,
+          //useTidyCal: "docsbot/onboarding",
           //hideSources: ['qa'],
           //color: "#0891b8",
           //botIcon: "https://webstockreview.net/images/user-icon-png-4.png",
