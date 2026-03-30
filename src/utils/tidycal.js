@@ -34,16 +34,16 @@ export function loadTidyCalWidgetScript() {
 	}
 
 	window.__docsbotTidyCalScriptPromise = new Promise((resolve, reject) => {
+		const rejectLoad = () => {
+			delete window.__docsbotTidyCalScriptPromise;
+			reject(new Error('Failed to load TidyCal widget script'));
+		};
 		const existingScript = document.getElementById(TIDYCAL_SCRIPT_ID);
 		if (existingScript) {
 			existingScript.addEventListener('load', () => resolve(window.TidyCal), {
 				once: true
 			});
-			existingScript.addEventListener(
-				'error',
-				() => reject(new Error('Failed to load TidyCal widget script')),
-				{ once: true }
-			);
+			existingScript.addEventListener('error', rejectLoad, { once: true });
 			return;
 		}
 
@@ -52,8 +52,10 @@ export function loadTidyCalWidgetScript() {
 		script.src = TIDYCAL_WIDGET_SCRIPT_SRC;
 		script.async = true;
 		script.onload = () => resolve(window.TidyCal);
-		script.onerror = () =>
-			reject(new Error('Failed to load TidyCal widget script'));
+		script.onerror = () => {
+			script.remove();
+			rejectLoad();
+		};
 		document.head.appendChild(script);
 	});
 

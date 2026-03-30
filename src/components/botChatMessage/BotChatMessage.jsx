@@ -1593,7 +1593,7 @@ function renderBookingSummaryCard(summary, labels) {
 						{summary?.title && (
 							<div className="min-w-0">
 								<span className="block text-xs text-slate-400 truncate">
-									Event
+									{labels?.bookingSummaryEvent || 'Event'}
 								</span>
 								<span className="font-medium text-slate-800 truncate block">
 									{summary.title}
@@ -1605,7 +1605,7 @@ function renderBookingSummaryCard(summary, labels) {
 								{summary?.startTime && (
 									<div className="min-w-0">
 										<span className="block text-xs text-slate-400 truncate">
-											Starts
+											{labels?.bookingSummaryStarts || 'Starts'}
 										</span>
 										<span className="font-medium text-slate-800 truncate block">
 											{summary.startTime}
@@ -1615,7 +1615,7 @@ function renderBookingSummaryCard(summary, labels) {
 								{summary?.endTime && (
 									<div className="min-w-0">
 										<span className="block text-xs text-slate-400 truncate">
-											Ends
+											{labels?.bookingSummaryEnds || 'Ends'}
 										</span>
 										<span className="truncate block">{summary.endTime}</span>
 									</div>

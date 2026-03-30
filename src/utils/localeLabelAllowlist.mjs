@@ -26,9 +26,6 @@ export const LOCALE_LABEL_SAME_AS_ENGLISH_OK = {
  * @returns {boolean}
  */
 export function isSameAsEnglishAllowed(localeCode, key) {
-  if (key === "bookingStatusBooked" || key === "bookingStatusRescheduled") {
-    return true;
-  }
   const list = LOCALE_LABEL_SAME_AS_ENGLISH_OK[localeCode];
   return Array.isArray(list) && list.includes(key);
 }

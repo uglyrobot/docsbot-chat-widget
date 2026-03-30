@@ -56,18 +56,16 @@ export function loadCalendlyWidgetScript() {
 	}
 
 	window.__docsbotCalendlyScriptPromise = new Promise((resolve, reject) => {
+		const rejectLoad = () => {
+			delete window.__docsbotCalendlyScriptPromise;
+			reject(new Error('Failed to load Calendly widget script'));
+		};
 		const existingScript = document.getElementById(CALENDLY_SCRIPT_ID);
 		if (existingScript) {
-			existingScript.addEventListener(
-				'load',
-				() => resolve(window.Calendly),
-				{ once: true }
-			);
-			existingScript.addEventListener(
-				'error',
-				() => reject(new Error('Failed to load Calendly widget script')),
-				{ once: true }
-			);
+			existingScript.addEventListener('load', () => resolve(window.Calendly), {
+				once: true
+			});
+			existingScript.addEventListener('error', rejectLoad, { once: true });
 			return;
 		}
 
@@ -76,8 +74,10 @@ export function loadCalendlyWidgetScript() {
 		script.src = CALENDLY_WIDGET_SCRIPT_SRC;
 		script.async = true;
 		script.onload = () => resolve(window.Calendly);
-		script.onerror = () =>
-			reject(new Error('Failed to load Calendly widget script'));
+		script.onerror = () => {
+			script.remove();
+			rejectLoad();
+		};
 		document.head.appendChild(script);
 	});
 
