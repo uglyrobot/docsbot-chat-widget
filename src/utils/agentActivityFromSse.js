@@ -36,7 +36,12 @@ export function agentActivityFromSseEvent(eventName, rawData) {
 		const name = (payload && payload.name) || '';
 		const openAiKind = openAiBuiltinToolKind(name);
 		if (openAiKind === 'web_search') {
-			return { kind: 'web_search', configKey: 'agentActivityWebSearch' };
+			const webSearchMeta = parseWebSearchToolCallParams(payload?.params);
+			return {
+				kind: 'web_search',
+				configKey: 'agentActivityWebSearch',
+				...webSearchMeta
+			};
 		}
 		if (openAiKind === 'code_interpreter') {
 			return { kind: 'code_interpreter', configKey: 'agentActivityCodeInterpreter' };
@@ -55,6 +60,64 @@ export function agentActivityFromSseEvent(eventName, rawData) {
 	}
 
 	return null;
+}
+
+function parseWebSearchToolCallParams(rawParams) {
+	let parsed = rawParams;
+	if (typeof parsed === 'string') {
+		try {
+			parsed = JSON.parse(parsed);
+		} catch {
+			parsed = null;
+		}
+	}
+	if (!parsed || typeof parsed !== 'object') {
+		return {};
+	}
+
+	const actionType = normalizeActionType(
+		parsed.action_type || parsed.action?.type
+	);
+	const query = firstNonEmptyString(
+		parsed.query,
+		parsed.action?.query,
+		Array.isArray(parsed.queries) ? parsed.queries[0] : '',
+		Array.isArray(parsed.action?.queries) ? parsed.action.queries[0] : ''
+	);
+	const url = firstNonEmptyString(parsed.action?.url, parsed.url);
+	const pattern = firstNonEmptyString(
+		parsed.action?.pattern,
+		parsed.pattern
+	);
+
+	return {
+		webSearchActionType: actionType,
+		webSearchQuery: query || '',
+		webSearchUrl: url || '',
+		webSearchPattern: pattern || ''
+	};
+}
+
+function firstNonEmptyString(...values) {
+	for (const value of values) {
+		if (typeof value === 'string' && value.trim()) {
+			return value.trim();
+		}
+	}
+	return '';
+}
+
+function normalizeActionType(value) {
+	if (typeof value !== 'string') return '';
+	const normalized = value.trim().toLowerCase();
+	if (
+		normalized === 'search' ||
+		normalized === 'open_page' ||
+		normalized === 'find_in_page'
+	) {
+		return normalized;
+	}
+	return '';
 }
 
 export function parseToolCallPayload(rawData) {

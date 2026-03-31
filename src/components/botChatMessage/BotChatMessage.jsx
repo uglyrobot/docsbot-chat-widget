@@ -62,6 +62,45 @@ function iconForAgentActivity(kind) {
 }
 
 function resolveAgentActivityLabel(agentActivity, labels) {
+	const baseLabel = resolveBaseAgentActivityLabel(agentActivity, labels);
+	if (!baseLabel || agentActivity?.kind !== 'web_search') {
+		return { text: baseLabel, segments: [] };
+	}
+
+	const actionType = agentActivity.webSearchActionType;
+	if (actionType === 'search' && agentActivity.webSearchQuery) {
+		return buildActivityLabelSegments({
+			template: labels?.agentActivityWebSearchQuery || '',
+			replacements: {
+				query: agentActivity.webSearchQuery
+			}
+		});
+	}
+	if (actionType === 'open_page' && agentActivity.webSearchUrl) {
+		return buildActivityLabelSegments({
+			template: labels?.agentActivityWebSearchOpeningPage || '',
+			replacements: {
+				url: compactActivityUrl(agentActivity.webSearchUrl)
+			}
+		});
+	}
+	if (
+		actionType === 'find_in_page' &&
+		(agentActivity.webSearchUrl || agentActivity.webSearchPattern)
+	) {
+		return buildActivityLabelSegments({
+			template: labels?.agentActivityWebSearchSearchingPage || '',
+			replacements: {
+				url: compactActivityUrl(agentActivity.webSearchUrl),
+				pattern: agentActivity.webSearchPattern
+			}
+		});
+	}
+
+	return { text: baseLabel, segments: [] };
+}
+
+function resolveBaseAgentActivityLabel(agentActivity, labels) {
 	if (agentActivity.label != null && agentActivity.label !== '') {
 		return agentActivity.label;
 	}
@@ -72,6 +111,114 @@ function resolveAgentActivityLabel(agentActivity, labels) {
 		return labels[key];
 	}
 	return '';
+}
+
+function compactActivityUrl(urlString) {
+	if (!urlString || typeof urlString !== 'string') return '';
+	try {
+		const parsed = new URL(urlString);
+		const hostname = parsed.hostname.replace(/^www\./i, '');
+		const pathname = parsed.pathname === '/' ? '' : parsed.pathname;
+		const compact = `${hostname}${pathname}`;
+		if (compact.length <= 60) return compact;
+		return `${compact.slice(0, 57)}...`;
+	} catch {
+		const compact = urlString.trim();
+		if (compact.length <= 60) return compact;
+		return `${compact.slice(0, 57)}...`;
+	}
+}
+
+function buildActivityLabelSegments({ template, replacements = {} }) {
+	const safeTemplate =
+		typeof template === 'string' && template.trim()
+			? template
+			: '';
+	if (!safeTemplate) {
+		return { text: '', segments: [] };
+	}
+
+	const segments = [];
+	const tokenRegex = /\{([a-zA-Z0-9_]+)\}/g;
+	let lastIndex = 0;
+	let match;
+
+	while ((match = tokenRegex.exec(safeTemplate)) !== null) {
+		const matchStart = match.index;
+		const matchEnd = tokenRegex.lastIndex;
+		const tokenName = match[1];
+
+		if (matchStart > lastIndex) {
+			segments.push({
+				text: safeTemplate.slice(lastIndex, matchStart),
+				isParam: false
+			});
+		}
+
+		const rawValue =
+			typeof replacements[tokenName] === 'string'
+				? replacements[tokenName].trim()
+				: '';
+
+		if (rawValue) {
+			const faviconSrc =
+				tokenName === 'url'
+					? googleFaviconForActivityValue(rawValue)
+					: '';
+			segments.push({
+				text: truncateActivityParam(rawValue),
+				full: rawValue,
+				isParam: true,
+				faviconSrc,
+				tokenName
+			});
+		}
+
+		lastIndex = matchEnd;
+	}
+
+	if (lastIndex < safeTemplate.length) {
+		segments.push({
+			text: safeTemplate.slice(lastIndex),
+			isParam: false
+		});
+	}
+
+	// Normalize whitespace around dropped placeholders.
+	const collapsedText = segments
+		.map((segment) => segment.text)
+		.join('')
+		.replace(/\s{2,}/g, ' ')
+		.trim();
+	if (!collapsedText) {
+		return { text: '', segments: [] };
+	}
+
+	return { text: '', segments };
+}
+
+function truncateActivityParam(value, maxLength = 60) {
+	if (typeof value !== 'string') return '';
+	const trimmed = value.trim();
+	if (trimmed.length <= maxLength) {
+		return trimmed;
+	}
+	return `${trimmed.slice(0, maxLength - 1)}…`;
+}
+
+function googleFaviconForActivityValue(value) {
+	if (typeof value !== 'string' || !value.trim()) return '';
+	const normalized = value.trim();
+	try {
+		const parsed = new URL(
+			/^https?:\/\//i.test(normalized) ? normalized : `https://${normalized}`
+		);
+		const hostname = parsed.hostname?.replace(/^www\./i, '');
+		if (!hostname) return '';
+		return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=16`;
+	} catch {
+		return '';
+	}
 }
 
 export const BotChatMessage = ({
@@ -574,10 +721,60 @@ export const BotChatMessage = ({
 								dir="auto"
 								className="docsbot-agent-activity-label"
 							>
-								{resolveAgentActivityLabel(
-									payload.agentActivity,
-									labels
-								)}
+								{(() => {
+									const label = resolveAgentActivityLabel(
+										payload.agentActivity,
+										labels
+									);
+									if (!label || typeof label !== 'object') {
+										return '';
+									}
+									if (
+										!Array.isArray(label.segments) ||
+										label.segments.length === 0
+									) {
+										return label.text || '';
+									}
+									return (
+										<>
+											{label.segments.map(
+												(segment, index) =>
+													segment.isParam ? (
+														<span
+															key={`p-${index}`}
+															className={clsx(
+																'docsbot-agent-activity-param',
+																segment.tokenName === 'url' &&
+																	'docsbot-agent-activity-param--url'
+															)}
+															title={
+																segment.full ||
+																segment.text
+															}
+														>
+															{segment.faviconSrc ? (
+																<img
+																	src={segment.faviconSrc}
+																	className="docsbot-agent-activity-param-favicon"
+																	alt=""
+																	width={12}
+																	height={12}
+																	loading="lazy"
+																/>
+															) : null}
+															<span className="docsbot-agent-activity-param-text">
+																{segment.text}
+															</span>
+														</span>
+													) : (
+														<span key={`t-${index}`}>
+															{segment.text}
+														</span>
+													)
+											)}
+										</>
+									);
+								})()}
 							</span>
 						</div>
 					)}

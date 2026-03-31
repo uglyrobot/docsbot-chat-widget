@@ -127,6 +127,22 @@ function parseToolCallDataPayload(params) {
 	return typeof params === 'object' ? params : null;
 }
 
+function isEmptyReasoningEvent(rawData) {
+	let parsed = rawData;
+	if (typeof parsed === 'string') {
+		try {
+			parsed = JSON.parse(parsed);
+		} catch {
+			parsed = { text: parsed };
+		}
+	}
+	const text =
+		parsed && typeof parsed === 'object' && parsed.text != null
+			? String(parsed.text)
+			: '';
+	return text.replace(/\*\*/g, '').trim().length === 0;
+}
+
 function isSchedulerEnabled(toggleOrPath) {
 	if (toggleOrPath === true) return true;
 	if (toggleOrPath === false || toggleOrPath == null) return false;
@@ -213,6 +229,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
 		useImageUpload, // If image upload is enabled
+		useWebSearch, // If agent web search tool is enabled (API)
 		useCalendly,
 		useCalCom,
 		useTidyCal,
@@ -237,6 +254,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const [isCalendlyScriptReady, setIsCalendlyScriptReady] = useState(false);
 	const [isTidyCalScriptReady, setIsTidyCalScriptReady] = useState(false);
 	const [streamController, setStreamController] = useState(null);
+	const streamControllerRef = useRef(null);
 	const requestIdCounterRef = useRef(0);
 	const activeRequestIdRef = useRef(null);
 	const hasConversationStarted = Object.keys(state.messages).length > 1;
@@ -247,6 +265,22 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const [pendingLeadCapture, setPendingLeadCapture] = useState(null);
 	const [isLeadCaptureLocked, setIsLeadCaptureLocked] = useState(false);
 	const [leadCollected, setLeadCollected] = useState(false);
+
+	useEffect(() => {
+		streamControllerRef.current = streamController;
+	}, [streamController]);
+
+	useEffect(() => {
+		return () => {
+			const c = streamControllerRef.current;
+			if (!c) return;
+			if (typeof c.abort === 'function') {
+				c.abort();
+			} else if (typeof c.close === 'function') {
+				c.close();
+			}
+		};
+	}, []);
 
 	const allowedSingleCharLanguages = ['ja', 'zh', 'ko'];
 	const navLangList =
@@ -965,6 +999,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		let currentHeight = 0;
 		let answer = '';
 		let pendingSchedulerEmbed = null;
+		let currentAgentActivity = null;
 		// Use metadataOverride if provided (e.g. from lead form submission) to avoid
 		// stale closure over identify that hasn't re-rendered yet.
 		const metadata = options.metadataOverride || mergeIdentifyMetadata(identify);
@@ -996,7 +1031,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				...(signature &&
 					reasoningEffort && {
 						reasoning_effort: reasoningEffort
-					})
+					}),
+				...(useWebSearch && { web_search: true })
 			};
 
 			// Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
@@ -1010,6 +1046,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					: `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat-agent`;
 				await fetchEventSource(apiUrl, {
 					signal: abortController.signal,
+					// Default false aborts SSE on tab blur and POSTs again on focus — skip that.
+					openWhenHidden: true,
 					headers: {
 						'Content-Type': 'application/json',
 						accept: 'application/json',
@@ -1136,6 +1174,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								activity &&
 								showAgentActivity !== false
 							) {
+								currentAgentActivity = activity;
 								dispatch({
 									type: 'update_message',
 									payload: { id, agentActivity: activity }
@@ -1144,6 +1183,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							return;
 						}
 						if (data.event === 'reasoning') {
+							const isEmptyReasoning = isEmptyReasoningEvent(
+								data.data
+							);
+							if (
+								isEmptyReasoning &&
+								currentAgentActivity?.kind === 'web_search'
+							) {
+								return;
+							}
 							const activity = agentActivityFromSseEvent(
 								'reasoning',
 								data.data
@@ -1152,6 +1200,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								activity &&
 								showAgentActivity !== false
 							) {
+								currentAgentActivity = activity;
 								dispatch({
 									type: 'update_message',
 									payload: { id, agentActivity: activity }
@@ -1179,6 +1228,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									agentActivity: null
 								}
 							});
+							currentAgentActivity = null;
 
 							scrollToBottom(ref);
 						} else {
@@ -1230,6 +1280,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											eventSchedulerEmbed
 									}
 								});
+								currentAgentActivity = null;
 
 								scrollToBottom(ref);
 
@@ -1273,67 +1324,39 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					},
 					onerror(err) {
 						if (err instanceof FatalError) {
-							// For fatal errors (4xx), don't retry and show error
-							const errorMessage =
-								err.message ||
-								'There was an error with your request. Please try again.';
-							const isRateLimitError = err.status === 429;
-
-							dispatch({
-								type: 'update_message',
-								payload: {
-									id,
-									variant: 'chatbot',
-									message: errorMessage,
-									loading: false,
-									error: true,
-									isRateLimitError,
-									streaming: false,
-									agentActivity: null
-								}
-							});
-							setIsFetching(false);
-							scrollToBottom(ref);
-							throw err; // Re-throw to stop the operation
-						} else if (err instanceof RetriableError) {
-							// Handle retriable errors
-							retryCount++;
-
+							throw err;
+						}
+						if (err instanceof RetriableError) {
+							retryCount += 1;
 							if (retryCount > MAX_RETRIES) {
-								// Too many retries, give up
-								dispatch({
-									type: 'update_message',
-									payload: {
-										id,
-										variant: 'chatbot',
-										message:
-											'Failed to connect after several attempts. Please try again later.',
-										loading: false,
-										error: true,
-										streaming: false,
-										agentActivity: null
-									}
-								});
-								setIsFetching(false);
-								scrollToBottom(ref);
-								throw new FatalError('Max retries exceeded');
+								throw new FatalError(
+									'Failed to connect after several attempts. Please try again later.'
+								);
 							}
-
-							// Return delay with exponential backoff (in ms)
 							return Math.min(1000 * 2 ** retryCount, 10000);
 						}
+						// Only RetriableError opts into library retry; never use default ~1s retry.
+						const message =
+							err && typeof err.message === 'string' && err.message
+								? err.message
+								: 'The connection was interrupted.';
+						const wrapped = new FatalError(message);
+						if (err && typeof err.status === 'number') {
+							wrapped.status = err.status;
+						}
+						throw wrapped;
 					}
 				});
 			} catch (error) {
 				console.error('DOCSBOT: Failed to fetch answer:', error);
 
-				// Check if this is a FatalError with a specific message
 				let errorMessage = 'Unknown error. Please try again later.';
 				let isRateLimitError = false;
 				if (error instanceof FatalError && error.message) {
 					errorMessage = error.message;
-					// Check if this is a rate limit error (429)
 					isRateLimitError = error.status === 429;
+				} else if (error instanceof Error && error.message) {
+					errorMessage = error.message;
 				}
 
 				dispatch({
@@ -1349,7 +1372,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						agentActivity: null
 					}
 				});
+				currentAgentActivity = null;
 				setIsFetching(false);
+				scrollToBottom(ref);
 			}
 		} else {
 			const history = state.chatHistory || [];

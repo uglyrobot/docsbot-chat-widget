@@ -5,16 +5,29 @@
 	padding: 0;
 	list-style: none;
 	font-size: 13px;
+	min-width: 0;
 
 	li {
+		min-width: 0;
+
 		&:not(:last-child) {
 			margin-bottom: $spacing-xs;
+		}
+
+		.docsbot-source-label {
+			min-width: 0;
+			flex: 1;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
 		}
 
 		a {
 			display: flex;
 			align-items: center;
-			justify-content: space-between;
+			gap: $spacing-xs;
+			min-width: 0;
+			max-width: 100%;
 			font-weight: 400;
 			text-decoration: none;
 
@@ -23,9 +36,38 @@
 			}
 		}
 
+		.docsbot-source-external-icon {
+			flex-shrink: 0;
+			display: inline-flex;
+			align-items: center;
+			line-height: 1;
+			opacity: 0.8;
+
+			svg {
+				width: 10px;
+				height: 10px;
+			}
+		}
+
+		.docsbot-source-favicon {
+			width: 16px;
+			height: 16px;
+			flex-shrink: 0;
+			margin-right: $spacing-sm;
+		}
+
+		a .docsbot-source-link-main {
+			display: flex;
+			align-items: center;
+			min-width: 0;
+			flex: 1;
+			max-width: 100%;
+		}
+
 		&.docsbot-sources-unlinked {
 			display: flex;
 			align-items: center;
+			min-width: 0;
 
 			svg {
 				margin-right: $spacing-sm;
