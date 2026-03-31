@@ -4,6 +4,12 @@
 	margin-bottom: 10px;
 }
 
+/* Keeps dir/lang for inheritance without inserting a layout box between the shadow
+   host and .docsbot-iframe-box (height: 100% must resolve against the host). */
+.docsbot-embedded-locale-root {
+	display: contents;
+}
+
 .docsbot-iframe-box {
 	position: relative;
 	width: 100%;

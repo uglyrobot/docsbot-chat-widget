@@ -19,6 +19,7 @@ const EmbeddedChat = () => {
   return (
     <ReactShadowRoot>
       <div
+        className="docsbot-embedded-locale-root"
         dir={dir}
         lang={browserLocaleTag}
       >
