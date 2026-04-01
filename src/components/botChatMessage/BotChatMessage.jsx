@@ -248,6 +248,7 @@ export const BotChatMessage = ({
 		labels,
 		supportLink,
 		supportCallback,
+		customButtonCallback,
 		isAgent, // If new agent api is enabled
 		showAgentActivity, // false hides agent status line (default true)
 		useFeedback, // If feedback collection is enabled
@@ -479,6 +480,77 @@ export const BotChatMessage = ({
 		}
 	};
 
+	const runCustomButtonClick = async (reactEvent, history) => {
+		let cancelled = false;
+		const syntheticEvent = reactEvent
+			? {
+					...reactEvent,
+					nativeEvent: reactEvent.nativeEvent || reactEvent
+				}
+			: {};
+		syntheticEvent.preventDefault = () => {
+			cancelled = true;
+			if (reactEvent?.preventDefault) {
+				reactEvent.preventDefault();
+			}
+		};
+		syntheticEvent.stopPropagation = () => {
+			if (reactEvent?.stopPropagation) {
+				reactEvent.stopPropagation();
+			}
+		};
+		syntheticEvent.stopImmediatePropagation = () => {
+			if (reactEvent?.stopImmediatePropagation) {
+				reactEvent.stopImmediatePropagation();
+			}
+		};
+
+		const metadata = mergeIdentifyMetadata(identify);
+		if (isAgent && payload.conversationId) {
+			metadata.conversationId = payload.conversationId;
+			metadata.conversationUrl = `https://docsbot.ai/app/bots/${botId}/conversations?conversationId=${payload.conversationId}`;
+		}
+		metadata.answerType = 'custom_button';
+		metadata.functionKey = payload.customButton?.functionKey;
+		metadata.url = payload.customButton?.url;
+		metadata.buttonText = payload.customButton?.buttonText;
+		metadata.message = payload.customButton?.message ?? payload.message;
+
+		const button = {
+			functionKey: payload.customButton?.functionKey,
+			url: payload.customButton?.url,
+			buttonText: payload.customButton?.buttonText,
+			message: payload.customButton?.message,
+			answer: payload.customButton?.answer
+		};
+
+		const key = payload.customButton?.functionKey;
+
+		if (customButtonCallback && typeof customButtonCallback === 'function') {
+			try {
+				await customButtonCallback(
+					syntheticEvent,
+					key,
+					button,
+					history,
+					metadata
+				);
+			} catch (err) {
+				console.warn('DOCSBOT: customButtonCallback error', err);
+			}
+		}
+
+		const url = payload.customButton?.url;
+		if (
+			!cancelled &&
+			url &&
+			typeof url === 'string' &&
+			url.trim()
+		) {
+			window.open(url.trim(), '_blank', 'noopener,noreferrer');
+		}
+	};
+
 	// make api call to rate
 	const saveRating = async (newRating = 0) => {
 		setRating(newRating);
@@ -624,12 +696,16 @@ export const BotChatMessage = ({
 			(Array.isArray(hideSources) &&
 				!payload.sources.every((source) => hideSources.includes(source.type))));
 	const isAgentLookupAnswer =
-		isAgent && payload.type !== 'is_resolved_question' && payload.type !== 'support_escalation';
+		isAgent &&
+		payload.type !== 'is_resolved_question' &&
+		payload.type !== 'support_escalation' &&
+		payload.type !== 'custom_button';
 	const shouldShowCopyButton =
 		showCopyButton &&
 		!payload.loading &&
 		payload.message &&
 		payload.type !== 'lead_collect_message' &&
+		payload.type !== 'custom_button' &&
 		!isFirstBotMessage() &&
 		(isAgentLookupAnswer || (!isAgent && hasVisibleSources));
 
@@ -793,6 +869,36 @@ export const BotChatMessage = ({
 					{(() => {
 						if (payload.loading) {
 							return <Loader />;
+						}
+
+						if (payload.type === 'custom_button') {
+							return (
+								<>
+									<div dir="auto" ref={streamdownRef}>
+										<Suspense fallback={<Loader />}>
+											<LazyStreamdown
+												className="docsbot-streamdown"
+												allowedDomains={allowedDomains}
+												linkSafetyEnabled={
+													linkSafetyEnabled
+												}
+												mode={
+													payload.streaming
+														? undefined
+														: 'static'
+												}
+												isAnimating={Boolean(
+													payload.streaming
+												)}
+											>
+												{preprocessMath(
+													payload.message || ''
+												)}
+											</LazyStreamdown>
+										</Suspense>
+									</div>
+								</>
+							);
 						}
 
 						if (payload.type === 'lead_collect') {
@@ -1105,6 +1211,26 @@ export const BotChatMessage = ({
                                                 );
                                         })()}
 					</div>
+					{payload.type === 'custom_button' &&
+						payload.customButton?.buttonText &&
+						!payload.loading && (
+							<div className="docsbot-custom-button-cta-row">
+								<button
+									type="button"
+									className="docsbot-custom-button-cta"
+									onClick={(e) =>
+										runCustomButtonClick(
+											e,
+											state.chatHistory || []
+										)
+									}
+								>
+									<span dir="auto">
+										{payload.customButton.buttonText}
+									</span>
+								</button>
+							</div>
+						)}
 					{payload.schedulerEmbed?.path &&
 						!payload.loading &&
 						payload.message &&

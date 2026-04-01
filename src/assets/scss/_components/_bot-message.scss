@@ -270,6 +270,25 @@
 	border: 0;
 }
 
+.docsbot-custom-button-cta-row {
+	width: fit-content;
+	max-width: 100%;
+	box-sizing: border-box;
+	align-self: flex-start;
+}
+
+.docsbot-custom-button-cta {
+	@include bubble-button($color-secondary-300);
+	width: auto;
+	max-width: 100%;
+
+	span[dir='auto'] {
+		text-align: center;
+		unicode-bidi: plaintext;
+		display: inline-block;
+	}
+}
+
 /* Target consecutive bot messages with higher specificity */
 .docsbot-chat-message-container > div.consecutive-bot-message {
 	margin-top: $spacing-xs !important;

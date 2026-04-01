@@ -230,6 +230,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		useEscalation, // If escalation collection is enabled
 		useImageUpload, // If image upload is enabled
 		useWebSearch, // If agent web search tool is enabled (API)
+		useCustomButtons, // Agent API: request custom_button terminal events
 		useCalendly,
 		useCalCom,
 		useTidyCal,
@@ -1032,7 +1033,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					reasoningEffort && {
 						reasoning_effort: reasoningEffort
 					}),
-				...(useWebSearch && { web_search: true })
+				...(useWebSearch && { web_search: true }),
+				...(useCustomButtons && { custom_buttons: true })
 			};
 
 			// Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
@@ -1234,16 +1236,20 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						} else {
 								if (data.data) {
 									const finalData = JSON.parse(data.data);
+										const isCustomButton =
+											data.event === 'custom_button';
 										const eventSchedulerEmbed =
-											resolveSchedulerEmbedForEventType(
-												data.event,
-												finalData,
-												{
-													calendly: isCalendlyEnabled,
-													calcom: isCalComEnabled,
-													tidycal: isTidyCalEnabled
-												}
-											);
+											isCustomButton
+												? null
+												: resolveSchedulerEmbedForEventType(
+														data.event,
+														finalData,
+														{
+															calendly: isCalendlyEnabled,
+															calcom: isCalComEnabled,
+															tidycal: isTidyCalEnabled
+														}
+													);
 										if (eventSchedulerEmbed) {
 											removeExistingSchedulerEmbeds(
 												eventSchedulerEmbed,
@@ -1251,6 +1257,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											);
 										}
 										//console.log(finalData);
+
+									const terminalMessage = isCustomButton
+										? finalData.message || finalData.answer
+										: finalData.answer;
 
 									dispatch({
 									type:
@@ -1265,7 +1275,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 												: id,
 										variant: 'chatbot',
 										type: data.event,
-										message: finalData.answer,
+										message: terminalMessage,
+										...(isCustomButton && {
+											customButton: {
+												url: finalData.url,
+												functionKey: finalData.functionKey,
+												buttonText: finalData.buttonText,
+												message: finalData.message,
+												answer: finalData.answer
+											}
+										}),
 										sources: finalData.sources || null,
 										answerId:
 											answerId || finalData.id || null, // use saved prev id for feedback button

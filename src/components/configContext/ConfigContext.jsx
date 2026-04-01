@@ -82,7 +82,7 @@ function resolveEffectiveBrowserLocale(options) {
 }
 
 export function ConfigProvider(props = {}) {
-  const { id, supportCallback, identify, options, signature, children } = props;
+  const { id, supportCallback, customButtonCallback, identify, options, signature, children } = props;
   const [config, setConfig] = useState(null);
 
   const updateIdentity = (data) => {
@@ -187,6 +187,7 @@ export function ConfigProvider(props = {}) {
           teamId,
           botId,
           supportCallback,
+          customButtonCallback,
           identify: identify || {},
           signature,
           ...restOptions,
