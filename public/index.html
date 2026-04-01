@@ -189,6 +189,10 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
 
           //DocsBotAI.unmount();
         },
+        // Agent custom_button CTA: optional; call event.preventDefault() to skip default new-tab open
+        // customButtonCallback: function (event, key, button, history, metadata) {
+        //   console.log("Custom button:", key, button, history, metadata);
+        // },
         identify: {
           name: 'Steve Aoki',
           email: 'steve@aoki.com',
@@ -221,6 +225,7 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
           useFeedback: true,
           useEscalation: true,
           //useWebSearch: true,
+          // useCustomButtons: true, // agent POST sends custom_buttons; backend may emit custom_button SSE
           isAgent: true, //false to test old websocket API
           useImageUpload: true,
           reasoningEffort: 'medium', // Optional reasoning effort setting for agent mode

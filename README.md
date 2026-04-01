@@ -22,6 +22,38 @@ DOCSBOT_SIGNATURE_KEY="…" node scripts/docsbot-sign-metadata-jwt.mjs
 
 Optional env vars: `DOCSBOT_TEAM_ID`, `DOCSBOT_BOT_ID`, `STRIPE_CUSTOMER_ID`, `DOCSBOT_JWT_TTL_SEC`.
 
+### Custom CTA buttons (agent mode)
+
+When using the **agent** chat API, you can opt in to `custom_button` terminal events from the model:
+
+- Set **`options.useCustomButtons`** to `true`. The widget then sends `custom_buttons: true` on the agent `POST` body so the backend may return a `custom_button` SSE event (markdown body plus one CTA).
+- Optionally pass a top-level **`customButtonCallback`** — `(event, key, button, history, metadata) => void | Promise<void>` — to observe or override the default behavior. **`key`** is the server `functionKey` for this CTA (use it to branch on which button was clicked). **`button`** is `{ functionKey, url, buttonText, message, answer }`. Call **`event.preventDefault()`** on the synthetic `event` to cancel opening the CTA URL in a new tab. The **`metadata`** object merges `identify` with `conversationId`, `conversationUrl` (when in agent mode), `answerType: 'custom_button'`, `functionKey`, `url`, `buttonText`, and `message`. If the callback throws, the widget logs a warning and still performs default navigation when not cancelled.
+
+This mirrors the pattern of **`supportCallback`** (separate callback, host-controlled navigation), but without ticket or escalation API calls. Example:
+
+```js
+DocsBotAI.init({
+  id: 'teamId/botId',
+  customButtonCallback: async (event, key, button, history, metadata) => {
+    if (key === 'book_demo') {
+      // Let the default behavior run: open button.url in a new tab
+      return;
+    }
+    if (key === 'handle_in_app') {
+      event.preventDefault(); // skip default new-tab navigation for this key only
+      // e.g. route in your SPA using button.url or metadata
+      return;
+    }
+    // Optional: guard for unknown keys
+    // console.warn('Unhandled custom button key:', key);
+  },
+  options: {
+    isAgent: true,
+    useCustomButtons: true,
+  },
+});
+```
+
 ## Locales
 
 Non-English strings live under **`src/locales/`** (one module per language). English defaults are in **`src/constants/defaultLabels.mjs`**. At runtime the widget merges defaults with the lazy-loaded locale. To add a language, add **`src/locales/<code>.js`** and register it in **`src/utils/localeImports.js`**. Run **`npm run test:labels`** to verify every locale has required keys and differs from English where expected. English matches in **`src/utils/localeLabelAllowlist.mjs`** should stay limited to rare cases where a specific term is genuinely identical in that language, not as a fallback for unfinished translations.
