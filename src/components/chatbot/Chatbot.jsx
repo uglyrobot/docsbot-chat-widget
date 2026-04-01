@@ -559,6 +559,38 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		};
 	};
 
+	const captureLead = async (metadata) => {
+		const conversationId = getConversationId();
+		const apiBase = localDev
+			? `http://127.0.0.1:9000`
+			: `https://api.docsbot.ai`;
+		const apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${conversationId}/lead`;
+
+		try {
+			const response = await fetch(apiUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					accept: 'application/json',
+					...(signature && {
+						Authorization: `Bearer ${signature}`
+					})
+				},
+				body: JSON.stringify({ metadata })
+			});
+
+			if (!response.ok) {
+				console.warn(
+					'DOCSBOT: Failed to capture lead',
+					response.status,
+					response.statusText
+				);
+			}
+		} catch (err) {
+			console.warn('DOCSBOT: Failed to capture lead', err);
+		}
+	};
+
 	const updateConversationMetadata = async (metadata) => {
 		const conversationId = getConversationId();
 		const apiBase = localDev
@@ -604,6 +636,52 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		} catch (err) {
 			console.warn('DOCSBOT: Failed to update conversation metadata', err);
 		}
+	};
+
+	const handleLeadCollectSubmit = (message, data, event) => {
+		const metadata = mergeIdentifyMetadata(identify);
+		const leadMetadata = {
+			...metadata,
+			...(data.metadata || {})
+		};
+		const activeLeadContext =
+			pendingLeadCapture || message?.leadContext || null;
+
+		updateIdentity(leadMetadata);
+		void captureLead(leadMetadata);
+
+		if (leadCollect?.mode === 'before_escalation') {
+			setLeadCollected(true);
+			finalizeLeadSubmission(
+				{
+					nextAction: 'support_escalation'
+				},
+				leadMetadata,
+				{
+					messageId: message?.id,
+					event
+				}
+			);
+			return;
+		}
+
+		const isBeforeResponse =
+			activeLeadContext?.type === 'before_response';
+		finalizeLeadSubmission(
+			{
+				...data,
+				question: activeLeadContext?.question,
+				imageUrls: activeLeadContext?.imageUrls,
+				nextAction: isBeforeResponse
+					? 'send_message'
+					: data.nextAction
+			},
+			leadMetadata,
+			{
+				messageId: message?.id,
+				event
+			}
+		);
 	};
 
 	const triggerSupportEscalationFromLead = async (event, metadata) => {
@@ -1884,67 +1962,21 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 														pendingLeadCapture={pendingLeadCapture}
 													/>
 													{ready && (
-														<LeadCollectMessage
-															payload={{
-																...message,
-																conversationId: getConversationId()
-															}}
-															messageBoxRef={
-																messagesRefs.current[message.id]
-															}
-															onLeadCollectSubmit={(data, event) => {
-													const metadata =
-														mergeIdentifyMetadata(identify);
-													const leadMetadata = {
-														...metadata,
-														...(data.metadata || {})
-													};
-													const activeLeadContext =
-														pendingLeadCapture ||
-														message.leadContext ||
-														null;
-													updateIdentity(leadMetadata);
-													updateConversationMetadata(leadMetadata);
-
-													if (
-														leadCollect?.mode ===
-														'before_escalation'
-													) {
-														setLeadCollected(true);
-														finalizeLeadSubmission(
-															{
-																nextAction: 'support_escalation'
-															},
-															leadMetadata,
-															{
-																messageId: message.id,
-																event
-															}
-														);
-														return;
-													}
-
-													const isBeforeResponse =
-														activeLeadContext?.type ===
-														'before_response';
-													finalizeLeadSubmission(
-														{
-															...data,
-															question:
-																activeLeadContext?.question,
-															imageUrls:
-																activeLeadContext?.imageUrls,
-															nextAction: isBeforeResponse
-																? 'send_message'
-																: data.nextAction
-														},
-														leadMetadata,
-														{
-															messageId: message.id,
-															event
+													<LeadCollectMessage
+														payload={{
+															...message,
+															conversationId: getConversationId()
+														}}
+														messageBoxRef={
+															messagesRefs.current[message.id]
 														}
-													);
-												}}
+														onLeadCollectSubmit={(data, event) =>
+															handleLeadCollectSubmit(
+																message,
+																data,
+																event
+															)
+														}
 												onLeadCollectCancel={() => {
 													setPendingLeadCapture(null);
 													setIsLeadCaptureLocked(false);
@@ -1966,59 +1998,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											chatContainerRef={ref}
 											fetchAnswer={fetchAnswer}
 											inputRef={inputRef}
-											onLeadCollectSubmit={(data, event) => {
-												const metadata =
-													mergeIdentifyMetadata(identify);
-												const leadMetadata = {
-													...metadata,
-													...(data.metadata || {})
-												};
-												const activeLeadContext =
-													pendingLeadCapture ||
-													message.leadContext ||
-													null;
-												updateIdentity(leadMetadata);
-												updateConversationMetadata(leadMetadata);
-
-												if (
-													leadCollect?.mode ===
-													'before_escalation'
-												) {
-													setLeadCollected(true);
-													finalizeLeadSubmission(
-														{
-															nextAction: 'support_escalation'
-														},
-														leadMetadata,
-														{
-															messageId: message.id,
-															event
-														}
-													);
-													return;
-												}
-
-												const isBeforeResponse =
-													activeLeadContext?.type ===
-													'before_response';
-												finalizeLeadSubmission(
-													{
-														...data,
-														question:
-															activeLeadContext?.question,
-														imageUrls:
-															activeLeadContext?.imageUrls,
-														nextAction: isBeforeResponse
-															? 'send_message'
-															: data.nextAction
-													},
-													leadMetadata,
-													{
-														messageId: message.id,
-														event
-													}
-												);
-											}}
+											onLeadCollectSubmit={(data, event) =>
+												handleLeadCollectSubmit(
+													message,
+													data,
+													event
+												)
+											}
 											onLeadCollectRequest={(data) => {
 												if (
 													leadCollect?.mode !==
