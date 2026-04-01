@@ -482,6 +482,12 @@ export const BotChatMessage = ({
 
 	const runCustomButtonClick = async (reactEvent, history) => {
 		let cancelled = false;
+		const url = payload.customButton?.url;
+		const hasUrl =
+			typeof url === 'string' &&
+			url.trim();
+		const reservedWindow =
+			reactEvent && hasUrl ? window.open('', '_blank') : null;
 		const syntheticEvent = reactEvent
 			? {
 					...reactEvent,
@@ -490,6 +496,9 @@ export const BotChatMessage = ({
 			: {};
 		syntheticEvent.preventDefault = () => {
 			cancelled = true;
+			if (reservedWindow && !reservedWindow.closed) {
+				reservedWindow.close();
+			}
 			if (reactEvent?.preventDefault) {
 				reactEvent.preventDefault();
 			}
@@ -540,13 +549,14 @@ export const BotChatMessage = ({
 			}
 		}
 
-		const url = payload.customButton?.url;
 		if (
 			!cancelled &&
-			url &&
-			typeof url === 'string' &&
-			url.trim()
+			hasUrl
 		) {
+			if (reservedWindow && !reservedWindow.closed) {
+				reservedWindow.location.href = url.trim();
+				return;
+			}
 			window.open(url.trim(), '_blank', 'noopener,noreferrer');
 		}
 	};
