@@ -20,4 +20,6 @@ Prefer real translations over widening the allowlist whenever the mismatch is un
 
 ## Sanity check
 
-After changes, run **`npm run build`** so webpack still compiles; locale files are imported only through `localeImports.js`.
+After locale changes, run **`npm run test:labels`**.
+
+Do **not** run **`npm run build`** by default in this repo. Local development auto-starts builds, so explicit builds should be avoided unless the user explicitly asks for one.

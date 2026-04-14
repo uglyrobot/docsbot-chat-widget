@@ -72,13 +72,13 @@ export const LeadCollectMessage = ({
 							className="space-y-4 w-full"
 							onSubmit={(event) => {
 								event.preventDefault();
+								setLeadFormTouched(true);
 								if (
 									event.currentTarget.reportValidity &&
 									!event.currentTarget.reportValidity()
 								) {
 									return;
 								}
-								setLeadFormTouched(true);
 
 								const metadata = {};
 								fields.forEach((field, index) => {
@@ -111,11 +111,22 @@ export const LeadCollectMessage = ({
 								const inputType = field.type || 'text';
 								const fieldValue = leadFormValues[field.key || fieldKey] || '';
 								const isLocked = Boolean(field.isPrefilled);
+								const isMissingRequired =
+									leadFormTouched &&
+									field.required &&
+									!String(fieldValue || '').trim();
 								const normalizedColorValue =
 									inputType === 'color' &&
 									/^#[0-9a-fA-F]{6}$/.test(fieldValue)
 										? fieldValue
 										: '#000000';
+								const helpId = field.help ? `${inputId}-help` : null;
+								const errorId = isMissingRequired
+									? `${inputId}-error`
+									: null;
+								const describedBy = [helpId, errorId]
+									.filter(Boolean)
+									.join(' ');
 								const constraintProps = {
 									...(field.min !== undefined ? { min: field.min } : {}),
 									...(field.max !== undefined ? { max: field.max } : {}),
@@ -144,6 +155,10 @@ export const LeadCollectMessage = ({
 											? normalizedColorValue
 											: fieldValue,
 									disabled: isLocked,
+									'aria-invalid': isMissingRequired
+										? 'true'
+										: undefined,
+									'aria-describedby': describedBy || undefined,
 									onChange: (event) => {
 										if (isLocked) return;
 										setLeadFormTouched(true);
@@ -196,6 +211,14 @@ export const LeadCollectMessage = ({
 																	}));
 																}}
 																className="docsbot-color-swatch h-7 w-14 shrink-0 cursor-pointer rounded-md border-0 bg-transparent p-0 disabled:cursor-not-allowed"
+																aria-describedby={
+																	describedBy || undefined
+																}
+																aria-invalid={
+																	isMissingRequired
+																		? 'true'
+																		: undefined
+																}
 															/>
 															<span className="whitespace-nowrap text-sm font-mono text-slate-700">
 																{normalizedColorValue.toUpperCase()}
@@ -287,13 +310,26 @@ export const LeadCollectMessage = ({
 												</>
 											)}
 											{field.help && (
-												<span className="mt-1 block text-xs text-muted-foreground">
+												<span
+													id={helpId}
+													className="mt-1 block text-xs text-muted-foreground"
+												>
 													{field.help}
 												</span>
 											)}
+											{isMissingRequired && (
+												<span
+													id={errorId}
+													className="mt-1 block text-xs text-red-700"
+													role="alert"
+												>
+													{labels.requiredField ||
+														'Please fill out required fields.'}
+												</span>
+											)}
 										</label>
-									);
-								})}
+								);
+							})}
 							</div>
 							<div
 								className={`flex items-center gap-3 pt-2 ${

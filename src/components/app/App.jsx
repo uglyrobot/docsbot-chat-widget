@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import ReactShadowRoot from "react-shadow-root";
 import { FloatingButton } from "../floatingButton/FloatingButton";
 import { config as fontAwesomeConfig } from "@fortawesome/fontawesome-svg-core";
@@ -19,6 +19,9 @@ import { useConfig } from "../configContext/ConfigContext";
 
 function App() {
   const [isOpen, setIsOpen] = useState(false);
+  const launcherRef = useRef(null);
+  const wasOpenRef = useRef(false);
+  const chatPanelId = useId();
   const { customCSS, textDirection, browserLocaleTag } = useConfig();
   useEffect(() => {
     const handleOpen = async () => {
@@ -57,6 +60,15 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (wasOpenRef.current && !isOpen) {
+      requestAnimationFrame(() => {
+        launcherRef.current?.focus();
+      });
+    }
+    wasOpenRef.current = isOpen;
+  }, [isOpen]);
+
   const dir = textDirection === "rtl" ? "rtl" : "ltr";
   return (
     <ReactShadowRoot>
@@ -74,10 +86,14 @@ function App() {
         <style type="text/css">{linkListStyles}</style>
         {customCSS ? <style type="text/css">{customCSS}</style> : null}
 
-        <FloatingButton {...{ isOpen, setIsOpen }} />
+        <FloatingButton
+          {...{ isOpen, setIsOpen }}
+          launcherRef={launcherRef}
+          chatPanelId={chatPanelId}
+        />
         {isOpen ? (
           <ChatbotProvider>
-            <Chatbot {...{ isOpen, setIsOpen }} />
+            <Chatbot {...{ isOpen, setIsOpen }} chatPanelId={chatPanelId} />
           </ChatbotProvider>
         ) : null}
       </div>

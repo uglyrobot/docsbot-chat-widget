@@ -58,6 +58,10 @@
 		&:hover {
 			border-color: var(--docsbot-input--hover, $color-primary-200);
 		}
+
+		&:focus-within {
+			border-color: var(--docsbot-input--hover, $color-primary-200);
+		}
 	}
 
 	// Element: .docsbot-chat-input-wrapper
@@ -169,7 +173,11 @@
 
 	&:focus {
 		color: var(--docsbot-image-upload-btn--color, $color-primary-200);
-		outline: none;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--docsbot-focus-ring, #1292ee);
+		outline-offset: 2px;
 	}
 }
 
@@ -226,6 +234,11 @@
 
 	&:hover {
 		background: rgba(0, 0, 0, 0.8);
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--docsbot-focus-ring, #1292ee);
+		outline-offset: 1px;
 	}
 }
 

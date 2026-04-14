@@ -41,6 +41,14 @@
 	padding: 6px;
 	font-size: 12.8px;
 	z-index: 99999999;
+	border: 0;
+	width: 100%;
+	appearance: none;
+}
+
+.mobile-close-button:focus-visible {
+	outline: 2px solid var(--docsbot-focus-ring, #1292ee);
+	outline-offset: -2px;
 }
 
 .mobile-close-button-label {
@@ -115,6 +123,15 @@
 
 	100% {
 		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	#chatbot-loader #chatbot-loader-dot1,
+	#chatbot-loader #chatbot-loader-dot2,
+	#chatbot-loader #chatbot-loader-dot3 {
+		animation: none;
+		opacity: 1;
 	}
 }
 

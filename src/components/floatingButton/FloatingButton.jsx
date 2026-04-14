@@ -13,7 +13,12 @@ import { useConfig } from "../configContext/ConfigContext"
 import { decideTextColor } from "../../utils/colors"
 import clsx from "clsx"
 
-export const FloatingButton = ({ isOpen, setIsOpen }) => {
+export const FloatingButton = ({
+  isOpen,
+  setIsOpen,
+  launcherRef,
+  chatPanelId,
+}) => {
   const { color, icon, labels, showButtonLabel, alignment, horizontalMargin, verticalMargin } =
     useConfig()
 
@@ -35,11 +40,16 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
 
 	root.style.setProperty('--docsbot-floating-button--bg', primaryColor);
 	root.style.setProperty('--docsbot-floating-button--color', decideTextColor(primaryColor));
+	root.style.setProperty('--docsbot-floating-button--focus-ring', primaryColor);
   }, []);
 
+  const buttonLabel = isOpen
+    ? labels?.close || "Close"
+    : labels?.floatingButton || "Help"
+
   return (
-    <a
-      role="button"
+    <button
+      type="button"
       className={clsx(
         showButtonLabel ? "has-label" : "",
         alignment === "left" ? "docsbot-left" : "",
@@ -51,21 +61,24 @@ export const FloatingButton = ({ isOpen, setIsOpen }) => {
         e.preventDefault()
         setIsOpen(!isOpen)
       }}
+      aria-expanded={isOpen}
+      aria-controls={chatPanelId}
+      aria-label={buttonLabel}
       style={{
         left: alignment === "left" ? horizontalMargin || 20 : "auto",
         right: alignment === "right" ? horizontalMargin || 20 : "auto",
         bottom: verticalMargin || 20,
       }}
-      sr-label="Open/close chat">
-        <div className="floating-button-icon">
+      ref={launcherRef}>
+        <div className="floating-button-icon" aria-hidden="true">
           { isIconInList
             ? <FontAwesomeIcon size="xl" icon={iconMap[icon] || iconMap.default} className="floating-button-icon--open" />
-            : <img src={icon} alt="Icon" className="floating-button-icon--open" /> }
+            : <img src={icon} alt="" className="floating-button-icon--open" /> }
           <FontAwesomeIcon size="xl" icon={faXmark} className="floating-button-icon--close" />
         </div>
       {showButtonLabel ? (
         <span className="floating-button-label">{labels.floatingButton}</span>
       ) : null}
-    </a>
+    </button>
   )
 }

@@ -1,6 +1,6 @@
 export const Loader = () => {
   return (
-    <div className="chatbot-loader-container">
+    <div className="chatbot-loader-container" aria-hidden="true">
       <svg
         id="dots"
         width="50px"
@@ -8,6 +8,7 @@ export const Loader = () => {
         viewBox="0 0 132 58"
         version="1.1"
         xmlns="http://www.w3.org/2000/svg"
+        focusable="false"
       >
         <g stroke="none" fill="none">
           <g id="chatbot-loader" fill="currentColor">

@@ -1,6 +1,9 @@
 {
   "scripts": {
     "test:labels": "node --test src/utils/mergeWidgetLabels.test.mjs src/utils/localeLabelCompleteness.test.mjs",
+    "a11y": "npm-run-all a11y:lint a11y:axe",
+    "a11y:axe": "PLAYWRIGHT_JSON_OUTPUT_FILE=artifacts/accessibility/playwright-axe-report.json playwright test tests/accessibility/widget.a11y.spec.mjs --reporter=list,json",
+    "a11y:lint": "eslint src/**/*.{js,jsx}",
     "build": "gulp build && webpack --mode production",
     "start": "gulp build && npm-run-all --parallel dev:web dev:css",
     "dev:web": "webpack serve --mode development --port=3005",
@@ -10,9 +13,11 @@
     "prettier": "prettier **/*.scss --write"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
     "@babel/core": "^7.21.0",
     "@babel/preset-env": "^7.20.2",
     "@babel/preset-react": "^7.18.6",
+    "@playwright/test": "^1.59.1",
     "@svgr/webpack": "^8.1.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/typography": "^0.5.19",
@@ -22,6 +27,9 @@
     "css-loader": "^6.7.3",
     "cssnano": "^7.1.2",
     "del": "^8.0.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "globals": "^17.5.0",
     "gulp": "^5.0.1",
     "gulp-autoprefixer": "^8.0.0",
     "gulp-clean-css": "^4.3.0",

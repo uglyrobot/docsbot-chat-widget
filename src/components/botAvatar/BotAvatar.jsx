@@ -28,7 +28,7 @@ export const BotAvatar = () => {
   }
 
   return (
-    <div className="docsbot-chat-bot-avatar">
+    <div className="docsbot-chat-bot-avatar" aria-hidden="true">
       <div
         className="docsbot-chat-bot-avatar-container"
         style={{
@@ -42,7 +42,7 @@ export const BotAvatar = () => {
           {isIconInList ? (
             <FontAwesomeIcon icon={iconToUse} size="xs" />
           ) : (
-            <img src={botIcon} alt="Bot Avatar" />
+            <img src={botIcon} alt="" />
           )}
         </p>
       </div>
