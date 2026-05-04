@@ -454,7 +454,10 @@ export const BotChatMessage = ({
 					if (payload.conversationId && isAgent) {
 						// make api call to get summary
 						const ticketResponse = await fetch(
-							`${apiBase}/teams/${teamId}/bots/${botId}/conversations/${payload.conversationId}/ticket`
+							`${apiBase}/teams/${teamId}/bots/${botId}/conversations/${payload.conversationId}/ticket`,
+							{
+								headers
+							}
 						);
 						const ticket = await ticketResponse.json();
 						await supportCallback(
