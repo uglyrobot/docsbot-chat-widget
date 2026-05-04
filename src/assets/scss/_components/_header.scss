@@ -87,13 +87,16 @@
 				transform $transition-duration-short linear;
 		}
 
-		&:hover,
-		&:focus {
+		&:hover {
 			border-color: var(
 				--docsbot-reset-button--color,
 				$color-neutral-300
 			);
-			outline: none;
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--docsbot-focus-ring, #1292ee);
+			outline-offset: 2px;
 		}
 
 		&:active {

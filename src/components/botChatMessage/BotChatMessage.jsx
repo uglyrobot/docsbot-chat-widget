@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { Loader } from '../loader/Loader';
 import { useConfig } from '../configContext/ConfigContext';
 import { BotAvatar } from '../botAvatar/BotAvatar';
@@ -242,6 +243,7 @@ export const BotChatMessage = ({
 	const {
 		teamId,
 		botId,
+		botName,
 		botIcon,
 		signature,
 		hideSources,
@@ -269,17 +271,17 @@ export const BotChatMessage = ({
 		headers.Authorization = `Bearer ${signature}`;
 	}
 	const contentRef = useRef(null);
-	const streamdownRef = useRef(null);
 	const [isSupportLoading, setIsSupportLoading] = useState(false);
 	const [isCopied, setIsCopied] = useState(false);
 	const [leadFormValues, setLeadFormValues] = useState({});
 	const [leadFormTouched, setLeadFormTouched] = useState(false);
+	const assistantMessagePrefix = `${botName || 'Assistant'}: `;
 
 	const copyContentToClipboard = async () => {
 		// payload.message contains raw markdown
 		const markdownContent = payload.message || '';
 		// Get rendered HTML from Streamdown component
-		const htmlContent = streamdownRef.current?.innerHTML || '';
+		const htmlContent = contentRef.current?.innerHTML || '';
 
 		try {
 			// Try to copy both markdown and HTML formats using ClipboardItem
@@ -585,6 +587,7 @@ export const BotChatMessage = ({
 					dispatch({
 						type: 'add_message',
 						payload: {
+							id: uuidv4(),
 							variant: 'user',
 							message: ratingMessage,
 							loading: false,
@@ -716,6 +719,7 @@ export const BotChatMessage = ({
 	const shouldShowCopyButton =
 		showCopyButton &&
 		!payload.loading &&
+		!payload.error &&
 		payload.message &&
 		payload.type !== 'lead_collect_message' &&
 		payload.type !== 'custom_button' &&
@@ -797,7 +801,9 @@ export const BotChatMessage = ({
 						payload.agentActivity && (
 						<div
 							className="docsbot-agent-activity"
+							role="status"
 							aria-live="polite"
+							aria-atomic="true"
 						>
 							<FontAwesomeIcon
 								icon={iconForAgentActivity(
@@ -877,8 +883,12 @@ export const BotChatMessage = ({
 								color: '#713F12'
 							}
 						})}
+						role={payload.error ? 'alert' : undefined}
 						ref={messageBoxRef}
 					>
+					<span className="docsbot-screen-reader-only">
+						{assistantMessagePrefix}
+					</span>
 					{(() => {
 						if (payload.loading) {
 							return <Loader />;
@@ -887,7 +897,10 @@ export const BotChatMessage = ({
 						if (payload.type === 'custom_button') {
 							return (
 								<>
-									<div dir="auto" ref={streamdownRef}>
+									<div
+										dir="auto"
+										ref={contentRef}
+									>
 										<Suspense fallback={<Loader />}>
 											<LazyStreamdown
 												className="docsbot-streamdown"
@@ -1040,7 +1053,7 @@ export const BotChatMessage = ({
 																		field.rows ||
 																		3
 																	}
-																	className={`${sharedProps.className} min-h-[120px]`}
+																	className={`${sharedProps.className} min-h-30`}
 																/>
 															) : inputType ===
 																'select' ? (
@@ -1153,7 +1166,10 @@ export const BotChatMessage = ({
 
 						return (
 							<>
-				<div dir="auto" ref={streamdownRef}>
+				<div
+					dir="auto"
+					ref={contentRef}
+				>
 					<Suspense fallback={<Loader />}>
 							<LazyStreamdown
 								className="docsbot-streamdown"
@@ -1183,21 +1199,13 @@ export const BotChatMessage = ({
 													isCopied && 'copied'
 												)}
 												onClick={copyContentToClipboard}
-												aria-label={
-													isCopied
-														? labels?.copied ||
-														  'Copied!'
-														: labels?.copyResponse ||
-														  'Copy response'
-												}
-												title={
-													isCopied
-														? labels?.copied ||
-														  'Copied!'
-														: labels?.copyResponse ||
-														  'Copy response'
-												}
 											>
+												<span className="docsbot-screen-reader-only">
+													{isCopied
+														? labels?.copied || 'Copied!'
+														: labels?.copyResponse ||
+														  'Copy response'}
+												</span>
 												{isCopied ? <CheckIcon /> : <CopyIcon />}
 											</button>
 										)}
@@ -1298,16 +1306,19 @@ export const BotChatMessage = ({
 							)}
 						>
 							<button
+								type="button"
 								onClick={(e) => {
 									saveRating(1);
 								}}
-								title={labels.helpful}
 								className={clsx(
 									'doscbot-rate-good',
 									rating === 1 && 'selected'
 								)}
 								{...(rating === 1 && { disabled: true })}
 							>
+								<span className="docsbot-screen-reader-only">
+									{labels.helpful}
+								</span>
 								<span dir="auto" aria-hidden="true">
 									{payload.responses?.yes ||
 										labels.feedbackYes ||
@@ -1316,16 +1327,19 @@ export const BotChatMessage = ({
 							</button>
 
 							<button
+								type="button"
 								onClick={(e) => {
 									saveRating(-1);
 								}}
-								title={labels.unhelpful}
 								className={clsx(
 									'doscbot-rate-bad',
 									rating === -1 && 'selected'
 								)}
 								{...(rating === -1 && { disabled: true })}
 							>
+								<span className="docsbot-screen-reader-only">
+									{labels.unhelpful}
+								</span>
 								<span dir="auto" aria-hidden="true">
 									{payload.responses?.no ||
 										labels.feedbackNo ||
@@ -1372,32 +1386,38 @@ export const BotChatMessage = ({
 							)}
 						>
 							<button
+								type="button"
 								onClick={(e) => {
 									saveRating(1);
 								}}
-								title={labels.helpful}
 								className={clsx(
 									'doscbot-rate-good',
 									rating === 1 && 'selected'
 								)}
 								{...(rating === 1 && { disabled: true })}
 							>
+								<span className="docsbot-screen-reader-only">
+									{labels.helpful}
+								</span>
 								<span dir="auto" aria-hidden="true">
 									{labels.feedbackYes || '👍'}
 								</span>
 							</button>
 
 							<button
+								type="button"
 								onClick={(e) => {
 									saveRating(-1);
 								}}
-								title={labels.unhelpful}
 								className={clsx(
 									'doscbot-rate-bad',
 									rating === -1 && 'selected'
 								)}
 								{...(rating === -1 && { disabled: true })}
 							>
+								<span className="docsbot-screen-reader-only">
+									{labels.unhelpful}
+								</span>
 								<span dir="auto" aria-hidden="true">
 									{labels.feedbackNo || '👎'}
 								</span>
@@ -1426,6 +1446,7 @@ export const BotChatMessage = ({
 							)}
 						>
 							<button
+								type="button"
 								disabled={isSupportLoading}
 								onClick={(e) =>
 									{
@@ -1452,7 +1473,7 @@ export const BotChatMessage = ({
 								{isSupportLoading ? (
 									<Loader />
 								) : (
-									<span dir="auto" aria-hidden="true">
+									<span dir="auto">
 										{payload.responses?.yes ||
 											labels.getSupport}
 									</span>
@@ -1461,6 +1482,7 @@ export const BotChatMessage = ({
 
 							{!isSupportLoading && (
 								<button
+									type="button"
 									onClick={(e) => {
 										const message =
 											payload.responses?.no ||
@@ -1469,6 +1491,7 @@ export const BotChatMessage = ({
 										dispatch({
 											type: 'add_message',
 											payload: {
+												id: uuidv4(),
 												variant: 'user',
 												message: message,
 												loading: false,
@@ -1484,7 +1507,7 @@ export const BotChatMessage = ({
 									}}
 									className=""
 								>
-									<span dir="auto" aria-hidden="true">
+									<span dir="auto">
 										{payload.responses?.no ||
 											labels.feedbackNo ||
 											'👎'}
@@ -1522,6 +1545,7 @@ export const BotChatMessage = ({
 					)}
 				>
 					<button
+						type="button"
 						onClick={(e) =>
 							runSupportCallback(e, state.chatHistory || [])
 						}

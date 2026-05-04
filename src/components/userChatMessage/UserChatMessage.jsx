@@ -1,6 +1,6 @@
 import { Loader } from "../loader/Loader";
 
-export const UserChatMessage = ({ loading, message, imageUrls }) => {
+export const UserChatMessage = ({ loading, message, imageUrls, messageBoxRef }) => {
   return (
     <div className="docsbot-user-chat-message-container">
       {imageUrls && imageUrls.length > 0 && (
@@ -9,7 +9,7 @@ export const UserChatMessage = ({ loading, message, imageUrls }) => {
             <div key={index} className="docsbot-user-chat-image-container">
               <img 
                 src={url} 
-                alt={`Attached image ${index + 1}`} 
+                alt={`Attachment ${index + 1}`} 
                 className="docsbot-user-chat-image"
               />
             </div>
@@ -17,7 +17,8 @@ export const UserChatMessage = ({ loading, message, imageUrls }) => {
         </div>
       )}
       
-      <div className="docsbot-user-chat-message">
+      <div className="docsbot-user-chat-message" ref={messageBoxRef}>
+        <span className="docsbot-screen-reader-only">You: </span>
         {(() => {
           if (loading) {
             return <Loader />;

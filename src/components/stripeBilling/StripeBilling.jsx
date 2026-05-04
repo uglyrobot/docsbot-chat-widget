@@ -161,7 +161,6 @@ const InvoiceItem = ({ invoice, labels }) => {
 							target="_blank"
 							rel="noopener noreferrer"
 							className="inline-flex items-center justify-center w-8 h-8 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors shrink-0"
-							title="Download PDF"
 							aria-label="Download PDF"
 						>
 							<FontAwesomeIcon icon={faDownload} className="w-3.5 h-3.5" />

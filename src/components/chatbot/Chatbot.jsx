@@ -2,6 +2,7 @@
 
 import {
 	useEffect,
+	useId,
 	useLayoutEffect,
 	useRef,
 	useState,
@@ -204,7 +205,7 @@ const LeadCollectBlock = ({ message, children }) => {
 	return children(ready);
 };
 
-export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
+export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const [chatInput, setChatInput] = useState('');
 	const [selectedImages, setSelectedImages] = useState([]);
 	const [imageUrls, setImageUrls] = useState([]);
@@ -255,6 +256,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const ref = useRef();
 	const inputRef = useRef();
 	const fileInputRef = useRef(null);
+	const chatInputId = useId();
+	const chatInputLabelId = useId();
 	const mediaMatch = window.matchMedia('(min-width: 480px)');
 	const messagesRefs = useRef({});
 	const [isFetching, setIsFetching] = useState(false);
@@ -313,7 +316,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const isCalComEnabled = isSchedulerEnabled(useCalCom);
 	const isTidyCalEnabled = isSchedulerEnabled(useTidyCal);
 
-	const removeExistingSchedulerEmbeds = (
+const removeExistingSchedulerEmbeds = (
 		schedulerEmbed,
 		excludeMessageId = null
 	) => {
@@ -341,6 +344,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		});
 	});
 };
+
 
 	const handleImageSelect = (e) => {
 		if (!useImageUpload) return;
@@ -461,9 +465,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 	useEffect(() => {
 		Emitter.on('docsbot_add_user_message', ({ message, send }) => {
+			const messageId = uuidv4();
 			dispatch({
 				type: 'add_message',
 				payload: {
+					id: messageId,
 					variant: 'user',
 					message: message,
 					loading: false,
@@ -1101,6 +1107,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		let answer = '';
 		let pendingSchedulerEmbed = null;
 		let currentAgentActivity = null;
+		let hasStartedStreaming = false;
 		// Use metadataOverride if provided (e.g. from lead form submission) to avoid
 		// stale closure over identify that hasn't re-rendered yet.
 		const metadata = options.metadataOverride || mergeIdentifyMetadata(identify);
@@ -1211,21 +1218,27 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 						// If server sends an error event, handle accordingly
 						if (data.event === 'error') {
+							const errorMessage =
+								data.data ||
+								'Sorry, something went wrong. Please try again.';
 							dispatch({
 								type: 'update_message',
 								payload: {
 									id,
 									variant: 'chatbot',
 									type: data.event,
-									message: data.data,
+									message: errorMessage,
 									loading: false,
 									error: true,
 									streaming: false,
 									agentActivity: null
 								}
 							});
+							currentAgentActivity = null;
+							setIsFetching(false);
 							scrollToBottom(ref);
-							throw new FatalError(data.data);
+							abortController.abort();
+							return;
 						}
 
 						// Agent SSE: reasoning + tool_call use JSON `data`; stream uses plain text (see agentActivityFromSse.js)
@@ -1266,6 +1279,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									}
 								});
 							}
+							if (hasStartedStreaming) {
+								return;
+							}
 							const activity = agentActivityFromSseEvent(
 								'tool_call',
 								data.data
@@ -1283,6 +1299,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							return;
 						}
 						if (data.event === 'reasoning') {
+							if (hasStartedStreaming) {
+								return;
+							}
 							const isEmptyReasoning = isEmptyReasoningEvent(
 								data.data
 							);
@@ -1310,6 +1329,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						}
 
 						if (data.event === 'stream') {
+							hasStartedStreaming = true;
 							// Handle empty data fields as line breaks to preserve formatting
 							if (data.data === '') {
 								answer += '\n';
@@ -1358,17 +1378,19 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										? finalData.message || finalData.answer
 										: finalData.answer;
 
+									const finalMessageId =
+										data.event ===
+										'is_resolved_question'
+											? uuidv4()
+											: id;
+
 									dispatch({
 									type:
 										data.event === 'is_resolved_question'
 											? 'add_message'
 											: 'update_message',
 									payload: {
-										id:
-											data.event ===
-											'is_resolved_question'
-												? uuidv4()
-												: id,
+										id: finalMessageId,
 										variant: 'chatbot',
 										type: data.event,
 										message: terminalMessage,
@@ -1632,10 +1654,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			useImageUpload && selectedImages.length > 0
 				? selectedImages.map((img) => img.thumbnailUrl)
 				: undefined;
+		const userMessageId = uuidv4();
 
 		dispatch({
 			type: 'add_message',
 			payload: {
+				id: userMessageId,
 				variant: 'user',
 				message: chatInput,
 				loading: false,
@@ -1720,6 +1744,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		// Add drag-and-drop zone styles
 		root.style.setProperty(
 			'--docsbot-drag-border-color',
+			isWhite ? '#314351' : primaryColor
+		);
+		root.style.setProperty(
+			'--docsbot-focus-ring',
 			isWhite ? '#314351' : primaryColor
 		);
 	}, [color]);
@@ -1852,12 +1880,28 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		color
 	);
 	const isFloatingSmall = !isEmbeddedBox && hideHeader;
+	const chatRegionLabel = botName || labels.floatingButton || 'Chat';
 
 	useEffect(() => {
 		if (isOpen) {
 			setTimeout(() => scrollToBottom(ref), 0);
 		}
 	}, [isOpen]);
+
+	useEffect(() => {
+		if (isEmbeddedBox || typeof setIsOpen !== 'function') return;
+
+		const handleEscape = (event) => {
+			if (event.key === 'Escape') {
+				setIsOpen(false);
+			}
+		};
+
+		document.addEventListener('keydown', handleEscape);
+		return () => {
+			document.removeEventListener('keydown', handleEscape);
+		};
+	}, [isEmbeddedBox, setIsOpen]);
 
 	// Handle drag and drop events
 	const handleDragEnter = (e) => {
@@ -1925,23 +1969,28 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			}
 			part="wrapper"
 		>
-			<div className="docsbot-chat-container">
+			<section
+				className="docsbot-chat-container"
+				id={chatPanelId}
+				aria-label={chatRegionLabel}
+			>
 				<div className="docsbot-chat-inner-container">
 					{!isEmbeddedBox && (
-						<a
-							role="button"
+						<button
+							type="button"
 							className={'mobile-close-button'}
 							onClick={(e) => {
 								e.preventDefault();
 								setIsOpen(false);
 							}}
-							sr-label="Close chat"
+							aria-controls={chatPanelId}
+							aria-label={labels.close || 'Close'}
 						>
 							<FontAwesomeIcon size="lg" icon={faXmark} />
 							<span className="mobile-close-button-label">
 								{labels.close || 'Close'}
 							</span>
-						</a>
+						</button>
 					)}
 					<div
 						className={clsx(
@@ -1959,13 +2008,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 							style={{ width: '100%' }}
 						>
 							<button
+								type="button"
 								onClick={() => refreshChatHistory()}
 								className="docsbot-chat-header-button"
+								aria-label={labels?.resetChat}
 							>
 								<FontAwesomeIcon icon={faRefresh} />
-								<span className="docsbot-screen-reader-only">
-									{labels?.resetChat}
-								</span>
 							</button>
 							<div
 								className="docsbot-chat-header-content"
@@ -2011,12 +2059,25 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						</div>
 					</div>
 
-					<div className="docsbot-chat-message-container" ref={ref}>
+					<div
+						className="docsbot-chat-message-container"
+						ref={ref}
+						role="log"
+						aria-live="polite"
+						aria-relevant="additions text"
+						aria-busy={isFetching ? 'true' : 'false'}
+						aria-label={chatRegionLabel}
+					>
 						{Object.keys(state.messages).map((key, index) => {
 							const message = state.messages[key];
 							message.isLast =
 								key === Object.keys(state.messages).pop();
-							messagesRefs.current[message.id] = createRef();
+							if (
+								message.id &&
+								!messagesRefs.current[message.id]
+							) {
+								messagesRefs.current[message.id] = createRef();
+							}
 							
 							return message.variant === 'chatbot' ? (
 								<div key={key}>
@@ -2179,6 +2240,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									loading={message.loading}
 									message={message.message}
 									imageUrls={message.imageUrls}
+									messageBoxRef={
+										messagesRefs.current[message.id]
+									}
 								/>
 							);
 						})}
@@ -2211,9 +2275,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 													type="button"
 													dir="auto"
 													onClick={() => {
+														const messageId = uuidv4();
 														dispatch({
 															type: 'add_message',
 															payload: {
+																id: messageId,
 																variant: 'user',
 																message: prompt,
 																loading: false,
@@ -2257,6 +2323,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 					<div className="docsbot-chat-footer">
 						{!isAtBottom && (
 							<button
+								type="button"
 								className={clsx(
 									'docsbot-scroll-button',
 									isAtBottom && 'hide'
@@ -2264,9 +2331,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								onClick={scrollToLatestContent}
 								aria-label="Scroll to latest messages"
 							>
-								<span className="docsbot-screen-reader-only">
-									Scroll to the bottom of conversation
-								</span>
 								<FontAwesomeIcon icon={faChevronDown} />
 							</button>
 						)}
@@ -2297,13 +2361,22 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											multiple
 											className="docsbot-hidden-file-input"
 											aria-label="Upload image"
+											tabIndex={-1}
 										/>
 									)}
 
 									<div
 										className={`docsbot-chat-input-wrapper ${selectedImages.length > 0 ? 'has-images' : ''} ${isDragging ? 'is-dragging' : ''} ${!useImageUpload ? 'no-image-upload' : ''}`}
 									>
+										<label
+											id={chatInputLabelId}
+											htmlFor={chatInputId}
+											className="docsbot-screen-reader-only"
+										>
+											{labels.inputPlaceholder}
+										</label>
 										<textarea
+											id={chatInputId}
 											className={`docsbot-chat-input ${!useImageUpload ? 'no-image-upload' : ''}`}
 											placeholder={
 												labels.inputPlaceholder
@@ -2421,6 +2494,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											}}
 											ref={inputRef}
 											disabled={isLeadFormVisible}
+											aria-labelledby={chatInputLabelId}
 											maxLength={
 												inputLimit
 													? Math.min(inputLimit, 2000)
@@ -2497,10 +2571,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 											isFetching ||
 											isLeadFormVisible
 										}
+										aria-label={labels.submit || 'Submit'}
 									>
 										<FontAwesomeIcon
 											icon={faPaperPlane}
 											className="docsbot-chat-btn-send-icon"
+											aria-hidden="true"
 										/>
 									</button>
 								</form>
@@ -2550,7 +2626,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						</div>
 					</div>
 				</div>
-			</div>
+			</section>
 		</div>
 	);
 };
