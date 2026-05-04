@@ -1107,6 +1107,7 @@ const removeExistingSchedulerEmbeds = (
 		let answer = '';
 		let pendingSchedulerEmbed = null;
 		let currentAgentActivity = null;
+		let hasStartedStreaming = false;
 		// Use metadataOverride if provided (e.g. from lead form submission) to avoid
 		// stale closure over identify that hasn't re-rendered yet.
 		const metadata = options.metadataOverride || mergeIdentifyMetadata(identify);
@@ -1278,6 +1279,9 @@ const removeExistingSchedulerEmbeds = (
 									}
 								});
 							}
+							if (hasStartedStreaming) {
+								return;
+							}
 							const activity = agentActivityFromSseEvent(
 								'tool_call',
 								data.data
@@ -1295,6 +1299,9 @@ const removeExistingSchedulerEmbeds = (
 							return;
 						}
 						if (data.event === 'reasoning') {
+							if (hasStartedStreaming) {
+								return;
+							}
 							const isEmptyReasoning = isEmptyReasoningEvent(
 								data.data
 							);
@@ -1322,6 +1329,7 @@ const removeExistingSchedulerEmbeds = (
 						}
 
 						if (data.event === 'stream') {
+							hasStartedStreaming = true;
 							// Handle empty data fields as line breaks to preserve formatting
 							if (data.data === '') {
 								answer += '\n';
