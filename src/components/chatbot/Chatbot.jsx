@@ -1217,21 +1217,27 @@ const removeExistingSchedulerEmbeds = (
 
 						// If server sends an error event, handle accordingly
 						if (data.event === 'error') {
+							const errorMessage =
+								data.data ||
+								'Sorry, something went wrong. Please try again.';
 							dispatch({
 								type: 'update_message',
 								payload: {
 									id,
 									variant: 'chatbot',
 									type: data.event,
-									message: data.data,
+									message: errorMessage,
 									loading: false,
 									error: true,
 									streaming: false,
 									agentActivity: null
 								}
 							});
+							currentAgentActivity = null;
+							setIsFetching(false);
 							scrollToBottom(ref);
-							throw new FatalError(data.data);
+							abortController.abort();
+							return;
 						}
 
 						// Agent SSE: reasoning + tool_call use JSON `data`; stream uses plain text (see agentActivityFromSse.js)
