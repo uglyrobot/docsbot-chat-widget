@@ -1,6 +1,13 @@
 /** @format */
 
-import { useEffect, useRef, useState, createRef, Suspense } from 'react';
+import {
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+	createRef,
+	Suspense
+} from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useChatbot } from '../chatbotContext/ChatbotContext';
 import { useConfig } from '../configContext/ConfigContext';
@@ -252,6 +259,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 	const messagesRefs = useRef({});
 	const [isFetching, setIsFetching] = useState(false);
 	const [isAtBottom, setIsAtBottom] = useState(true);
+	const [pendingTopScrollMessageId, setPendingTopScrollMessageId] =
+		useState(null);
+	const [anchoredTopScrollMessageId, setAnchoredTopScrollMessageId] =
+		useState(null);
+	const [bottomScrollSpacerHeight, setBottomScrollSpacerHeight] =
+		useState(0);
 	const [isCalendlyScriptReady, setIsCalendlyScriptReady] = useState(false);
 	const [isTidyCalScriptReady, setIsTidyCalScriptReady] = useState(false);
 	const [streamController, setStreamController] = useState(null);
@@ -441,6 +454,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		fileInputRef.current.click();
 	};
 
+	const scrollMessageToTopAfterRender = (messageId) => {
+		setAnchoredTopScrollMessageId(messageId);
+		setPendingTopScrollMessageId(messageId);
+	};
+
 	useEffect(() => {
 		Emitter.on('docsbot_add_user_message', ({ message, send }) => {
 			dispatch({
@@ -453,7 +471,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 				}
 			});
 
-			scrollToBottom(ref);
+			scrollMessageToTopAfterRender(messageId);
 
 			if (send) {
 				fetchAnswer(message);
@@ -734,7 +752,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						let ticket = null;
 						try {
 							const ticketResponse = await fetch(
-								`${apiBase}/teams/${teamId}/bots/${botId}/conversations/${getConversationId()}/ticket`
+								`${apiBase}/teams/${teamId}/bots/${botId}/conversations/${getConversationId()}/ticket`,
+								{
+									headers: {
+										'Content-Type': 'application/json',
+										accept: 'application/json',
+										...(signature && {
+											Authorization: `Bearer ${signature}`
+										})
+									}
+								}
 							);
 							ticket = await ticketResponse.json();
 						} catch (_error) {
@@ -1071,11 +1098,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 			new CustomEvent('docsbot_fetching_answer', { detail: { question } })
 		);
 
-		// Scroll to the bottom of the chat container
-		// This ensures the latest message is visible to the user
-		scrollToBottom(ref);
-
-		let currentHeight = 0;
 		let answer = '';
 		let pendingSchedulerEmbed = null;
 		let currentAgentActivity = null;
@@ -1184,8 +1206,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 						}
 					},
 					async onmessage(event) {
-						const currentReplyHeight =
-							messagesRefs?.current[id]?.current?.clientHeight;
 						const data = event;
 						//console.log(data.event);
 
@@ -1309,8 +1329,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								}
 							});
 							currentAgentActivity = null;
-
-							scrollToBottom(ref);
 						} else {
 								if (data.data) {
 									const finalData = JSON.parse(data.data);
@@ -1379,8 +1397,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								});
 								currentAgentActivity = null;
 
-								scrollToBottom(ref);
-
 								answerId = finalData.id || null; // save the answer id for the feedback button
 								let newChatHistory = finalData.history;
 
@@ -1390,13 +1406,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 										chatHistory: newChatHistory
 									}
 								});
-
-								scrollToBottom(ref);
-
-								// Scroll after full bot message and options if escalation
-								if (data.event === 'support_escalation') {
-									setTimeout(() => scrollToBottom(ref), 0);
-								}
 
 								// Change this to use native JS event
 								document.dispatchEvent(
@@ -1412,11 +1421,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									event
 								);
 							}
-						}
-
-						if (currentReplyHeight - currentHeight >= 60) {
-							currentHeight = currentReplyHeight;
-							ref.current.scrollTop = ref.current.scrollHeight;
 						}
 					},
 					onerror(err) {
@@ -1541,17 +1545,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 
 			// Receive message from server word by word. Display the words as they are received.
 			ws.onmessage = async function (event) {
-				const currentReplyHeight =
-					messagesRefs?.current[id]?.current?.clientHeight;
 				const data = JSON.parse(event.data);
 				if (data.sender === 'bot') {
-					if (currentReplyHeight - currentHeight >= 80) {
-						currentHeight = currentReplyHeight;
-						scrollToBottom(ref);
-					}
-					if (data.type === 'start') {
-						scrollToBottom(ref);
-					} else if (data.type === 'stream') {
+					if (data.type === 'stream') {
 						//append to answer
 						answer += data.message;
 						dispatch({
@@ -1588,8 +1584,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 								chatHistory: finalData.history
 							}
 						});
-						currentHeight = 0;
-						scrollToBottom(ref);
 						ws.close();
 						// Change this to use native JS event
 						document.dispatchEvent(
@@ -1658,12 +1652,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		setSelectedImages([]);
 		setImageUrls([]);
 
-		// Wait for DOM update, then scroll
-		setTimeout(() => {
-			scrollToBottom(ref);
-		}, 0);
+		scrollMessageToTopAfterRender(userMessageId);
 
-		inputRef.current.focus();
+		if (mediaMatch.matches) {
+			inputRef.current?.focus();
+		} else {
+			inputRef.current?.blur();
+		}
 	}
 
 	useEffect(() => {
@@ -1729,31 +1724,121 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 		);
 	}, [color]);
 
+	const [parsedFooterText, setParsedFooterText] = useState(null);
+
+	const syncAtBottom = () => {
+		const chatContainer = ref.current;
+		if (!chatContainer) return;
+		const effectiveScrollHeight =
+			chatContainer.scrollHeight - bottomScrollSpacerHeight;
+		const atBottom =
+			chatContainer.scrollTop + chatContainer.offsetHeight >=
+			effectiveScrollHeight - 1;
+		setIsAtBottom(atBottom);
+	};
+
+	const scrollToLatestContent = () => {
+		const chatContainer = ref.current;
+		if (!chatContainer) return;
+		chatContainer.scrollTop =
+			chatContainer.scrollHeight -
+			bottomScrollSpacerHeight -
+			chatContainer.clientHeight;
+	};
+
 	useEffect(() => {
 		const chatContainer = ref.current;
 
-		const handleScroll = () => {
-			const atBottom =
-				chatContainer.scrollTop + chatContainer.offsetHeight >=
-				chatContainer.scrollHeight - 1; // small buffer
-			setIsAtBottom(atBottom);
-		};
-
 		if (chatContainer) {
-			chatContainer.addEventListener('scroll', handleScroll);
-			// Initial check
-			handleScroll();
+			chatContainer.addEventListener('scroll', syncAtBottom);
+			syncAtBottom();
 		}
 
-		// Clean up
 		return () => {
 			if (chatContainer) {
-				chatContainer.removeEventListener('scroll', handleScroll);
+				chatContainer.removeEventListener('scroll', syncAtBottom);
 			}
 		};
-	}, []);
+	}, [bottomScrollSpacerHeight]);
 
-	const [parsedFooterText, setParsedFooterText] = useState(null);
+	useLayoutEffect(() => {
+		syncAtBottom();
+	}, [bottomScrollSpacerHeight, state.messages]);
+
+	useLayoutEffect(() => {
+		if (!anchoredTopScrollMessageId) return;
+
+		const topScrollGap = 16;
+
+		let frameId = null;
+		let attempts = 0;
+		const maxAttempts = 3;
+
+		const scrollWhenReady = () => {
+			const messageRef =
+				messagesRefs.current[anchoredTopScrollMessageId];
+			const container = ref.current;
+			const messageEl = messageRef?.current;
+			if (container && messageEl) {
+				const containerRect = container.getBoundingClientRect();
+				const messageRect = messageEl.getBoundingClientRect();
+				const targetScrollTop = Math.max(
+					0,
+					container.scrollTop +
+						messageRect.top -
+						containerRect.top -
+						topScrollGap
+				);
+				const scrollHeightWithoutSpacer =
+					container.scrollHeight - bottomScrollSpacerHeight;
+				const neededSpacerHeight = Math.max(
+					0,
+					Math.ceil(
+						targetScrollTop +
+							container.clientHeight -
+							scrollHeightWithoutSpacer
+					)
+				);
+
+				if (neededSpacerHeight !== bottomScrollSpacerHeight) {
+					setBottomScrollSpacerHeight(neededSpacerHeight);
+					frameId = window.requestAnimationFrame(scrollWhenReady);
+					return;
+				}
+
+				if (pendingTopScrollMessageId === anchoredTopScrollMessageId) {
+					container.scrollTop = targetScrollTop;
+					setPendingTopScrollMessageId(null);
+				}
+				return;
+			}
+
+			attempts += 1;
+			if (attempts < maxAttempts) {
+				frameId = window.requestAnimationFrame(scrollWhenReady);
+			}
+		};
+
+		frameId = window.requestAnimationFrame(scrollWhenReady);
+
+		return () => {
+			if (frameId !== null) {
+				window.cancelAnimationFrame(frameId);
+			}
+		};
+	}, [
+		anchoredTopScrollMessageId,
+		bottomScrollSpacerHeight,
+		pendingTopScrollMessageId,
+		state.messages
+	]);
+
+	useEffect(() => {
+		if (isFetching) return;
+		setAnchoredTopScrollMessageId(null);
+		setPendingTopScrollMessageId(null);
+		setBottomScrollSpacerHeight(0);
+	}, [isFetching]);
 
 	useEffect(() => {
 		if (labels.footerMessage) {
@@ -2138,7 +2223,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 														});
 														fetchAnswer(prompt);
 														setChatInput('');
-														inputRef.current.focus();
+														scrollMessageToTopAfterRender(
+															messageId
+														);
+														if (mediaMatch.matches) {
+															inputRef.current?.focus();
+														} else {
+															inputRef.current?.blur();
+														}
 													}}
 													className="docsbot-chat-suggested-questions-button"
 												>
@@ -2149,6 +2241,17 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									</div>
 								</div>
 							)}
+
+						{bottomScrollSpacerHeight > 0 && (
+							<div
+								aria-hidden="true"
+								style={{
+									height: bottomScrollSpacerHeight,
+									marginTop: 0,
+									pointerEvents: 'none'
+								}}
+							/>
+						)}
 					</div>
 
 					<div className="docsbot-chat-footer">
@@ -2158,7 +2261,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox }) => {
 									'docsbot-scroll-button',
 									isAtBottom && 'hide'
 								)}
-								onClick={() => scrollToBottom(ref)}
+								onClick={scrollToLatestContent}
+								aria-label="Scroll to latest messages"
 							>
 								<span className="docsbot-screen-reader-only">
 									Scroll to the bottom of conversation
