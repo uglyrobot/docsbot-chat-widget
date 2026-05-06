@@ -14,6 +14,15 @@ export const defaultLabels = {
   close: "Close",
   create: "Create your own!",
   submit: "Submit",
+  audioRecord: "Record voice message",
+  audioStopRecording: "Stop recording voice message",
+  audioTranscribing: "Transcribing voice message…",
+  audioMicrophoneError:
+    "Microphone access was blocked. Please allow microphone access and try again.",
+  audioRecordingError:
+    "Could not record a voice message. Please try again.",
+  audioTooLarge:
+    "Voice message is too large. Please record a shorter message.",
   cancel: "Cancel",
   rateLimitMessage:
     "You are sending messages too fast. Please slow down.",

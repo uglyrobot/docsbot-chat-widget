@@ -25,11 +25,70 @@
 		text-align: start;
 	}
 
+	.docsbot-user-audio-pending {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		min-width: 54px;
+
+		svg {
+			width: 14px;
+			height: 14px;
+			flex: 0 0 auto;
+		}
+	}
+
+	.docsbot-user-audio-wave {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+		height: 18px;
+
+		span {
+			display: block;
+			width: 3px;
+			height: 8px;
+			border-radius: 999px;
+			background: currentColor;
+			opacity: 0.9;
+			animation: docsbot-user-audio-wave 1s ease-in-out infinite;
+		}
+
+		span:nth-child(2) {
+			animation-delay: 0.12s;
+		}
+
+		span:nth-child(3) {
+			animation-delay: 0.24s;
+		}
+
+		span:nth-child(4) {
+			animation-delay: 0.36s;
+		}
+	}
+
 	&-container {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-end;
 		padding-left: $spacing-xl;
+	}
+}
+
+@keyframes docsbot-user-audio-wave {
+	0%,
+	100% {
+		transform: scaleY(0.65);
+	}
+
+	50% {
+		transform: scaleY(1.55);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.docsbot-user-chat-message .docsbot-user-audio-wave span {
+		animation: none;
 	}
 }
 

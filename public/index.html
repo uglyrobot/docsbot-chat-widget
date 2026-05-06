@@ -228,6 +228,7 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
           // useCustomButtons: true, // agent POST sends custom_buttons; backend may emit custom_button SSE
           isAgent: true, //false to test old websocket API
           useImageUpload: true,
+          useAudioUpload: true,
           reasoningEffort: 'medium', // Optional reasoning effort setting for agent mode
           // Lead collection schema
           leadCollect: {

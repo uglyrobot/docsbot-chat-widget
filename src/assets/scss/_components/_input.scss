@@ -9,7 +9,7 @@
 	padding: #{$spacing-md - $input-border-width} #{$spacing-md -
 		$input-border-width};
 	padding-right: #{($spacing-md - $input-border-width) +
-		(40px - $spacing-md) + $spacing-md + 24px}; // Extra space for image upload button
+		(40px - $spacing-md) + $spacing-md + 24px}; // Extra space for media upload button
 	border: none;
 	border-radius: 0;
 	background: transparent;
@@ -22,7 +22,12 @@
 		border-color $transition-duration-default linear,
 		outline $transition-duration-short linear;
 
-	// When image upload is disabled, reduce padding (no need for image button space)
+	&.has-image-audio-upload {
+		padding-right: #{($spacing-md - $input-border-width) + 96px};
+	}
+
+	// When media upload is disabled, reduce padding (no need for media button space)
+	&.no-media-upload,
 	&.no-image-upload {
 		padding-right: #{($spacing-md - $input-border-width) + $spacing-xl +
 			4px}; // Only space for send button
@@ -61,6 +66,10 @@
 
 		&:focus-within {
 			border-color: var(--docsbot-input--hover, $color-primary-200);
+		}
+
+		&.is-recording-audio {
+			border-color: $color-secondary-300;
 		}
 	}
 
@@ -138,10 +147,11 @@
 	display: none;
 }
 
-// Image upload button
-.docsbot-image-upload-btn {
+// Media action buttons
+.docsbot-image-upload-btn,
+.docsbot-audio-record-btn {
 	cursor: pointer;
-	width: 40px;
+	width: 32px;
 	height: 40px;
 	position: absolute;
 	font-size: 16px;
@@ -158,7 +168,8 @@
 	background: transparent;
 	transition:
 		color $transition-duration-default ease,
-		right $transition-duration-default ease;
+		right $transition-duration-default ease,
+		background $transition-duration-default ease;
 	z-index: 1;
 	border-radius: 12px;
 
@@ -181,9 +192,140 @@
 	}
 }
 
-// Adjust position when submit button is disabled
-.docsbot-chat-input-form.has-disabled-submit .docsbot-image-upload-btn {
+.docsbot-image-upload-btn {
+	right: 48px;
+}
+
+.docsbot-audio-record-btn {
+	right: 42px;
+}
+
+.docsbot-chat-input-form:has(.docsbot-image-upload-btn)
+	.docsbot-audio-record-btn {
+	right: 42px;
+}
+
+.docsbot-chat-input-form:has(.docsbot-audio-record-btn)
+	.docsbot-image-upload-btn {
+	right: 74px;
+}
+
+// Adjust position when submit button is disabled and image upload is the only media button.
+.docsbot-chat-input-form.has-disabled-submit:not(:has(.docsbot-audio-record-btn))
+	.docsbot-image-upload-btn {
 	right: 35px;
+}
+
+.docsbot-chat-input-form.has-disabled-submit:has(.docsbot-image-upload-btn)
+	.docsbot-audio-record-btn {
+	right: 42px;
+}
+
+.docsbot-chat-input-form.has-disabled-submit:has(.docsbot-audio-record-btn)
+	.docsbot-image-upload-btn {
+	right: 74px;
+}
+
+.docsbot-audio-recorder-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 4;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 5px;
+	border: 0;
+	border-radius: #{$spacing-md - 1px};
+	background: $color-neutral-300;
+}
+
+.docsbot-audio-recorder-cancel,
+.docsbot-audio-recorder-send {
+	flex: 0 0 auto;
+	width: 40px;
+	height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+	font-size: 14px;
+	transition:
+		background $transition-duration-default ease,
+		color $transition-duration-default ease,
+		transform $transition-duration-short ease;
+
+	&:active {
+		transform: scale(0.96);
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--docsbot-focus-ring, #1292ee);
+		outline-offset: 2px;
+	}
+}
+
+.docsbot-audio-recorder-cancel {
+	background: $color-neutral-300;
+	border: 1px solid rgba(166, 179, 191, 0.42);
+	color: $color-secondary-100;
+
+	&:hover {
+		background: rgba(166, 179, 191, 0.12);
+		color: $color-neutral-100;
+	}
+}
+
+.docsbot-audio-recorder-send {
+	background: #030712;
+	color: #ffffff;
+
+	&:hover {
+		background: color-mix(in srgb, #030712 88%, #ffffff);
+	}
+}
+
+.docsbot-audio-recorder-visual {
+	min-width: 0;
+	flex: 1 1 auto;
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	height: 100%;
+	overflow: hidden;
+}
+
+.docsbot-audio-recorder-time {
+	flex: 0 0 auto;
+	min-width: 29px;
+	color: $color-secondary-100;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+}
+
+.docsbot-audio-recorder-wave {
+	min-width: 0;
+	flex: 1 1 auto;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	height: 24px;
+	overflow: hidden;
+
+	span {
+		flex: 0 0 2px;
+		width: 2px;
+		height: 2px;
+		border-radius: 999px;
+		background: $color-secondary-100;
+		transition:
+			height 80ms linear,
+			opacity 80ms linear;
+	}
 }
 
 // Submit button positioning adjustment
