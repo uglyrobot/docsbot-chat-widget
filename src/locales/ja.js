@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "音声メッセージの録音を停止",
     "audioTranscribing": "音声メッセージを文字起こし中…",
     "audioMicrophoneError": "マイクへのアクセスがブロックされています。マイクへのアクセスを許可してからもう一度お試しください。",
+    "audioMicrophonePolicyError": "このページはこのチャットウィジェットのマイク利用をブロックしているため、ブラウザが許可ダイアログを表示できませんでした。埋め込みコンテンツ向けにマイクを許可するようサイト管理者に依頼してください（Permissions-Policy または iframe の allow）。",
     "audioRecordingError": "音声メッセージを録音できませんでした。もう一度お試しください。",
     "audioTooLarge": "音声メッセージが大きすぎます。短いメッセージを録音してください。",
     "cancel": "キャンセル",

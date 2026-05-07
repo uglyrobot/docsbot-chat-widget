@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Hentikan rakaman mesej suara",
     "audioTranscribing": "Mentranskripsikan mesej suara…",
     "audioMicrophoneError": "Akses mikrofon disekat. Benarkan akses mikrofon dan cuba lagi.",
+    "audioMicrophonePolicyError": "Halaman ini menyekat akses mikrofon untuk widget sembang ini, jadi penyemak imbas anda tidak dapat memaparkan gesaan kebenaran. Minta pemilik tapak membenarkan mikrofon untuk kandungan terbenam (Permissions-Policy atau iframe allow).",
     "audioRecordingError": "Tidak dapat merakam mesej suara. Cuba lagi.",
     "audioTooLarge": "Mesej suara terlalu besar. Rakam mesej yang lebih pendek.",
     "cancel": "Batal",

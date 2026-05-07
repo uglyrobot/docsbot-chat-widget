@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Ustavi snemanje glasovnega sporočila",
     "audioTranscribing": "Prepisovanje glasovnega sporočila…",
     "audioMicrophoneError": "Dostop do mikrofona je blokiran. Dovolite dostop do mikrofona in poskusite znova.",
+    "audioMicrophonePolicyError": "Ta stran blokira dostop do mikrofona za ta klepetalni gradnik, zato brskalnik ni mogel prikazati poziva za dovoljenje. Prosite lastnika spletišča, da dovoli mikrofon za vdelano vsebino (Permissions-Policy ali iframe allow).",
     "audioRecordingError": "Glasovnega sporočila ni bilo mogoče posneti. Poskusite znova.",
     "audioTooLarge": "Glasovno sporočilo je preveliko. Posnemite krajše sporočilo.",
     "cancel": "Prekliči",

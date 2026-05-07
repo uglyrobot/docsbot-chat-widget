@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Peata häälsõnumi salvestamine",
     "audioTranscribing": "Häälsõnumit transkribeeritakse…",
     "audioMicrophoneError": "Mikrofoni juurdepääs on blokeeritud. Luba mikrofoni juurdepääs ja proovi uuesti.",
+    "audioMicrophonePolicyError": "See lehekülg blokeerib mikrofonile juurdepääsu selle vestlusvidina jaoks, seega ei saanud brauser lubadust küsida. Paluge saidi omanikul lubada mikrofon manustatud sisule (Permissions-Policy või iframe allow).",
     "audioRecordingError": "Häälsõnumit ei saanud salvestada. Proovi uuesti.",
     "audioTooLarge": "Häälsõnum on liiga suur. Salvesta lühem sõnum.",
     "cancel": "Tühista",

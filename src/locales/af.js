@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Stop opname van stemboodskap",
     "audioTranscribing": "Stemboodskap word getranskribeer…",
     "audioMicrophoneError": "Mikrofoontoegang is geblokkeer. Laat asseblief mikrofoontoegang toe en probeer weer.",
+    "audioMicrophonePolicyError": "Hierdie webwerf blokkeer mikrofoontoegang vir hierdie klets-widget, sodat jou blaaier nie 'n toestemmingsvraag kon wys nie. Vra die werfeienaar om mikrofoon vir ingebedde inhoud toe te laat (Permissions-Policy of iframe allow).",
     "audioRecordingError": "Kon nie ’n stemboodskap opneem nie. Probeer asseblief weer.",
     "audioTooLarge": "Stemboodskap is te groot. Neem asseblief ’n korter boodskap op.",
     "cancel": "Kanselleer",

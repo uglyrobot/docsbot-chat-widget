@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Zaustavi snimanje glasovne poruke",
     "audioTranscribing": "Prepisivanje glasovne poruke…",
     "audioMicrophoneError": "Pristup mikrofonu je blokiran. Dopustite pristup mikrofonu i pokušajte ponovno.",
+    "audioMicrophonePolicyError": "Ova stranica blokira pristup mikrofonu za ovaj widget chata pa preglednik nije mogao prikazati upit za dozvolu. Zamolite vlasnika stranice da dopusti mikrofon za ugrađeni sadržaj (Permissions-Policy ili iframe allow).",
     "audioRecordingError": "Nije moguće snimiti glasovnu poruku. Pokušajte ponovno.",
     "audioTooLarge": "Glasovna poruka je prevelika. Snimite kraću poruku.",
     "cancel": "Odustani",

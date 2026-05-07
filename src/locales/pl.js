@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Zatrzymaj nagrywanie wiadomości głosowej",
     "audioTranscribing": "Transkrypcja wiadomości głosowej…",
     "audioMicrophoneError": "Dostęp do mikrofonu został zablokowany. Zezwól na dostęp do mikrofonu i spróbuj ponownie.",
+    "audioMicrophonePolicyError": "Ta strona blokuje dostęp do mikrofonu dla tego widgetu czatu, więc przeglądarka nie mogła pokazać monitu o pozwolenie. Poproś właściciela witryny o zezwolenie na mikrofon dla osadzonej treści (Permissions-Policy lub atrybut allow w iframe).",
     "audioRecordingError": "Nie udało się nagrać wiadomości głosowej. Spróbuj ponownie.",
     "audioTooLarge": "Wiadomość głosowa jest zbyt duża. Nagraj krótszą wiadomość.",
     "cancel": "Anuluj",

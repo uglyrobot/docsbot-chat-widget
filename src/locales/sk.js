@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Zastaviť nahrávanie hlasovej správy",
     "audioTranscribing": "Prepis hlasovej správy…",
     "audioMicrophoneError": "Prístup k mikrofónu bol zablokovaný. Povoľte prístup k mikrofónu a skúste to znova.",
+    "audioMicrophonePolicyError": "Táto stránka blokuje prístup k mikrofónu pre tento chatový widget, preto váš prehliadač nemohol zobraziť výzvu na povolenie. Požiadajte vlastníka webu, aby povolil mikrofón pre vložený obsah (Permissions-Policy alebo iframe allow).",
     "audioRecordingError": "Nepodarilo sa nahrať hlasovú správu. Skúste to znova.",
     "audioTooLarge": "Hlasová správa je príliš veľká. Nahrajte kratšiu správu.",
     "cancel": "Zrušiť",

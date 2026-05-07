@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Detener grabación del mensaje de voz",
     "audioTranscribing": "Transcribiendo mensaje de voz…",
     "audioMicrophoneError": "El acceso al micrófono está bloqueado. Permite el acceso al micrófono e inténtalo de nuevo.",
+    "audioMicrophonePolicyError": "Esta página bloquea el acceso al micrófono para este widget de chat, por lo que el navegador no pudo mostrar la solicitud de permiso. Pide al propietario del sitio que permita el micrófono para el contenido incrustado (Permissions-Policy o el atributo allow del iframe).",
     "audioRecordingError": "No se pudo grabar un mensaje de voz. Inténtalo de nuevo.",
     "audioTooLarge": "El mensaje de voz es demasiado grande. Graba un mensaje más corto.",
     "cancel": "Cancelar",

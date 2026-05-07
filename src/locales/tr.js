@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Sesli mesaj kaydını durdur",
     "audioTranscribing": "Sesli mesaj yazıya dökülüyor…",
     "audioMicrophoneError": "Mikrofon erişimi engellendi. Lütfen mikrofon erişimine izin verip tekrar deneyin.",
+    "audioMicrophonePolicyError": "Bu sayfa bu sohbet aracı için mikrofon erişimini engelliyor; tarayıcı izin istemi gösteremedi. Site sahibinden gömülü içerik için mikrofona izin vermesini isteyin (Permissions-Policy veya iframe allow).",
     "audioRecordingError": "Sesli mesaj kaydedilemedi. Lütfen tekrar deneyin.",
     "audioTooLarge": "Sesli mesaj çok büyük. Lütfen daha kısa bir mesaj kaydedin.",
     "cancel": "İptal",

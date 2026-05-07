@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "停止录制语音消息",
     "audioTranscribing": "正在转写语音消息…",
     "audioMicrophoneError": "麦克风访问被阻止。请允许麦克风访问后重试。",
+    "audioMicrophonePolicyError": "此页面阻止了此聊天组件使用麦克风，因此浏览器无法显示权限请求。请联系网站所有者允许嵌入式内容使用麦克风（Permissions-Policy 或 iframe 的 allow 属性）。",
     "audioRecordingError": "无法录制语音消息。请重试。",
     "audioTooLarge": "语音消息太大。请录制更短的消息。",
     "cancel": "取消",

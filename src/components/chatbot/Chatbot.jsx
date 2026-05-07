@@ -167,6 +167,31 @@ function isSameSchedulerEmbed(a, provider, path) {
 	);
 }
 
+/**
+ * True when Permissions Policy / legacy Feature Policy disallows microphone in this document
+ * (embedding page or iframe — not user denial).
+ */
+function isMicrophoneDisallowedByEmbeddedPagePolicy() {
+	if (typeof document === 'undefined') return false;
+	const policy = document.permissionsPolicy || document.featurePolicy;
+	if (!policy || typeof policy.allowsFeature !== 'function') {
+		return false;
+	}
+	try {
+		return policy.allowsFeature('microphone') === false;
+	} catch {
+		return false;
+	}
+}
+
+/** Fallback when {@link document.permissionsPolicy} is missing or unreliable. */
+function errorSuggestsMicrophoneBlockedByPermissionsPolicy(error) {
+	const msg = String(error?.message || '').toLowerCase();
+	return (
+		msg.includes('permissions policy') || msg.includes('not allowed in this document')
+	);
+}
+
 function sanitizeRestoredConversation(savedConversation) {
 	if (!savedConversation || typeof savedConversation !== 'object') {
 		return savedConversation;
@@ -516,6 +541,22 @@ const removeExistingSchedulerEmbeds = (
 		});
 
 	const addAudioErrorMessage = (message) => {
+		const existing = Object.values(stateMessagesRef.current || {});
+		const lastByTime =
+			existing.length === 0
+				? null
+				: existing.reduce((latest, m) =>
+						(m.timestamp ?? 0) >= (latest.timestamp ?? 0) ? m : latest
+					);
+		if (
+			lastByTime &&
+			lastByTime.variant === 'chatbot' &&
+			lastByTime.error === true &&
+			lastByTime.message === message
+		) {
+			scrollToBottom(ref);
+			return;
+		}
 		dispatch({
 			type: 'add_message',
 			payload: {
@@ -534,10 +575,7 @@ const removeExistingSchedulerEmbeds = (
 	const sendAudioBlob = async (blob) => {
 		if (!blob || blob.size === 0) return;
 		if (blob.size > maxAudioBytes) {
-			addAudioErrorMessage(
-				labels.audioTooLarge ||
-					'Voice message is too large. Please record a shorter message.'
-			);
+			addAudioErrorMessage(labels.audioTooLarge);
 			return;
 		}
 
@@ -554,7 +592,7 @@ const removeExistingSchedulerEmbeds = (
 				payload: {
 					id: userMessageId,
 					variant: 'user',
-					message: labels.audioTranscribing || 'Transcribing voice message…',
+					message: labels.audioTranscribing,
 					loading: true,
 					timestamp: Date.now(),
 					audio: true,
@@ -572,10 +610,7 @@ const removeExistingSchedulerEmbeds = (
 			scrollMessageToTopAfterRender(userMessageId);
 		} catch (error) {
 			console.warn('DOCSBOT: Failed to process voice message', error);
-			addAudioErrorMessage(
-				labels.audioRecordingError ||
-					'Could not record a voice message. Please try again.'
-			);
+			addAudioErrorMessage(labels.audioRecordingError);
 		}
 	};
 
@@ -680,6 +715,14 @@ const removeExistingSchedulerEmbeds = (
 	const startAudioRecording = async () => {
 		if (!isAudioUploadEnabled || isFetching || isLeadFormVisible) return;
 
+		if (isMicrophoneDisallowedByEmbeddedPagePolicy()) {
+			console.warn(
+				'DOCSBOT: Microphone blocked by embedding page Permissions-Policy — microphone is not allowed in this widget document (no prompt was shown)'
+			);
+			addAudioErrorMessage(labels.audioMicrophonePolicyError);
+			return;
+		}
+
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({
 				audio: {
@@ -732,10 +775,7 @@ const removeExistingSchedulerEmbeds = (
 				setIsRecordingAudio(false);
 				setAudioRecordingElapsedMs(0);
 				setAudioWaveformLevels(Array(40).fill(0.04));
-				addAudioErrorMessage(
-					labels.audioRecordingError ||
-						'Could not record a voice message. Please try again.'
-				);
+				addAudioErrorMessage(labels.audioRecordingError);
 			};
 
 			recorder.start();
@@ -746,11 +786,22 @@ const removeExistingSchedulerEmbeds = (
 			);
 			setIsRecordingAudio(true);
 		} catch (error) {
-			console.warn('DOCSBOT: Microphone access failed', error);
-			addAudioErrorMessage(
-				labels.audioMicrophoneError ||
-					'Microphone access was blocked. Please allow microphone access and try again.'
-			);
+			const policyBlocked =
+				isMicrophoneDisallowedByEmbeddedPagePolicy() ||
+				errorSuggestsMicrophoneBlockedByPermissionsPolicy(error);
+			if (policyBlocked) {
+				console.warn(
+					'DOCSBOT: Microphone blocked by embedding page Permissions-Policy — not user denial; microphone is disallowed for this widget document',
+					error
+				);
+				addAudioErrorMessage(labels.audioMicrophonePolicyError);
+			} else {
+				console.warn(
+					'DOCSBOT: Microphone access failed (permission denied / unavailable — user or browser)',
+					error
+				);
+				addAudioErrorMessage(labels.audioMicrophoneError);
+			}
 		}
 	};
 
@@ -872,7 +923,7 @@ const removeExistingSchedulerEmbeds = (
 			id: uuidv4(),
 			variant: 'chatbot',
 			type: 'lead_collect',
-			message: labels.leadCollectMessage || 'Let us know how to contact you?',
+			message: labels.leadCollectMessage,
 			loading: false,
 			streaming: false,
 			timestamp: Date.now(),
@@ -2244,7 +2295,7 @@ const removeExistingSchedulerEmbeds = (
 		color
 	);
 	const isFloatingSmall = !isEmbeddedBox && hideHeader;
-	const chatRegionLabel = botName || labels.floatingButton || 'Chat';
+	const chatRegionLabel = botName || labels.floatingButton;
 	const hasUserMessage = Object.values(state.messages || {}).some(
 		(message) => message?.variant === 'user'
 	);
@@ -2360,11 +2411,11 @@ const removeExistingSchedulerEmbeds = (
 								setIsOpen(false);
 							}}
 							aria-controls={chatPanelId}
-							aria-label={labels.close || 'Close'}
+							aria-label={labels.close}
 						>
 							<FontAwesomeIcon size="lg" icon={faXmark} />
 							<span className="mobile-close-button-label">
-								{labels.close || 'Close'}
+								{labels.close}
 							</span>
 						</button>
 					)}
@@ -2746,10 +2797,7 @@ const removeExistingSchedulerEmbeds = (
 											<div
 												className="docsbot-audio-recorder-overlay"
 												role="group"
-												aria-label={
-													labels.audioRecord ||
-													'Record voice message'
-												}
+												aria-label={labels.audioRecord}
 											>
 												<button
 													type="button"
@@ -3012,10 +3060,7 @@ const removeExistingSchedulerEmbeds = (
 												isFetching ||
 												isLeadFormVisible
 											}
-											aria-label={
-												labels.audioRecord ||
-												'Record voice message'
-											}
+											aria-label={labels.audioRecord}
 										>
 											<FontAwesomeIcon
 												icon={faMicrophone}
@@ -3040,7 +3085,7 @@ const removeExistingSchedulerEmbeds = (
 											isRecordingAudio ||
 											isLeadFormVisible
 										}
-										aria-label={labels.submit || 'Submit'}
+										aria-label={labels.submit}
 									>
 										<FontAwesomeIcon
 											icon={faPaperPlane}

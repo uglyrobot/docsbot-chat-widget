@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Sustabdyti balso žinutės įrašymą",
     "audioTranscribing": "Perrašoma balso žinutė…",
     "audioMicrophoneError": "Prieiga prie mikrofono užblokuota. Leiskite prieigą prie mikrofono ir bandykite dar kartą.",
+    "audioMicrophonePolicyError": "Šis puslapis blokuoja mikrofono prieigą šiam pokalbio valdikliui, todėl naršyklė negalėjo parodyti leidimo užklausos. Paprašykite svetainės savininko leisti mikrofoną įterptam turiniui (Permissions-Policy arba iframe allow).",
     "audioRecordingError": "Nepavyko įrašyti balso žinutės. Bandykite dar kartą.",
     "audioTooLarge": "Balso žinutė per didelė. Įrašykite trumpesnę žinutę.",
     "cancel": "Atšaukti",

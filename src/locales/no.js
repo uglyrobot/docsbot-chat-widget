@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Stopp opptak av talemelding",
     "audioTranscribing": "Transkriberer talemelding…",
     "audioMicrophoneError": "Mikrofontilgang er blokkert. Tillat mikrofontilgang og prøv igjen.",
+    "audioMicrophonePolicyError": "Denne siden blokkerer mikrofontilgang for denne chat-widgeten, så nettleseren kunne ikke vise tillatelsesdialog. Be eieren av nettstedet om å tillate mikrofon for innebygd innhold (Permissions-Policy eller iframe allow).",
     "audioRecordingError": "Kunne ikke ta opp en talemelding. Prøv igjen.",
     "audioTooLarge": "Talemeldingen er for stor. Ta opp en kortere melding.",
     "cancel": "Avbryt",

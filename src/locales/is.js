@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Stöðva upptöku talskilaboða",
     "audioTranscribing": "Umritar talskilaboð…",
     "audioMicrophoneError": "Aðgangur að hljóðnema var lokaður. Leyfðu aðgang að hljóðnema og reyndu aftur.",
+    "audioMicrophonePolicyError": "Þessi síða hindrar aðgang að hljóðnema fyrir þetta spjallgræði, þannig að vafrinn gat ekki sýnt heimildabeiðni. Biddu eiganda vefsins um að leyfa hljóðnema fyrir ívefjað efni (Permissions-Policy eða iframe allow).",
     "audioRecordingError": "Ekki tókst að taka upp talskilaboð. Reyndu aftur.",
     "audioTooLarge": "Talskilaboðin eru of stór. Taktu upp styttri skilaboð.",
     "cancel": "Hætta við",

@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Stop optagelse af talebesked",
     "audioTranscribing": "Transskriberer talebesked…",
     "audioMicrophoneError": "Mikrofonadgang blev blokeret. Tillad mikrofonadgang, og prøv igen.",
+    "audioMicrophonePolicyError": "Denne side blokerer mikrofonadgang for denne chat-widget, så din browser ikke kunne vise en tilladelsesprompt. Bed webstedets ejer om at tillade mikrofon for indlejret indhold (Permissions-Policy eller iframe allow).",
     "audioRecordingError": "Kunne ikke optage en talebesked. Prøv igen.",
     "audioTooLarge": "Talebeskeden er for stor. Optag en kortere besked.",
     "cancel": "Annuller",

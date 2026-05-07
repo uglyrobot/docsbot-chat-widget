@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "עצור הקלטת הודעה קולית",
     "audioTranscribing": "מתמלל הודעה קולית…",
     "audioMicrophoneError": "הגישה למיקרופון נחסמה. אפשר גישה למיקרופון ונסה שוב.",
+    "audioMicrophonePolicyError": "הדף הזה חוסם גישת מיקרופון לווידג'ט הצ'אט הזה, ולכן הדפדפן לא הציג בקשת הרשאה. בקשו מבעל האתר לאפשר מיקרופון לתוכן מוטמע (Permissions-Policy או מאפיין allow ב-iframe).",
     "audioRecordingError": "לא ניתן היה להקליט הודעה קולית. נסה שוב.",
     "audioTooLarge": "ההודעה הקולית גדולה מדי. הקלט הודעה קצרה יותר.",
     "cancel": "ביטול",

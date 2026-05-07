@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Apturēt balss ziņojuma ierakstīšanu",
     "audioTranscribing": "Balss ziņojums tiek pārrakstīts…",
     "audioMicrophoneError": "Piekļuve mikrofonam ir bloķēta. Atļaujiet piekļuvi mikrofonam un mēģiniet vēlreiz.",
+    "audioMicrophonePolicyError": "Šī lapa bloķē mikrofona piekļuvi šim tērzēšanas logrīkam, tāpēc pārlūks nevarēja parādīt atļaujas uzaicinājumu. Lūdziet vietnes īpašniekam atļaut mikrofonu iegultam saturam (Permissions-Policy vai iframe allow).",
     "audioRecordingError": "Neizdevās ierakstīt balss ziņojumu. Mēģiniet vēlreiz.",
     "audioTooLarge": "Balss ziņojums ir pārāk liels. Ierakstiet īsāku ziņojumu.",
     "cancel": "Atcelt",

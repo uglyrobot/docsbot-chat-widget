@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Parar gravação da mensagem de voz",
     "audioTranscribing": "Transcrevendo mensagem de voz…",
     "audioMicrophoneError": "O acesso ao microfone foi bloqueado. Permita o acesso ao microfone e tente novamente.",
+    "audioMicrophonePolicyError": "Esta página bloqueia o acesso ao microfone para este widget de chat; o navegador não conseguiu mostrar o pedido de permissão. Peça ao responsável pelo site para permitir microfone ao conteúdo incorporado (Permissions-Policy ou atributo allow do iframe).",
     "audioRecordingError": "Não foi possível gravar uma mensagem de voz. Tente novamente.",
     "audioTooLarge": "A mensagem de voz é muito grande. Grave uma mensagem mais curta.",
     "cancel": "Cancelar",

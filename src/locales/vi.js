@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Dừng ghi âm tin nhắn thoại",
     "audioTranscribing": "Đang chép lại tin nhắn thoại…",
     "audioMicrophoneError": "Quyền truy cập micrô đã bị chặn. Vui lòng cho phép truy cập micrô và thử lại.",
+    "audioMicrophonePolicyError": "Trang này chặn quyền dùng micrô cho tiện ích trò chuyện này nên trình duyệt không thể hiển thị lời nhắc cấp quyền. Hãy nhờ chủ sở hữu trang web cho phép micrô cho nội dung nhúng (Permissions-Policy hoặc iframe allow).",
     "audioRecordingError": "Không thể ghi âm tin nhắn thoại. Vui lòng thử lại.",
     "audioTooLarge": "Tin nhắn thoại quá lớn. Vui lòng ghi âm tin nhắn ngắn hơn.",
     "cancel": "Hủy",

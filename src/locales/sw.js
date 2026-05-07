@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Simamisha kurekodi ujumbe wa sauti",
     "audioTranscribing": "Inanakili ujumbe wa sauti…",
     "audioMicrophoneError": "Ufikiaji wa maikrofoni umezuiwa. Tafadhali ruhusu ufikiaji wa maikrofoni na ujaribu tena.",
+    "audioMicrophonePolicyError": "Ukurasa huu unazuia matumizi ya maikrofoni kwa wijeti hii ya mazungumzo, kwa hivyo kivinjari chako hakiwezi kuonyesha ujumbe wa ruhusa. Mwombe mmiliki wa tovuti aruhusu maikrofoni kwa maudhui yaliyoingizwa (Permissions-Policy au iframe allow).",
     "audioRecordingError": "Haikuwezekana kurekodi ujumbe wa sauti. Tafadhali jaribu tena.",
     "audioTooLarge": "Ujumbe wa sauti ni mkubwa sana. Tafadhali rekodi ujumbe mfupi zaidi.",
     "cancel": "Ghairi",

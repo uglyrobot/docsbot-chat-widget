@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Hentikan perekaman pesan suara",
     "audioTranscribing": "Mentranskripsikan pesan suara…",
     "audioMicrophoneError": "Akses mikrofon diblokir. Izinkan akses mikrofon dan coba lagi.",
+    "audioMicrophonePolicyError": "Halaman ini memblokir akses mikrofon untuk widget obrolan ini sehingga peramban Anda tidak bisa menampilkan permintaan izin. Minta pemilik situs untuk mengizinkan mikrofon bagi konten yang disematkan (Permissions-Policy atau iframe allow).",
     "audioRecordingError": "Tidak dapat merekam pesan suara. Coba lagi.",
     "audioTooLarge": "Pesan suara terlalu besar. Rekam pesan yang lebih singkat.",
     "cancel": "Batal",

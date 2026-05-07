@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Stoppa inspelning av röstmeddelande",
     "audioTranscribing": "Transkriberar röstmeddelande…",
     "audioMicrophoneError": "Mikrofonåtkomst blockerades. Tillåt mikrofonåtkomst och försök igen.",
+    "audioMicrophonePolicyError": "Sidan blockerar mikrofonåtkomst för denna chattwidget, så webbläsaren kunde inte visa en behörighetsfråga. Be sajtägaren att tillåta mikrofon för inbäddat innehåll (Permissions-Policy eller iframe allow).",
     "audioRecordingError": "Det gick inte att spela in ett röstmeddelande. Försök igen.",
     "audioTooLarge": "Röstmeddelandet är för stort. Spela in ett kortare meddelande.",
     "cancel": "Avbryt",

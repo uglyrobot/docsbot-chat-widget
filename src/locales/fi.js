@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Lopeta ääniviestin tallennus",
     "audioTranscribing": "Ääniviestiä litteroidaan…",
     "audioMicrophoneError": "Mikrofonin käyttö estettiin. Salli mikrofonin käyttö ja yritä uudelleen.",
+    "audioMicrophonePolicyError": "Tämä sivu estää mikrofonin käytön tässä chat-widgetissä, joten selaimesi ei voinut näyttää lupakehotusta. Pyydä sivuston ylläpitäjää sallimaan mikrofonin upotetulle sisällölle (Permissions-Policy tai iframe-allow).",
     "audioRecordingError": "Ääniviestiä ei voitu tallentaa. Yritä uudelleen.",
     "audioTooLarge": "Ääniviesti on liian suuri. Tallenna lyhyempi viesti.",
     "cancel": "Peruuta",

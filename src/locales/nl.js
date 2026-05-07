@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Opname van spraakbericht stoppen",
     "audioTranscribing": "Spraakbericht wordt getranscribeerd…",
     "audioMicrophoneError": "Microfoontoegang is geblokkeerd. Sta microfoontoegang toe en probeer het opnieuw.",
+    "audioMicrophonePolicyError": "Deze pagina blokkeert microfoontoegang voor deze chat-widget, daarom kon je browser geen rechten vragen. Vraag de site-eigenaar om microfoon toe te staan voor ingesloten content (Permissions-Policy of iframe allow).",
     "audioRecordingError": "Kan geen spraakbericht opnemen. Probeer het opnieuw.",
     "audioTooLarge": "Het spraakbericht is te groot. Neem een korter bericht op.",
     "cancel": "Annuleren",

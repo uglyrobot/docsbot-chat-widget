@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Hangüzenet rögzítésének leállítása",
     "audioTranscribing": "Hangüzenet átírása…",
     "audioMicrophoneError": "A mikrofonhozzáférés blokkolva van. Engedélyezze a mikrofon használatát, majd próbálja újra.",
+    "audioMicrophonePolicyError": "Az oldal letiltja a mikrofonhasználatot ehhez a csevegő-widgethez, ezért a böngésző nem kérhetett engedélyt. Kérje a tulajdonost, hogy engedélyezze a mikrofont a beágyazott tartalomhoz (Permissions-Policy vagy iframe allow).",
     "audioRecordingError": "Nem sikerült hangüzenetet rögzíteni. Próbálja újra.",
     "audioTooLarge": "A hangüzenet túl nagy. Rögzítsen rövidebb üzenetet.",
     "cancel": "Mégse",

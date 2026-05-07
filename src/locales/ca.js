@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Atura la gravació del missatge de veu",
     "audioTranscribing": "Transcrivint el missatge de veu…",
     "audioMicrophoneError": "L’accés al micròfon està bloquejat. Permet l’accés al micròfon i torna-ho a provar.",
+    "audioMicrophonePolicyError": "Aquesta pàgina bloca l’accés al micròfon per a aquest giny de xat; el navegador no ha pogut demanar permís. Demana al propietari del lloc que permeti el micròfon per al contingut incrustat (Permissions-Policy o atribut allow de l’iframe).",
     "audioRecordingError": "No s’ha pogut gravar un missatge de veu. Torna-ho a provar.",
     "audioTooLarge": "El missatge de veu és massa gran. Grava un missatge més curt.",
     "cancel": "Cancel·la",

@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Arrêter l’enregistrement du message vocal",
     "audioTranscribing": "Transcription du message vocal…",
     "audioMicrophoneError": "L’accès au micro a été bloqué. Autorisez l’accès au micro puis réessayez.",
+    "audioMicrophonePolicyError": "Cette page bloque l’accès au micro pour ce widget de chat, donc votre navigateur n’a pas pu demander l’autorisation. Demandez au propriétaire du site d’autoriser le micro pour le contenu intégré (Permissions-Policy ou attribut allow sur l’iframe).",
     "audioRecordingError": "Impossible d’enregistrer un message vocal. Réessayez.",
     "audioTooLarge": "Le message vocal est trop volumineux. Enregistrez un message plus court.",
     "cancel": "Annuler",

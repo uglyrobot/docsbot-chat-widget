@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "음성 메시지 녹음 중지",
     "audioTranscribing": "음성 메시지를 전사하는 중…",
     "audioMicrophoneError": "마이크 접근이 차단되었습니다. 마이크 접근을 허용한 후 다시 시도하세요.",
+    "audioMicrophonePolicyError": "이 페이지가 이 채팅 위젯의 마이크 사용을 차단해 브라우저가 권한 요청을 표시할 수 없습니다. 사이트 관리자에게 임베드 콘텐츠에 마이크를 허용하도록 요청하세요(Permissions-Policy 또는 iframe allow).",
     "audioRecordingError": "음성 메시지를 녹음할 수 없습니다. 다시 시도하세요.",
     "audioTooLarge": "음성 메시지가 너무 큽니다. 더 짧은 메시지를 녹음하세요.",
     "cancel": "취소",

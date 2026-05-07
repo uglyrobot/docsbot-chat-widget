@@ -1519,8 +1519,9 @@ export const BotChatMessage = ({
 				)}
 
 			{/*
-				Show old support link if it's not an agent and there are sources or an error
-				This is the old support link that was used in the previous version of the chatbot
+				Non-agent: support after sources/couldAnswer when this is the last message.
+				Any variant: Contact support on errors only when this bot message is the last
+				item in the log (new messages or newer errors supersede older error buttons).
 
 			*/}
 			{(payload.isLast &&
@@ -1533,7 +1534,8 @@ export const BotChatMessage = ({
 					rating === -1 ||
 					(payload.sources && payload.sources.length == 0)) &&
 				(payload.sources || payload.couldAnswer === false)) ||
-			(payload.error &&
+			(payload.isLast &&
+				payload.error &&
 				!payload.isRateLimitError &&
 				(supportLink ||
 					(supportCallback &&

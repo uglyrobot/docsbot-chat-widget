@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Oprește înregistrarea mesajului vocal",
     "audioTranscribing": "Se transcrie mesajul vocal…",
     "audioMicrophoneError": "Accesul la microfon a fost blocat. Permite accesul la microfon și încearcă din nou.",
+    "audioMicrophonePolicyError": "Această pagină blochează accesul la microfon pentru acest widget de chat, astfel că browserul nu a putut solicita permisiunea. Cereți proprietarului site-ului să permită microfonul pentru conținutul încorporat (Permissions-Policy sau atributul allow al iframe).",
     "audioRecordingError": "Nu s-a putut înregistra un mesaj vocal. Încearcă din nou.",
     "audioTooLarge": "Mesajul vocal este prea mare. Înregistrează un mesaj mai scurt.",
     "cancel": "Anulare",

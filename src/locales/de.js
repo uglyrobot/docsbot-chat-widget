@@ -19,6 +19,7 @@ export default {
     "audioStopRecording": "Aufnahme der Sprachnachricht stoppen",
     "audioTranscribing": "Sprachnachricht wird transkribiert…",
     "audioMicrophoneError": "Der Mikrofonzugriff wurde blockiert. Bitte erlauben Sie den Mikrofonzugriff und versuchen Sie es erneut.",
+    "audioMicrophonePolicyError": "Diese Seite blockiert den Mikrofonzugriff für dieses Chat-Widget, sodass der Browser keine Berechtigungsabfrage anzeigen konnte. Bitten Sie den Website-Betreiber, das Mikrofon für eingebettete Inhalte zu erlauben (Permissions-Policy oder iframe-Attribut allow).",
     "audioRecordingError": "Sprachnachricht konnte nicht aufgenommen werden. Bitte versuchen Sie es erneut.",
     "audioTooLarge": "Die Sprachnachricht ist zu groß. Bitte nehmen Sie eine kürzere Nachricht auf.",
     "cancel": "Abbrechen",

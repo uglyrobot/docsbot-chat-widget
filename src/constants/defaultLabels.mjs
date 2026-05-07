@@ -19,6 +19,8 @@ export const defaultLabels = {
   audioTranscribing: "Transcribing voice message…",
   audioMicrophoneError:
     "Microphone access was blocked. Please allow microphone access and try again.",
+  audioMicrophonePolicyError:
+    "This page blocks microphone access for this chat widget, so your browser couldn't show a permission prompt. Ask the site owner to allow microphone for embedded content (Permissions-Policy or iframe allow).",
   audioRecordingError:
     "Could not record a voice message. Please try again.",
   audioTooLarge:
