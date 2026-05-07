@@ -23,7 +23,9 @@ import {
 	faRefresh,
 	faPaperPlane,
 	faChevronDown,
-	faTimes
+	faTimes,
+	faMicrophone,
+	faCheck
 } from '@fortawesome/free-solid-svg-icons';
 import { faImage } from '@fortawesome/free-regular-svg-icons';
 import {
@@ -237,6 +239,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
 		useImageUpload, // If image upload is enabled
+		useAudioUpload, // If audio message recording is enabled
 		useWebSearch, // If agent web search tool is enabled (API)
 		useCustomButtons, // Agent API: request custom_button terminal events
 		useCalendly,
@@ -256,6 +259,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const ref = useRef();
 	const inputRef = useRef();
 	const fileInputRef = useRef(null);
+	const mediaRecorderRef = useRef(null);
+	const audioChunksRef = useRef([]);
+	const discardAudioOnStopRef = useRef(false);
+	const recordingTimerRef = useRef(null);
+	const recordingStartedAtRef = useRef(0);
+	const audioContextRef = useRef(null);
+	const audioSourceRef = useRef(null);
+	const audioAnalyserRef = useRef(null);
+	const audioAnalysisFrameRef = useRef(null);
+	const lastAudioWaveformUpdateRef = useRef(0);
 	const chatInputId = useId();
 	const chatInputLabelId = useId();
 	const mediaMatch = window.matchMedia('(min-width: 480px)');
@@ -270,10 +283,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		useState(0);
 	const [isCalendlyScriptReady, setIsCalendlyScriptReady] = useState(false);
 	const [isTidyCalScriptReady, setIsTidyCalScriptReady] = useState(false);
+	const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+	const [audioRecordingElapsedMs, setAudioRecordingElapsedMs] = useState(0);
+	const [audioWaveformLevels, setAudioWaveformLevels] = useState(() =>
+		Array(40).fill(0.04)
+	);
 	const [streamController, setStreamController] = useState(null);
 	const streamControllerRef = useRef(null);
 	const requestIdCounterRef = useRef(0);
 	const activeRequestIdRef = useRef(null);
+	const stateMessagesRef = useRef(state.messages);
 	const hasConversationStarted = Object.keys(state.messages).length > 1;
 	const isLeadFormVisible = Object.values(state.messages || {}).some(
 		(message) =>
@@ -288,13 +307,26 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	}, [streamController]);
 
 	useEffect(() => {
+		stateMessagesRef.current = state.messages;
+	}, [state.messages]);
+
+	useEffect(() => {
 		return () => {
+			if (recordingTimerRef.current) {
+				window.clearInterval(recordingTimerRef.current);
+				recordingTimerRef.current = null;
+			}
+			stopAudioAnalysis();
 			const c = streamControllerRef.current;
-			if (!c) return;
-			if (typeof c.abort === 'function') {
+			if (c && typeof c.abort === 'function') {
 				c.abort();
-			} else if (typeof c.close === 'function') {
+			} else if (c && typeof c.close === 'function') {
 				c.close();
+			}
+			const recorder = mediaRecorderRef.current;
+			if (recorder && recorder.state !== 'inactive') {
+				discardAudioOnStopRef.current = true;
+				recorder.stop();
 			}
 		};
 	}, []);
@@ -315,6 +347,23 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const isCalendlyEnabled = isSchedulerEnabled(useCalendly);
 	const isCalComEnabled = isSchedulerEnabled(useCalCom);
 	const isTidyCalEnabled = isSchedulerEnabled(useTidyCal);
+	const isAudioUploadEnabled =
+		Boolean(useAudioUpload) &&
+		isAgent &&
+		typeof navigator !== 'undefined' &&
+		Boolean(navigator.mediaDevices?.getUserMedia) &&
+		typeof window.MediaRecorder !== 'undefined';
+	const showAudioRecordButton =
+		isAudioUploadEnabled &&
+		!isRecordingAudio &&
+		chatInput === '';
+	const maxAudioBytes = 25 * 1024 * 1024;
+	const maxAudioRecordingMs = 30 * 1000;
+	const audioMimeType =
+		typeof window.MediaRecorder !== 'undefined' &&
+		window.MediaRecorder.isTypeSupported?.('audio/webm;codecs=opus')
+			? 'audio/webm;codecs=opus'
+			: 'audio/webm';
 
 const removeExistingSchedulerEmbeds = (
 		schedulerEmbed,
@@ -456,6 +505,257 @@ const removeExistingSchedulerEmbeds = (
 	const triggerFileInput = () => {
 		if (!useImageUpload) return;
 		fileInputRef.current.click();
+	};
+
+	const blobToDataUrl = (blob) =>
+		new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = () => resolve(reader.result);
+			reader.onerror = reject;
+			reader.readAsDataURL(blob);
+		});
+
+	const addAudioErrorMessage = (message) => {
+		dispatch({
+			type: 'add_message',
+			payload: {
+				id: uuidv4(),
+				variant: 'chatbot',
+				message,
+				loading: false,
+				error: true,
+				streaming: false,
+				timestamp: Date.now()
+			}
+		});
+		scrollToBottom(ref);
+	};
+
+	const sendAudioBlob = async (blob) => {
+		if (!blob || blob.size === 0) return;
+		if (blob.size > maxAudioBytes) {
+			addAudioErrorMessage(
+				labels.audioTooLarge ||
+					'Voice message is too large. Please record a shorter message.'
+			);
+			return;
+		}
+
+		try {
+			const webmBlob = new Blob([blob], { type: 'audio/webm' });
+			const dataUrl = await blobToDataUrl(webmBlob);
+			const userMessageId = uuidv4();
+			const historyImageUrls =
+				useImageUpload && selectedImages.length > 0
+					? selectedImages.map((img) => img.thumbnailUrl)
+					: undefined;
+			dispatch({
+				type: 'add_message',
+				payload: {
+					id: userMessageId,
+					variant: 'user',
+					message: labels.audioTranscribing || 'Transcribing voice message…',
+					loading: true,
+					timestamp: Date.now(),
+					audio: true,
+					imageUrls: historyImageUrls
+				}
+			});
+			fetchAnswer('', useImageUpload ? imageUrls : [], {
+				audio: dataUrl,
+				audioUserMessageId: userMessageId
+			});
+			if (useImageUpload) {
+				setSelectedImages([]);
+				setImageUrls([]);
+			}
+			scrollMessageToTopAfterRender(userMessageId);
+		} catch (error) {
+			console.warn('DOCSBOT: Failed to process voice message', error);
+			addAudioErrorMessage(
+				labels.audioRecordingError ||
+					'Could not record a voice message. Please try again.'
+			);
+		}
+	};
+
+	const clearAudioRecordingTimer = () => {
+		if (recordingTimerRef.current) {
+			window.clearInterval(recordingTimerRef.current);
+			recordingTimerRef.current = null;
+		}
+	};
+
+	const stopAudioAnalysis = () => {
+		if (audioAnalysisFrameRef.current) {
+			window.cancelAnimationFrame(audioAnalysisFrameRef.current);
+			audioAnalysisFrameRef.current = null;
+		}
+		if (audioSourceRef.current) {
+			audioSourceRef.current.disconnect();
+			audioSourceRef.current = null;
+		}
+		audioAnalyserRef.current = null;
+		if (audioContextRef.current) {
+			void audioContextRef.current.close();
+			audioContextRef.current = null;
+		}
+		lastAudioWaveformUpdateRef.current = 0;
+	};
+
+	const updateAudioWaveform = () => {
+		const analyser = audioAnalyserRef.current;
+		if (!analyser) return;
+
+		const now = performance.now();
+		if (now - lastAudioWaveformUpdateRef.current >= 80) {
+			const samples = new Uint8Array(analyser.fftSize);
+			analyser.getByteTimeDomainData(samples);
+			let sumSquares = 0;
+			for (let i = 0; i < samples.length; i++) {
+				const centeredSample = (samples[i] - 128) / 128;
+				sumSquares += centeredSample * centeredSample;
+			}
+			const rms = Math.sqrt(sumSquares / samples.length);
+			const level = Math.min(1, Math.max(0.04, rms * 3.6));
+			setAudioWaveformLevels((prev) => [...prev.slice(1), level]);
+			lastAudioWaveformUpdateRef.current = now;
+		}
+
+		audioAnalysisFrameRef.current =
+			window.requestAnimationFrame(updateAudioWaveform);
+	};
+
+	const startAudioAnalysis = (stream) => {
+		stopAudioAnalysis();
+		const AudioContextConstructor =
+			window.AudioContext || window.webkitAudioContext;
+		if (!AudioContextConstructor) return;
+
+		try {
+			const audioContext = new AudioContextConstructor();
+			const source = audioContext.createMediaStreamSource(stream);
+			const analyser = audioContext.createAnalyser();
+			analyser.fftSize = 1024;
+			analyser.smoothingTimeConstant = 0.72;
+			source.connect(analyser);
+
+			audioContextRef.current = audioContext;
+			audioSourceRef.current = source;
+			audioAnalyserRef.current = analyser;
+			lastAudioWaveformUpdateRef.current = 0;
+			audioAnalysisFrameRef.current =
+				window.requestAnimationFrame(updateAudioWaveform);
+		} catch (error) {
+			console.warn('DOCSBOT: Failed to start audio analysis', error);
+		}
+	};
+
+	const updateAudioRecordingElapsed = () => {
+		const elapsed = Math.min(
+			Date.now() - recordingStartedAtRef.current,
+			maxAudioRecordingMs
+		);
+		setAudioRecordingElapsedMs(elapsed);
+		if (elapsed >= maxAudioRecordingMs) {
+			stopAudioRecording({ send: true });
+		}
+	};
+
+	const formatAudioRecordingTime = (milliseconds) => {
+		const seconds = Math.min(
+			Math.ceil(milliseconds / 1000),
+			Math.ceil(maxAudioRecordingMs / 1000)
+		);
+		return `0:${String(seconds).padStart(2, '0')}`;
+	};
+
+	const stopAudioRecording = ({ send = true } = {}) => {
+		const recorder = mediaRecorderRef.current;
+		if (!recorder || recorder.state === 'inactive') return;
+		discardAudioOnStopRef.current = !send;
+		recorder.stop();
+	};
+
+	const startAudioRecording = async () => {
+		if (!isAudioUploadEnabled || isFetching || isLeadFormVisible) return;
+
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({
+				audio: {
+					echoCancellation: true,
+					noiseSuppression: true,
+					autoGainControl: true
+				}
+			});
+			discardAudioOnStopRef.current = false;
+			audioChunksRef.current = [];
+			setAudioRecordingElapsedMs(0);
+			setAudioWaveformLevels(Array(40).fill(0.04));
+			startAudioAnalysis(stream);
+			const recorder = new MediaRecorder(stream, { mimeType: audioMimeType });
+			mediaRecorderRef.current = recorder;
+
+			recorder.ondataavailable = (event) => {
+				if (event.data?.size > 0) {
+					audioChunksRef.current.push(event.data);
+				}
+			};
+
+			recorder.onstop = () => {
+				stream.getTracks().forEach((track) => track.stop());
+				clearAudioRecordingTimer();
+				stopAudioAnalysis();
+				setIsRecordingAudio(false);
+				if (discardAudioOnStopRef.current) {
+					discardAudioOnStopRef.current = false;
+					audioChunksRef.current = [];
+					setAudioRecordingElapsedMs(0);
+					setAudioWaveformLevels(Array(40).fill(0.04));
+					return;
+				}
+				const blob = new Blob(audioChunksRef.current, {
+					type: 'audio/webm'
+				});
+				audioChunksRef.current = [];
+				setAudioRecordingElapsedMs(0);
+				setAudioWaveformLevels(Array(40).fill(0.04));
+				void sendAudioBlob(blob);
+			};
+
+			recorder.onerror = (event) => {
+				console.warn('DOCSBOT: Voice recording error', event.error || event);
+				discardAudioOnStopRef.current = true;
+				stream.getTracks().forEach((track) => track.stop());
+				clearAudioRecordingTimer();
+				stopAudioAnalysis();
+				setIsRecordingAudio(false);
+				setAudioRecordingElapsedMs(0);
+				setAudioWaveformLevels(Array(40).fill(0.04));
+				addAudioErrorMessage(
+					labels.audioRecordingError ||
+						'Could not record a voice message. Please try again.'
+				);
+			};
+
+			recorder.start();
+			recordingStartedAtRef.current = Date.now();
+			recordingTimerRef.current = window.setInterval(
+				updateAudioRecordingElapsed,
+				100
+			);
+			setIsRecordingAudio(true);
+		} catch (error) {
+			console.warn('DOCSBOT: Microphone access failed', error);
+			addAudioErrorMessage(
+				labels.audioMicrophoneError ||
+					'Microphone access was blocked. Please allow microphone access and try again.'
+			);
+		}
+	};
+
+	const handleAudioButtonClick = () => {
+		void startAudioRecording();
 	};
 
 	const scrollMessageToTopAfterRender = (messageId) => {
@@ -696,6 +996,8 @@ const removeExistingSchedulerEmbeds = (
 				...data,
 				question: activeLeadContext?.question,
 				imageUrls: activeLeadContext?.imageUrls,
+				audio: activeLeadContext?.audio,
+				audioUserMessageId: activeLeadContext?.audioUserMessageId,
 				nextAction: isBeforeResponse
 					? 'send_message'
 					: data.nextAction
@@ -830,7 +1132,9 @@ const removeExistingSchedulerEmbeds = (
 			setPendingLeadCapture(null);
 			fetchAnswer(data.question, data.imageUrls || [], {
 				bypassLeadCollect: true,
-				metadataOverride: metadata
+				metadataOverride: metadata,
+				audio: data.audio,
+				audioUserMessageId: data.audioUserMessageId
 			});
 			return;
 		}
@@ -915,10 +1219,13 @@ const removeExistingSchedulerEmbeds = (
 		setLeadCollected(isLeadCollectionSatisfied());
 	}, [identify, leadCollect]);
 
-	useEffect(() => {
-		const addFirstMessage = async () => {
-			dispatch({
-				type: 'add_message',
+		useEffect(() => {
+			const addFirstMessage = async () => {
+				if (Object.keys(stateMessagesRef.current || {}).length > 0) {
+					return;
+				}
+				dispatch({
+					type: 'add_message',
 				payload: {
 					id: uuidv4(),
 					variant: 'chatbot',
@@ -1055,6 +1362,8 @@ const removeExistingSchedulerEmbeds = (
 				type: 'before_response',
 				question,
 				imageUrls: image_urls,
+				audio: options.audio,
+				audioUserMessageId: options.audioUserMessageId,
 				trigger: false
 			});
 			const leadMessage = buildLeadFormMessage('before_response');
@@ -1066,7 +1375,9 @@ const removeExistingSchedulerEmbeds = (
 						leadContext: {
 							type: 'before_response',
 							question,
-							imageUrls: image_urls
+							imageUrls: image_urls,
+							audio: options.audio,
+							audioUserMessageId: options.audioUserMessageId
 						}
 					}
 				});
@@ -1077,6 +1388,8 @@ const removeExistingSchedulerEmbeds = (
 		}
 
 		const id = uuidv4();
+		const audio = typeof options.audio === 'string' ? options.audio : null;
+		const audioUserMessageId = options.audioUserMessageId || null;
 		setIsFetching(true);
 		let answerId = null;
 
@@ -1101,7 +1414,9 @@ const removeExistingSchedulerEmbeds = (
 
 		// Change this to use native JS event
 		document.dispatchEvent(
-			new CustomEvent('docsbot_fetching_answer', { detail: { question } })
+			new CustomEvent('docsbot_fetching_answer', {
+				detail: { question: audio ? null : question, audio: Boolean(audio) }
+			})
 		);
 
 		let answer = '';
@@ -1118,7 +1433,7 @@ const removeExistingSchedulerEmbeds = (
 		if (isAgent) {
 			const sse_req = {
 				stream: true,
-				question,
+				...(audio ? { audio } : { question }),
 				format: 'markdown',
 				human_escalation: useEscalation ? true : false,
 				followup_rating: useFeedback ? true : false,
@@ -1217,12 +1532,21 @@ const removeExistingSchedulerEmbeds = (
 						//console.log(data.event);
 
 						// If server sends an error event, handle accordingly
-						if (data.event === 'error') {
-							const errorMessage =
-								data.data ||
-								'Sorry, something went wrong. Please try again.';
-							dispatch({
-								type: 'update_message',
+							if (data.event === 'error') {
+								const errorMessage =
+									data.data ||
+									'Sorry, something went wrong. Please try again.';
+								if (audioUserMessageId) {
+									dispatch({
+										type: 'update_message',
+										payload: {
+											id: audioUserMessageId,
+											loading: false
+										}
+									});
+								}
+								dispatch({
+									type: 'update_message',
 								payload: {
 									id,
 									variant: 'chatbot',
@@ -1238,11 +1562,40 @@ const removeExistingSchedulerEmbeds = (
 							setIsFetching(false);
 							scrollToBottom(ref);
 							abortController.abort();
-							return;
-						}
+								return;
+							}
 
-						// Agent SSE: reasoning + tool_call use JSON `data`; stream uses plain text (see agentActivityFromSse.js)
-						if (data.event === 'tool_call') {
+							if (data.event === 'user_message') {
+								if (!audioUserMessageId || !data.data) {
+									return;
+								}
+
+								try {
+									const userMessageData = JSON.parse(data.data);
+									if (
+										userMessageData?.source === 'audio' &&
+										typeof userMessageData.message === 'string'
+									) {
+										dispatch({
+											type: 'update_message',
+											payload: {
+												id: audioUserMessageId,
+												message: userMessageData.message,
+												loading: false
+											}
+										});
+									}
+								} catch (error) {
+									console.warn(
+										'DOCSBOT: Failed to parse user_message event',
+										error
+									);
+								}
+								return;
+							}
+
+							// Agent SSE: reasoning + tool_call use JSON `data`; stream uses plain text (see agentActivityFromSse.js)
+							if (data.event === 'tool_call') {
 							const toolCall = parseToolCallPayload(data.data);
 							document.dispatchEvent(
 								new CustomEvent('docsbot_tool_call', {
@@ -1470,8 +1823,8 @@ const removeExistingSchedulerEmbeds = (
 						throw wrapped;
 					}
 				});
-			} catch (error) {
-				console.error('DOCSBOT: Failed to fetch answer:', error);
+				} catch (error) {
+					console.error('DOCSBOT: Failed to fetch answer:', error);
 
 				let errorMessage = 'Unknown error. Please try again later.';
 				let isRateLimitError = false;
@@ -1480,10 +1833,20 @@ const removeExistingSchedulerEmbeds = (
 					isRateLimitError = error.status === 429;
 				} else if (error instanceof Error && error.message) {
 					errorMessage = error.message;
-				}
+					}
 
-				dispatch({
-					type: 'update_message',
+					if (audioUserMessageId) {
+						dispatch({
+							type: 'update_message',
+							payload: {
+								id: audioUserMessageId,
+								loading: false
+							}
+						});
+					}
+
+					dispatch({
+						type: 'update_message',
 					payload: {
 						id,
 						variant: 'chatbot',
@@ -1643,6 +2006,7 @@ const removeExistingSchedulerEmbeds = (
 		event.preventDefault();
 		if (
 			isFetching ||
+			isRecordingAudio ||
 			isLeadFormVisible ||
 			chatInput.trim().length < minInputLength
 		) {
@@ -1881,6 +2245,18 @@ const removeExistingSchedulerEmbeds = (
 	);
 	const isFloatingSmall = !isEmbeddedBox && hideHeader;
 	const chatRegionLabel = botName || labels.floatingButton || 'Chat';
+	const hasUserMessage = Object.values(state.messages || {}).some(
+		(message) => message?.variant === 'user'
+	);
+	const visibleMessageKeys = Object.keys(state.messages || {}).filter((key) => {
+		const message = state.messages[key];
+		const isInitialGreeting =
+			message?.variant === 'chatbot' &&
+			message?.message === labels.firstMessage &&
+			!message?.type &&
+			!message?.loading;
+		return !(hasUserMessage && isInitialGreeting);
+	});
 
 	useEffect(() => {
 		if (isOpen) {
@@ -2068,10 +2444,10 @@ const removeExistingSchedulerEmbeds = (
 						aria-busy={isFetching ? 'true' : 'false'}
 						aria-label={chatRegionLabel}
 					>
-						{Object.keys(state.messages).map((key, index) => {
+						{visibleMessageKeys.map((key, index) => {
 							const message = state.messages[key];
 							message.isLast =
-								key === Object.keys(state.messages).pop();
+								key === visibleMessageKeys[visibleMessageKeys.length - 1];
 							if (
 								message.id &&
 								!messagesRefs.current[message.id]
@@ -2237,17 +2613,18 @@ const removeExistingSchedulerEmbeds = (
 							) : (
 								<UserChatMessage
 									key={key}
-									loading={message.loading}
-									message={message.message}
-									imageUrls={message.imageUrls}
-									messageBoxRef={
-										messagesRefs.current[message.id]
-									}
+										loading={message.loading}
+										message={message.message}
+										imageUrls={message.imageUrls}
+										audio={message.audio}
+										messageBoxRef={
+											messagesRefs.current[message.id]
+										}
 								/>
 							);
 						})}
 
-						{Object.keys(state.messages).length <= 1 &&
+						{visibleMessageKeys.length <= 1 &&
 							Object.keys(questions).length >= 1 && (
 								<div
 									className={clsx(
@@ -2338,7 +2715,7 @@ const removeExistingSchedulerEmbeds = (
 						<div className="docsbot-chat-footer-inner-wrapper">
 							<div className="docsbot-chat-input-container">
 								<form
-									className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching || isLeadFormVisible ? 'has-disabled-submit' : ''}`}
+									className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching || isRecordingAudio || isLeadFormVisible ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''}`}
 									onSubmit={handleSubmit}
 									onDragEnter={
 										useImageUpload ? handleDragEnter : null
@@ -2362,11 +2739,78 @@ const removeExistingSchedulerEmbeds = (
 											className="docsbot-hidden-file-input"
 											aria-label="Upload image"
 											tabIndex={-1}
-										/>
-									)}
+											/>
+										)}
 
-									<div
-										className={`docsbot-chat-input-wrapper ${selectedImages.length > 0 ? 'has-images' : ''} ${isDragging ? 'is-dragging' : ''} ${!useImageUpload ? 'no-image-upload' : ''}`}
+										{isRecordingAudio && (
+											<div
+												className="docsbot-audio-recorder-overlay"
+												role="group"
+												aria-label={
+													labels.audioRecord ||
+													'Record voice message'
+												}
+											>
+												<button
+													type="button"
+													className="docsbot-audio-recorder-cancel"
+													onClick={() =>
+														stopAudioRecording({
+															send: false
+														})
+													}
+													aria-label={labels.cancel}
+												>
+													<FontAwesomeIcon
+														icon={faXmark}
+													/>
+												</button>
+												<div className="docsbot-audio-recorder-visual">
+													<span className="docsbot-audio-recorder-time">
+														{formatAudioRecordingTime(
+															audioRecordingElapsedMs
+														)}
+													</span>
+													<div
+														className="docsbot-audio-recorder-wave"
+														aria-hidden="true"
+													>
+														{audioWaveformLevels.map((level, index) => (
+															<span
+																key={index}
+																style={{
+																	height: `${Math.round(
+																		2 +
+																			level *
+																				18
+																	)}px`,
+																	opacity:
+																		0.42 +
+																		level * 0.5
+																}}
+															/>
+														))}
+													</div>
+												</div>
+												<button
+													type="button"
+													className="docsbot-audio-recorder-send"
+													onClick={() =>
+														stopAudioRecording({
+															send: true
+														})
+													}
+													aria-label={labels.submit}
+												>
+													<FontAwesomeIcon
+														icon={faCheck}
+													/>
+												</button>
+											</div>
+										)}
+
+										<div
+										className={`docsbot-chat-input-wrapper ${selectedImages.length > 0 ? 'has-images' : ''} ${isDragging ? 'is-dragging' : ''} ${!useImageUpload && !isAudioUploadEnabled ? 'no-media-upload' : ''} ${useImageUpload && isAudioUploadEnabled && showAudioRecordButton ? 'has-image-audio-upload' : ''}`}
 									>
 										<label
 											id={chatInputLabelId}
@@ -2377,7 +2821,7 @@ const removeExistingSchedulerEmbeds = (
 										</label>
 										<textarea
 											id={chatInputId}
-											className={`docsbot-chat-input ${!useImageUpload ? 'no-image-upload' : ''}`}
+											className={`docsbot-chat-input ${!useImageUpload && !isAudioUploadEnabled ? 'no-media-upload' : ''} ${useImageUpload && isAudioUploadEnabled && showAudioRecordButton ? 'has-image-audio-upload' : ''}`}
 											placeholder={
 												labels.inputPlaceholder
 											}
@@ -2493,7 +2937,10 @@ const removeExistingSchedulerEmbeds = (
 												}
 											}}
 											ref={inputRef}
-											disabled={isLeadFormVisible}
+											disabled={
+												isLeadFormVisible ||
+												isRecordingAudio
+											}
 											aria-labelledby={chatInputLabelId}
 											maxLength={
 												inputLimit
@@ -2547,11 +2994,32 @@ const removeExistingSchedulerEmbeds = (
 											disabled={
 												selectedImages.length >= 2 ||
 												isFetching ||
+												isRecordingAudio ||
 												isLeadFormVisible
 											}
 											aria-label="Upload image"
 										>
 											<FontAwesomeIcon icon={faImage} />
+										</button>
+									)}
+
+									{showAudioRecordButton && (
+										<button
+											type="button"
+											onClick={handleAudioButtonClick}
+											className="docsbot-audio-record-btn"
+											disabled={
+												isFetching ||
+												isLeadFormVisible
+											}
+											aria-label={
+												labels.audioRecord ||
+												'Record voice message'
+											}
+										>
+											<FontAwesomeIcon
+												icon={faMicrophone}
+											/>
 										</button>
 									)}
 
@@ -2569,6 +3037,7 @@ const removeExistingSchedulerEmbeds = (
 											chatInput.trim().length <
 												minInputLength ||
 											isFetching ||
+											isRecordingAudio ||
 											isLeadFormVisible
 										}
 										aria-label={labels.submit || 'Submit'}
