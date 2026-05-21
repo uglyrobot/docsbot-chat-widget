@@ -424,6 +424,8 @@ const removeExistingSchedulerEmbeds = (
 		if (!useImageUpload) return;
 		const files = Array.from(e.target.files);
 		processImageFiles(files);
+		// Allow selecting the same file again after removing it.
+		e.target.value = '';
 	};
 
 	const processImageFiles = (files) => {
@@ -529,6 +531,8 @@ const removeExistingSchedulerEmbeds = (
 
 	const triggerFileInput = () => {
 		if (!useImageUpload) return;
+		// Ensure browser dispatches `change` even if the same file is selected.
+		fileInputRef.current.value = '';
 		fileInputRef.current.click();
 	};
 
