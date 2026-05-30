@@ -19,6 +19,8 @@
 		display: block;
 		width: 100%;
 		white-space: pre-wrap;
+		line-break: strict;
+		overflow-wrap: anywhere;
 	}
 
 	p {
