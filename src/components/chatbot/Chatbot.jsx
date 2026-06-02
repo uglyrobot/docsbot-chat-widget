@@ -881,7 +881,12 @@ const removeExistingSchedulerEmbeds = (
 		return String(value);
 	};
 
+	const isLeadCollectEnabled = () => {
+		return leadCollect !== false && leadCollect?.enabled !== false;
+	};
+
 	const isLeadCollectionSatisfied = () => {
+		if (!isLeadCollectEnabled()) return false;
 		if (!leadCollect || !Array.isArray(leadCollect.fields)) return false;
 		const metadata = mergeIdentifyMetadata(identify);
 		const requiredFields = leadCollect.fields.filter(
@@ -902,6 +907,7 @@ const removeExistingSchedulerEmbeds = (
 	};
 
 	const buildLeadFormMessage = (modeOverride = null) => {
+		if (!isLeadCollectEnabled()) return null;
 		if (!leadCollect || !Array.isArray(leadCollect.fields)) return null;
 		if (leadCollect.fields.length === 0) return null;
 
@@ -1018,6 +1024,8 @@ const removeExistingSchedulerEmbeds = (
 	};
 
 	const handleLeadCollectSubmit = (message, data, event) => {
+		if (!isLeadCollectEnabled()) return;
+
 		const metadata = mergeIdentifyMetadata(identify);
 		const leadMetadata = {
 			...metadata,
@@ -1261,6 +1269,7 @@ const removeExistingSchedulerEmbeds = (
 
 	const shouldRequireLeadBeforeSend = () => {
 		return (
+			isLeadCollectEnabled() &&
 			leadCollect?.mode === 'before_response' &&
 			!isLeadCaptureLocked &&
 			!leadCollected &&
@@ -1270,7 +1279,10 @@ const removeExistingSchedulerEmbeds = (
 	};
 
 	useEffect(() => {
-		if (!leadCollect) return;
+		if (!isLeadCollectEnabled()) {
+			setLeadCollected(false);
+			return;
+		}
 		setLeadCollected(isLeadCollectionSatisfied());
 	}, [identify, leadCollect]);
 
