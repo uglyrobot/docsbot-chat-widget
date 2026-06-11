@@ -192,13 +192,22 @@ function errorSuggestsMicrophoneBlockedByPermissionsPolicy(error) {
 	);
 }
 
-function sanitizeRestoredConversation(savedConversation) {
+function sanitizeRestoredConversation(savedConversation, options = {}) {
 	if (!savedConversation || typeof savedConversation !== 'object') {
 		return savedConversation;
 	}
 
 	return Object.fromEntries(
-		Object.entries(savedConversation).map(([id, message]) => {
+		Object.entries(savedConversation).flatMap(([id, message]) => {
+			if (
+				!options.allowLeadCollect &&
+				message &&
+				typeof message === 'object' &&
+				message.type === 'lead_collect'
+			) {
+				return [];
+			}
+
 			if (
 				message &&
 				typeof message === 'object' &&
@@ -1337,7 +1346,11 @@ const removeExistingSchedulerEmbeds = (
 							payload: {
 								savedConversation:
 									sanitizeRestoredConversation(
-										savedConversation
+										savedConversation,
+										{
+											allowLeadCollect:
+												isLeadCollectEnabled()
+										}
 									)
 							}
 						});
