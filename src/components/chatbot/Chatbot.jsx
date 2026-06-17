@@ -828,7 +828,11 @@ const removeExistingSchedulerEmbeds = (
 		const rootNode = ref.current.getRootNode?.();
 		const host = rootNode?.host;
 		if (!(host instanceof window.HTMLElement)) return false;
-		return host.style.height.trim().toLowerCase() === 'auto';
+		const embedHost =
+			host.id === 'docsbot-widget-embed'
+				? host
+				: host.closest('#docsbot-widget-embed') ?? host;
+		return embedHost.style.height.trim().toLowerCase() === 'auto';
 	};
 
 	const scrollMessageToTopAfterRender = (messageId) => {
