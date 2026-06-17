@@ -823,9 +823,20 @@ const removeExistingSchedulerEmbeds = (
 		void startAudioRecording();
 	};
 
+	const isEmbeddedAutoHeightHost = () => {
+		if (!isEmbeddedBox || !ref.current) return false;
+		const rootNode = ref.current.getRootNode?.();
+		const host = rootNode?.host;
+		if (!(host instanceof window.HTMLElement)) return false;
+		const embedHost =
+			host.id === 'docsbot-widget-embed'
+				? host
+				: host.closest('#docsbot-widget-embed') ?? host;
+		return embedHost.style.height.trim().toLowerCase() === 'auto';
+	};
+
 	const scrollMessageToTopAfterRender = (messageId) => {
-		anchoredTopScrollClientHeightRef.current =
-			isEmbeddedBox && ref.current ? ref.current.clientHeight : null;
+		anchoredTopScrollClientHeightRef.current = null;
 		setAnchoredTopScrollMessageId(messageId);
 		setPendingTopScrollMessageId(messageId);
 	};
@@ -2255,6 +2266,16 @@ const removeExistingSchedulerEmbeds = (
 			const container = ref.current;
 			const messageEl = messageRef?.current;
 			if (container && messageEl) {
+				const shouldUseBottomSpacer =
+					!isEmbeddedBox || !isEmbeddedAutoHeightHost();
+				if (
+					isEmbeddedBox &&
+					shouldUseBottomSpacer &&
+					anchoredTopScrollClientHeightRef.current === null
+				) {
+					anchoredTopScrollClientHeightRef.current =
+						container.clientHeight;
+				}
 				const containerRect = container.getBoundingClientRect();
 				const messageRect = messageEl.getBoundingClientRect();
 				const targetScrollTop = Math.max(
@@ -2273,14 +2294,16 @@ const removeExistingSchedulerEmbeds = (
 						: container.clientHeight;
 				const neededSpacerHeight = Math.max(
 					0,
-					Math.min(
-						effectiveClientHeight,
-						Math.ceil(
-							targetScrollTop +
-								effectiveClientHeight -
-								scrollHeightWithoutSpacer
-						)
-					)
+					shouldUseBottomSpacer
+						? Math.min(
+								effectiveClientHeight,
+								Math.ceil(
+									targetScrollTop +
+										effectiveClientHeight -
+										scrollHeightWithoutSpacer
+								)
+							)
+						: 0
 				);
 
 				if (neededSpacerHeight !== bottomScrollSpacerHeight) {
