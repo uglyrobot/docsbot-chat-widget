@@ -832,10 +832,7 @@ const removeExistingSchedulerEmbeds = (
 	};
 
 	const scrollMessageToTopAfterRender = (messageId) => {
-		anchoredTopScrollClientHeightRef.current =
-			isEmbeddedBox && ref.current && !isEmbeddedAutoHeightHost()
-				? ref.current.clientHeight
-				: null;
+		anchoredTopScrollClientHeightRef.current = null;
 		setAnchoredTopScrollMessageId(messageId);
 		setPendingTopScrollMessageId(messageId);
 	};
@@ -2267,6 +2264,14 @@ const removeExistingSchedulerEmbeds = (
 			if (container && messageEl) {
 				const shouldUseBottomSpacer =
 					!isEmbeddedBox || !isEmbeddedAutoHeightHost();
+				if (
+					isEmbeddedBox &&
+					shouldUseBottomSpacer &&
+					anchoredTopScrollClientHeightRef.current === null
+				) {
+					anchoredTopScrollClientHeightRef.current =
+						container.clientHeight;
+				}
 				const containerRect = container.getBoundingClientRect();
 				const messageRect = messageEl.getBoundingClientRect();
 				const targetScrollTop = Math.max(
