@@ -284,6 +284,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		useState(null);
 	const [bottomScrollSpacerHeight, setBottomScrollSpacerHeight] =
 		useState(0);
+	const anchoredTopScrollClientHeightRef = useRef(null);
 	const [isCalendlyScriptReady, setIsCalendlyScriptReady] = useState(false);
 	const [isTidyCalScriptReady, setIsTidyCalScriptReady] = useState(false);
 	const [isRecordingAudio, setIsRecordingAudio] = useState(false);
@@ -799,7 +800,20 @@ const removeExistingSchedulerEmbeds = (
 		void startAudioRecording();
 	};
 
+	const isEmbeddedAutoHeightHost = () => {
+		if (!isEmbeddedBox || !ref.current) return false;
+		const rootNode = ref.current.getRootNode?.();
+		const host = rootNode?.host;
+		if (!(host instanceof window.HTMLElement)) return false;
+		const embedHost =
+			host.id === 'docsbot-widget-embed'
+				? host
+				: host.closest('#docsbot-widget-embed') ?? host;
+		return embedHost.style.height.trim().toLowerCase() === 'auto';
+	};
+
 	const scrollMessageToTopAfterRender = (messageId) => {
+		anchoredTopScrollClientHeightRef.current = null;
 		setAnchoredTopScrollMessageId(messageId);
 		setPendingTopScrollMessageId(messageId);
 	};
@@ -2236,6 +2250,16 @@ const removeExistingSchedulerEmbeds = (
 			const container = ref.current;
 			const messageEl = messageRef?.current;
 			if (container && messageEl) {
+				const shouldUseBottomSpacer =
+					!isEmbeddedBox || !isEmbeddedAutoHeightHost();
+				if (
+					isEmbeddedBox &&
+					shouldUseBottomSpacer &&
+					anchoredTopScrollClientHeightRef.current === null
+				) {
+					anchoredTopScrollClientHeightRef.current =
+						container.clientHeight;
+				}
 				const containerRect = container.getBoundingClientRect();
 				const messageRect = messageEl.getBoundingClientRect();
 				const targetScrollTop = Math.max(
@@ -2247,13 +2271,23 @@ const removeExistingSchedulerEmbeds = (
 				);
 				const scrollHeightWithoutSpacer =
 					container.scrollHeight - bottomScrollSpacerHeight;
+				const effectiveClientHeight =
+					isEmbeddedBox &&
+					anchoredTopScrollClientHeightRef.current !== null
+						? anchoredTopScrollClientHeightRef.current
+						: container.clientHeight;
 				const neededSpacerHeight = Math.max(
 					0,
-					Math.ceil(
-						targetScrollTop +
-							container.clientHeight -
-							scrollHeightWithoutSpacer
-					)
+					shouldUseBottomSpacer
+						? Math.min(
+								effectiveClientHeight,
+								Math.ceil(
+									targetScrollTop +
+										effectiveClientHeight -
+										scrollHeightWithoutSpacer
+								)
+							)
+						: 0
 				);
 
 				if (neededSpacerHeight !== bottomScrollSpacerHeight) {
@@ -2285,6 +2319,7 @@ const removeExistingSchedulerEmbeds = (
 	}, [
 		anchoredTopScrollMessageId,
 		bottomScrollSpacerHeight,
+		isEmbeddedBox,
 		pendingTopScrollMessageId,
 		state.messages
 	]);
@@ -2294,6 +2329,7 @@ const removeExistingSchedulerEmbeds = (
 		setAnchoredTopScrollMessageId(null);
 		setPendingTopScrollMessageId(null);
 		setBottomScrollSpacerHeight(0);
+		anchoredTopScrollClientHeightRef.current = null;
 	}, [isFetching]);
 
 	useEffect(() => {
