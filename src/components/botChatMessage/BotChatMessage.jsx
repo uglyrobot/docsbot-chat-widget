@@ -8,6 +8,7 @@ import { CheckIcon } from '../icons/CheckIcon';
 import { CopyIcon } from '../icons/CopyIcon';
 import { useChatbot } from '../chatbotContext/ChatbotContext';
 import { scrollToBottom, mergeIdentifyMetadata } from '../../utils/utils';
+import { shouldShowErrorSupportButton } from '../../utils/chatbotMessageState.mjs';
 import clsx from 'clsx';
 import { LazyStreamdown } from '../streamdown/LazyStreamdown';
 import { preprocessMath } from '../../utils/markdown';
@@ -1534,9 +1535,7 @@ export const BotChatMessage = ({
 					rating === -1 ||
 					(payload.sources && payload.sources.length == 0)) &&
 				(payload.sources || payload.couldAnswer === false)) ||
-			(payload.isLast &&
-				payload.error &&
-				!payload.isRateLimitError &&
+			(shouldShowErrorSupportButton(payload) &&
 				(supportLink ||
 					(supportCallback &&
 						typeof supportCallback === 'function'))) ? (

@@ -41,6 +41,10 @@ import {
 	isCalComToolCallName,
 	isTidyCalToolCallName
 } from '../../utils/agentActivityFromSse';
+import {
+	getVisibleMessageKeys,
+	sanitizeRestoredConversation
+} from '../../utils/chatbotMessageState.mjs';
 import { loadCalendlyWidgetScript } from '../../utils/calendly';
 import { loadTidyCalWidgetScript } from '../../utils/tidycal';
 import { LazyStreamdown } from '../streamdown/LazyStreamdown';
@@ -192,41 +196,6 @@ function errorSuggestsMicrophoneBlockedByPermissionsPolicy(error) {
 	);
 }
 
-function sanitizeRestoredConversation(savedConversation, options = {}) {
-	if (!savedConversation || typeof savedConversation !== 'object') {
-		return savedConversation;
-	}
-
-	return Object.fromEntries(
-		Object.entries(savedConversation).flatMap(([id, message]) => {
-			if (
-				!options.allowLeadCollect &&
-				message &&
-				typeof message === 'object' &&
-				message.type === 'lead_collect'
-			) {
-				return [];
-			}
-
-			if (
-				message &&
-				typeof message === 'object' &&
-				message.schedulerEmbedCompleted === true
-			) {
-				return [
-					id,
-					{
-						...message,
-						schedulerEmbed: null
-					}
-				];
-			}
-
-			return [id, message];
-		})
-	);
-}
-
 // Wrapper component to coordinate a 2s loading delay on the bot message
 // before revealing both the lead collect message text and the form together.
 const LeadCollectBlock = ({ message, children }) => {
@@ -327,6 +296,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const requestIdCounterRef = useRef(0);
 	const activeRequestIdRef = useRef(null);
 	const stateMessagesRef = useRef(state.messages);
+	const hasRestoredConversationRef = useRef(false);
 	const hasConversationStarted = Object.keys(state.messages).length > 1;
 	const isLeadFormVisible = Object.values(state.messages || {}).some(
 		(message) =>
@@ -553,7 +523,7 @@ const removeExistingSchedulerEmbeds = (
 			reader.readAsDataURL(blob);
 		});
 
-	const addAudioErrorMessage = (message) => {
+	const addAudioErrorMessage = (message, options = {}) => {
 		const existing = Object.values(stateMessagesRef.current || {});
 		const lastByTime =
 			existing.length === 0
@@ -578,6 +548,7 @@ const removeExistingSchedulerEmbeds = (
 				message,
 				loading: false,
 				error: true,
+				suppressSupportButton: Boolean(options.suppressSupportButton),
 				streaming: false,
 				timestamp: Date.now()
 			}
@@ -732,7 +703,9 @@ const removeExistingSchedulerEmbeds = (
 			console.warn(
 				'DOCSBOT: Microphone blocked by embedding page Permissions-Policy — microphone is not allowed in this widget document (no prompt was shown)'
 			);
-			addAudioErrorMessage(labels.audioMicrophonePolicyError);
+			addAudioErrorMessage(labels.audioMicrophonePolicyError, {
+				suppressSupportButton: true
+			});
 			return;
 		}
 
@@ -807,13 +780,17 @@ const removeExistingSchedulerEmbeds = (
 					'DOCSBOT: Microphone blocked by embedding page Permissions-Policy — not user denial; microphone is disallowed for this widget document',
 					error
 				);
-				addAudioErrorMessage(labels.audioMicrophonePolicyError);
+				addAudioErrorMessage(labels.audioMicrophonePolicyError, {
+					suppressSupportButton: true
+				});
 			} else {
 				console.warn(
 					'DOCSBOT: Microphone access failed (permission denied / unavailable — user or browser)',
 					error
 				);
-				addAudioErrorMessage(labels.audioMicrophoneError);
+				addAudioErrorMessage(labels.audioMicrophoneError, {
+					suppressSupportButton: true
+				});
 			}
 		}
 	};
@@ -1295,13 +1272,13 @@ const removeExistingSchedulerEmbeds = (
 		setLeadCollected(isLeadCollectionSatisfied());
 	}, [identify, leadCollect]);
 
-		useEffect(() => {
-			const addFirstMessage = async () => {
-				if (Object.keys(stateMessagesRef.current || {}).length > 0) {
-					return;
-				}
-				dispatch({
-					type: 'add_message',
+	useEffect(() => {
+		const addFirstMessage = async () => {
+			if (Object.keys(stateMessagesRef.current || {}).length > 0) {
+				return;
+			}
+			dispatch({
+				type: 'add_message',
 				payload: {
 					id: uuidv4(),
 					variant: 'chatbot',
@@ -1313,68 +1290,72 @@ const removeExistingSchedulerEmbeds = (
 		};
 
 		const fetchData = async () => {
-			const savedConversationRaw = localStorage.getItem(
-				`DocsBot_${botId}_chatHistory`
-			);
-			const savedConversation = savedConversationRaw
-				? JSON.parse(savedConversationRaw)
-				: null;
+			try {
+				const savedConversationRaw = localStorage.getItem(
+					`DocsBot_${botId}_chatHistory`
+				);
+				const savedConversation = savedConversationRaw
+					? JSON.parse(savedConversationRaw)
+					: null;
 
-			const chatHistoryRaw = localStorage.getItem(
-				`DocsBot_${botId}_localChatHistory`
-			);
-			const chatHistory = chatHistoryRaw
-				? JSON.parse(chatHistoryRaw)
-				: null;
+				const chatHistoryRaw = localStorage.getItem(
+					`DocsBot_${botId}_localChatHistory`
+				);
+				const chatHistory = chatHistoryRaw
+					? JSON.parse(chatHistoryRaw)
+					: null;
 
-			const currentTime = Date.now();
-			let lastMsgTimeStamp = 0;
-			if (savedConversation) {
-				const convo = Object.values(savedConversation);
-				// dont bother recreating the conversation if there is only one message (it's the first message)
-				if (convo?.length > 1) {
-					convo?.map((message, index) => {
-						if (message?.timestamp > lastMsgTimeStamp) {
-							lastMsgTimeStamp = message?.timestamp;
-						}
-					});
-					if (currentTime - lastMsgTimeStamp > 12 * 60 * 60 * 1000) {
-						refreshChatHistory();
-					} else {
-						dispatch({
-							type: 'load_conversation',
-							payload: {
-								savedConversation:
-									sanitizeRestoredConversation(
-										savedConversation,
-										{
-											allowLeadCollect:
-												isLeadCollectEnabled()
-										}
-									)
+				const currentTime = Date.now();
+				let lastMsgTimeStamp = 0;
+				if (savedConversation) {
+					const convo = Object.values(savedConversation);
+					// dont bother recreating the conversation if there is only one message (it's the first message)
+					if (convo?.length > 1) {
+						convo?.map((message, index) => {
+							if (message?.timestamp > lastMsgTimeStamp) {
+								lastMsgTimeStamp = message?.timestamp;
 							}
 						});
+						if (currentTime - lastMsgTimeStamp > 12 * 60 * 60 * 1000) {
+							refreshChatHistory();
+						} else {
+							dispatch({
+								type: 'load_conversation',
+								payload: {
+									savedConversation:
+										sanitizeRestoredConversation(
+											savedConversation,
+											{
+												allowLeadCollect:
+													isLeadCollectEnabled()
+											}
+										)
+								}
+							});
+						}
+					} else {
+						await addFirstMessage();
 					}
-				} else {
+				} else if (labels.firstMessage) {
+					//console.log(labels.firstMessage);
 					await addFirstMessage();
 				}
-			} else if (labels.firstMessage) {
-				//console.log(labels.firstMessage);
-				await addFirstMessage();
-			}
 
-			if (chatHistory) {
-				dispatch({
-					type: 'save_history',
-					payload: {
-						chatHistory: chatHistory
-					}
-				});
-			}
+				if (chatHistory) {
+					dispatch({
+						type: 'save_history',
+						payload: {
+							chatHistory: chatHistory
+						}
+					});
+				}
 
-			//only focus on input if not mobile
-			if (mediaMatch.matches && !isEmbeddedBox) {
-				inputRef.current.focus();
+				//only focus on input if not mobile
+				if (mediaMatch.matches && !isEmbeddedBox) {
+					inputRef.current.focus();
+				}
+			} finally {
+				hasRestoredConversationRef.current = true;
 			}
 		};
 
@@ -1382,6 +1363,9 @@ const removeExistingSchedulerEmbeds = (
 	}, [labels.firstMessage]);
 
 	useEffect(() => {
+		if (!hasRestoredConversationRef.current) {
+			return;
+		}
 		localStorage.setItem(
 			`DocsBot_${botId}_chatHistory`,
 			JSON.stringify(state.messages)
@@ -1389,7 +1373,7 @@ const removeExistingSchedulerEmbeds = (
 	}, [state.messages]);
 
 	useEffect(() => {
-		if (state.chatHistory) {
+		if (hasRestoredConversationRef.current && state.chatHistory) {
 			localStorage.setItem(
 				`DocsBot_${botId}_localChatHistory`,
 				JSON.stringify(state?.chatHistory)
@@ -2325,18 +2309,7 @@ const removeExistingSchedulerEmbeds = (
 	);
 	const isFloatingSmall = !isEmbeddedBox && hideHeader;
 	const chatRegionLabel = botName || labels.floatingButton;
-	const hasUserMessage = Object.values(state.messages || {}).some(
-		(message) => message?.variant === 'user'
-	);
-	const visibleMessageKeys = Object.keys(state.messages || {}).filter((key) => {
-		const message = state.messages[key];
-		const isInitialGreeting =
-			message?.variant === 'chatbot' &&
-			message?.message === labels.firstMessage &&
-			!message?.type &&
-			!message?.loading;
-		return !(hasUserMessage && isInitialGreeting);
-	});
+	const visibleMessageKeys = getVisibleMessageKeys(state.messages);
 
 	useEffect(() => {
 		if (isOpen) {
