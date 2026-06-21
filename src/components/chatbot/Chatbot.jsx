@@ -857,18 +857,21 @@ const removeExistingSchedulerEmbeds = (
 			Emitter.emit('docsbot_add_bot_message_complete');
 		});
 
-		Emitter.on('docsbot_clear_history', async () => {
-			await refreshChatHistory();
-			Emitter.emit('docsbot_clear_history_complete');
-		});
+                Emitter.on('docsbot_clear_history', async () => {
+                        await refreshChatHistory();
+                        Emitter.emit('docsbot_clear_history_complete');
+                });
 
-		// Clean up event listeners
-		return () => {
-			Emitter.off('docsbot_add_user_message');
-			Emitter.off('docsbot_add_bot_message');
-			Emitter.off('docsbot_clear_history');
-		};
-	}, []);
+                // Signal that listeners are registered
+                Emitter.emit('docsbot_ready');
+
+                // Clean up event listeners
+                return () => {
+                        Emitter.off('docsbot_add_user_message');
+                        Emitter.off('docsbot_add_bot_message');
+                        Emitter.off('docsbot_clear_history');
+                };
+        }, []);
 
 	const getLeadFieldPrefill = (field) => {
 		if (!field?.key) return '';
