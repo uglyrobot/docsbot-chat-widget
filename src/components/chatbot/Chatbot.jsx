@@ -47,6 +47,13 @@ import {
 	sanitizeRestoredConversation
 } from '../../utils/chatbotMessageState.mjs';
 import {
+	cleanupExpiredDocsBotLocalStorage,
+	isStorageQuotaError,
+	safeSetLocalStorageJson,
+	trimPersistedChatHistory,
+	trimPersistedConversationMessages
+} from '../../utils/localStoragePersistence.mjs';
+import {
 	createPiiRedactionGuard,
 	createPiiRedactionSessionStorageEnvelope,
 	exportPiiRedactionGuardSession,
@@ -306,6 +313,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const streamControllerRef = useRef(null);
 	const requestIdCounterRef = useRef(0);
 	const activeRequestIdRef = useRef(null);
+	const conversationIdRef = useRef(null);
 	const piiRedactionGuardRef = useRef(null);
 	const piiRedactionGuardPromiseRef = useRef(null);
 	const piiRedactionModeRef = useRef(null);
@@ -1260,16 +1268,44 @@ const removeExistingSchedulerEmbeds = (
 		setPendingLeadCapture(null);
 	};
 
+	const persistConversationId = (conversationId) => {
+		const key = `DocsBot_${botId}_conversationId`;
+		cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
+
+		try {
+			localStorage.setItem(key, conversationId);
+			return;
+		} catch (error) {
+			if (!isStorageQuotaError(error)) {
+				console.warn(
+					'DOCSBOT: Failed to persist conversation id.',
+					error
+				);
+				return;
+			}
+		}
+
+		cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
+		try {
+			localStorage.setItem(key, conversationId);
+		} catch (error) {
+			console.warn(
+				'DOCSBOT: Failed to persist conversation id after storage cleanup.',
+				error
+			);
+		}
+	};
+
 	const getConversationId = () => {
-		let conversationId = localStorage.getItem(
-			`DocsBot_${botId}_conversationId`
-		);
+		let conversationId =
+			conversationIdRef.current ||
+			localStorage.getItem(`DocsBot_${botId}_conversationId`);
 		if (!conversationId) {
 			conversationId = uuidv4();
-			localStorage.setItem(
-				`DocsBot_${botId}_conversationId`,
-				conversationId
-			);
+			conversationIdRef.current = conversationId;
+			persistConversationId(conversationId);
+		} else {
+			conversationIdRef.current = conversationId;
 		}
 		return conversationId;
 	};
@@ -1684,17 +1720,19 @@ const removeExistingSchedulerEmbeds = (
 		if (!hasRestoredConversationRef.current) {
 			return;
 		}
-		localStorage.setItem(
+		safeSetLocalStorageJson(
 			`DocsBot_${botId}_chatHistory`,
-			JSON.stringify(state.messages)
+			state.messages,
+			{ trim: trimPersistedConversationMessages }
 		);
 	}, [state.messages]);
 
 	useEffect(() => {
 		if (hasRestoredConversationRef.current && state.chatHistory) {
-			localStorage.setItem(
+			safeSetLocalStorageJson(
 				`DocsBot_${botId}_localChatHistory`,
-				JSON.stringify(state?.chatHistory)
+				state.chatHistory,
+				{ trim: trimPersistedChatHistory }
 			);
 		}
 	}, [state.chatHistory]);
