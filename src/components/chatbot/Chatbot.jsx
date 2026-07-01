@@ -47,6 +47,7 @@ import {
 } from '../../utils/chatbotMessageState.mjs';
 import {
 	cleanupExpiredDocsBotLocalStorage,
+	isStorageQuotaError,
 	safeSetLocalStorageJson,
 	trimPersistedChatHistory,
 	trimPersistedConversationMessages
@@ -302,9 +303,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const streamControllerRef = useRef(null);
 	const requestIdCounterRef = useRef(0);
 	const activeRequestIdRef = useRef(null);
+	const conversationIdRef = useRef(null);
 	const stateMessagesRef = useRef(state.messages);
 	const hasRestoredConversationRef = useRef(false);
-	const storageCleanupScheduledRef = useRef(false);
 	const hasConversationStarted = Object.keys(state.messages).length > 1;
 	const isLeadFormVisible = Object.values(state.messages || {}).some(
 		(message) =>
@@ -1224,33 +1225,44 @@ const removeExistingSchedulerEmbeds = (
 		setPendingLeadCapture(null);
 	};
 
-	const scheduleExpiredStorageCleanup = () => {
-		if (storageCleanupScheduledRef.current) return;
-		storageCleanupScheduledRef.current = true;
+	const persistConversationId = (conversationId) => {
+		const key = `DocsBot_${botId}_conversationId`;
+		cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
 
-		const runCleanup = () => {
-			cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
-		};
-
-		if (typeof window.requestIdleCallback === 'function') {
-			window.requestIdleCallback(runCleanup, { timeout: 2000 });
+		try {
+			localStorage.setItem(key, conversationId);
 			return;
+		} catch (error) {
+			if (!isStorageQuotaError(error)) {
+				console.warn(
+					'DOCSBOT: Failed to persist conversation id.',
+					error
+				);
+				return;
+			}
 		}
 
-		window.setTimeout(runCleanup, 0);
+		cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
+		try {
+			localStorage.setItem(key, conversationId);
+		} catch (error) {
+			console.warn(
+				'DOCSBOT: Failed to persist conversation id after storage cleanup.',
+				error
+			);
+		}
 	};
 
 	const getConversationId = () => {
-		let conversationId = localStorage.getItem(
-			`DocsBot_${botId}_conversationId`
-		);
+		let conversationId =
+			conversationIdRef.current ||
+			localStorage.getItem(`DocsBot_${botId}_conversationId`);
 		if (!conversationId) {
 			conversationId = uuidv4();
-			localStorage.setItem(
-				`DocsBot_${botId}_conversationId`,
-				conversationId
-			);
-			scheduleExpiredStorageCleanup();
+			conversationIdRef.current = conversationId;
+			persistConversationId(conversationId);
+		} else {
+			conversationIdRef.current = conversationId;
 		}
 		return conversationId;
 	};
