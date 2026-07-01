@@ -131,10 +131,12 @@ export function safeSetLocalStorageJson(
 			return false;
 		}
 
-		if (
-			serialized.length > maxValueLength &&
-			typeof trim === "function"
-		) {
+		if (serialized.length > maxValueLength) {
+			if (typeof trim !== "function") {
+				removeLocalStorageItem(storage, key);
+				return false;
+			}
+
 			const nextCandidate = trim(candidate);
 			if (!nextCandidate || nextCandidate === candidate) {
 				removeLocalStorageItem(storage, key);

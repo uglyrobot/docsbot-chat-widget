@@ -105,6 +105,33 @@ test("safeSetLocalStorageJson removes the stale key if a value cannot be trimmed
 	assert.equal(removedKey, "history");
 });
 
+test("safeSetLocalStorageJson rejects over-limit values without a trimmer", () => {
+	let wrote = false;
+	let removedKey = null;
+	const storage = {
+		setItem() {
+			wrote = true;
+		},
+		removeItem(key) {
+			removedKey = key;
+		}
+	};
+
+	const result = safeSetLocalStorageJson(
+		"pii-session",
+		{ value: "0123456789" },
+		{
+			storage,
+			maxValueLength: 5,
+			onError: () => {}
+		}
+	);
+
+	assert.equal(result, false);
+	assert.equal(wrote, false);
+	assert.equal(removedKey, "pii-session");
+});
+
 test("cleanupExpiredDocsBotLocalStorage removes expired data for other bots", () => {
 	const now = Date.UTC(2026, 6, 1);
 	const oldTimestamp = now - 13 * 60 * 60 * 1000;
