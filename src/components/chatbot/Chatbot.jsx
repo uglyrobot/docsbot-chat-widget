@@ -45,6 +45,11 @@ import {
 	getVisibleMessageKeys,
 	sanitizeRestoredConversation
 } from '../../utils/chatbotMessageState.mjs';
+import {
+	safeSetLocalStorageJson,
+	trimPersistedChatHistory,
+	trimPersistedConversationMessages
+} from '../../utils/localStoragePersistence.mjs';
 import { loadCalendlyWidgetScript } from '../../utils/calendly';
 import { loadTidyCalWidgetScript } from '../../utils/tidycal';
 import { LazyStreamdown } from '../streamdown/LazyStreamdown';
@@ -1380,17 +1385,19 @@ const removeExistingSchedulerEmbeds = (
 		if (!hasRestoredConversationRef.current) {
 			return;
 		}
-		localStorage.setItem(
+		safeSetLocalStorageJson(
 			`DocsBot_${botId}_chatHistory`,
-			JSON.stringify(state.messages)
+			state.messages,
+			{ trim: trimPersistedConversationMessages }
 		);
 	}, [state.messages]);
 
 	useEffect(() => {
 		if (hasRestoredConversationRef.current && state.chatHistory) {
-			localStorage.setItem(
+			safeSetLocalStorageJson(
 				`DocsBot_${botId}_localChatHistory`,
-				JSON.stringify(state?.chatHistory)
+				state.chatHistory,
+				{ trim: trimPersistedChatHistory }
 			);
 		}
 	}, [state.chatHistory]);
