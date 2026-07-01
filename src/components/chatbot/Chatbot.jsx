@@ -304,6 +304,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const activeRequestIdRef = useRef(null);
 	const stateMessagesRef = useRef(state.messages);
 	const hasRestoredConversationRef = useRef(false);
+	const storageCleanupScheduledRef = useRef(false);
 	const hasConversationStarted = Object.keys(state.messages).length > 1;
 	const isLeadFormVisible = Object.values(state.messages || {}).some(
 		(message) =>
@@ -1223,6 +1224,22 @@ const removeExistingSchedulerEmbeds = (
 		setPendingLeadCapture(null);
 	};
 
+	const scheduleExpiredStorageCleanup = () => {
+		if (storageCleanupScheduledRef.current) return;
+		storageCleanupScheduledRef.current = true;
+
+		const runCleanup = () => {
+			cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
+		};
+
+		if (typeof window.requestIdleCallback === 'function') {
+			window.requestIdleCallback(runCleanup, { timeout: 2000 });
+			return;
+		}
+
+		window.setTimeout(runCleanup, 0);
+	};
+
 	const getConversationId = () => {
 		let conversationId = localStorage.getItem(
 			`DocsBot_${botId}_conversationId`
@@ -1233,6 +1250,7 @@ const removeExistingSchedulerEmbeds = (
 				`DocsBot_${botId}_conversationId`,
 				conversationId
 			);
+			scheduleExpiredStorageCleanup();
 		}
 		return conversationId;
 	};
@@ -1311,8 +1329,6 @@ const removeExistingSchedulerEmbeds = (
 
 		const fetchData = async () => {
 			try {
-				cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
-
 				const savedConversationRaw = localStorage.getItem(
 					`DocsBot_${botId}_chatHistory`
 				);
@@ -1388,7 +1404,6 @@ const removeExistingSchedulerEmbeds = (
 		if (!hasRestoredConversationRef.current) {
 			return;
 		}
-		cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
 		safeSetLocalStorageJson(
 			`DocsBot_${botId}_chatHistory`,
 			state.messages,
