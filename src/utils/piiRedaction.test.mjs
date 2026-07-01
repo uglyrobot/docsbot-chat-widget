@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import {
 	canUseRampartInBrowser,
 	createPiiRedactionSessionStorageEnvelope,
@@ -13,6 +16,8 @@ import {
 	resolveDefaultRampartRuntimeRootUrl,
 	resolveDefaultRampartRuntimeUrl,
 } from "./piiRedaction.mjs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 test("normalizes pii redaction option", () => {
 	assert.deepEqual(normalizePiiRedactionConfig(true), { enabled: true });
@@ -53,6 +58,18 @@ test("scopes pii redaction session storage by bot and conversation", () => {
 	);
 	assert.equal(getPiiRedactionSessionStorageKey("", "conversation_456"), "");
 	assert.equal(getPiiRedactionSessionStorageKey("bot_123", ""), "");
+});
+
+test("local Rampart runtime keeps the session snapshot patch", () => {
+	const runtimeSource = readFileSync(
+		path.join(__dirname, "../../public/rampart-runtime/index.js"),
+		"utf8"
+	);
+
+	assert.match(runtimeSource, /exportSession\(\)\s*\{\s*return\s*\{/);
+	assert.match(runtimeSource, /importSession\(session\s*=\s*\{\}\)\s*\{/);
+	assert.match(runtimeSource, /this\.table\.exportSession\(\)/);
+	assert.match(runtimeSource, /this\.table\.importSession\(session\)/);
 });
 
 test("resolves effective pii redaction config from API with disable-only embed override", () => {
