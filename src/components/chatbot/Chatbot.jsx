@@ -388,7 +388,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const isAudioUploadEnabled =
 		Boolean(useAudioUpload) &&
 		isAgent &&
-		!shouldRedactPii &&
 		typeof navigator !== 'undefined' &&
 		Boolean(navigator.mediaDevices?.getUserMedia) &&
 		typeof window.MediaRecorder !== 'undefined';
@@ -592,12 +591,6 @@ const removeExistingSchedulerEmbeds = (
 	};
 
 	const sendAudioBlob = async (blob) => {
-		if (shouldRedactPii) {
-			console.warn(
-				'DOCSBOT: Voice messages are disabled while client-side PII redaction is enabled.'
-			);
-			return;
-		}
 		if (!blob || blob.size === 0) return;
 		if (blob.size > maxAudioBytes) {
 			addAudioErrorMessage(labels.audioTooLarge);
@@ -1662,13 +1655,6 @@ const removeExistingSchedulerEmbeds = (
 	}, [isTidyCalEnabled]);
 
 	async function fetchAnswer(question, image_urls = [], options = {}) {
-		if (shouldRedactPii && options.audio) {
-			console.warn(
-				'DOCSBOT: Voice messages are disabled while client-side PII redaction is enabled.'
-			);
-			return;
-		}
-
 		if (!options.bypassLeadCollect && shouldRequireLeadBeforeSend()) {
 			setIsLeadCaptureLocked(true);
 			setPendingLeadCapture({
