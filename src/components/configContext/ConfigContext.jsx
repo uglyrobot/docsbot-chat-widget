@@ -9,6 +9,7 @@ import {
   resolveEffectiveRequestLanguageTag,
   resolveExplicitLocaleString,
 } from "../../utils/mergeWidgetLabels.mjs";
+import { resolveEffectivePiiRedactionConfig } from "../../utils/piiRedaction.mjs";
 
 const ConfigContext = createContext();
 
@@ -157,6 +158,7 @@ export function ConfigProvider(props = {}) {
           labels: optionsLabels,
           branding,
           allowedDomains: optionsAllowedDomains,
+          piiRedaction: optionsPiiRedaction,
           ...restOptions
         } = options || {};
 
@@ -181,6 +183,11 @@ export function ConfigProvider(props = {}) {
         });
 
         const textDirection = localeMod.isRTL ? "rtl" : "ltr";
+        const piiRedaction = resolveEffectivePiiRedactionConfig(
+          data.piiRedaction,
+          optionsPiiRedaction,
+          { localDev }
+        );
 
         setConfig({
           ...data,
@@ -191,6 +198,7 @@ export function ConfigProvider(props = {}) {
           identify: identify || {},
           signature,
           ...restOptions,
+          piiRedaction,
           labels: mergedLabels,
           textDirection,
           browserLocale,

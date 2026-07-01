@@ -2,6 +2,7 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 module.exports = (_, { mode }) => {
   const isProduction = mode === 'production';
@@ -22,6 +23,22 @@ module.exports = (_, { mode }) => {
     plugins: [
       new HtmlWebpackPlugin({
         template: path.join(__dirname, "public", "index.html"),
+      }),
+      new CopyWebpackPlugin({
+        patterns: [
+          {
+            from: path.join(__dirname, "public", "rampart-model"),
+            to: "rampart-model",
+          },
+          {
+            from: path.join(__dirname, "public", "rampart-runtime"),
+            to: "rampart-runtime",
+          },
+          {
+            from: path.join(__dirname, "public", "THIRD_PARTY_NOTICES.txt"),
+            to: "THIRD_PARTY_NOTICES.txt",
+          },
+        ],
       }),
       new CleanWebpackPlugin(),
     ],

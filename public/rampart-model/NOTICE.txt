@@ -1,0 +1,16 @@
+Rampart model artifacts
+=======================
+
+Name: Rampart
+Author: National Design Studio
+Model: https://huggingface.co/nationaldesignstudio/rampart
+Source: https://github.com/nationaldesignstudio/rampart
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+License text: https://creativecommons.org/licenses/by/4.0/legalcode
+
+DocsBot self-hosts these model artifacts from the widget CDN for optional
+client-side PII redaction. No endorsement by National Design Studio is implied.
+
+Rampart reports that its training data includes OpenPII 1.5M, also licensed
+under CC BY 4.0. See the Rampart model card and repository for upstream model
+scope, evaluation details, and limitations.

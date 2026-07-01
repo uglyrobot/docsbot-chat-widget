@@ -70,3 +70,9 @@ A Github action is configured that on pushes to main builds the `build/chat.js` 
 ## CDN
 
 The embeddable chat widget is hosted on our CDN at https://widget.docsbot.ai/chat.js. The CDN caches this file for 1 day, and instructs browsers to cache it for 1hr as well. This means that if you update the embeddable chat widget, it may take up to 1hr for the changes to be reflected on customer sites after we automatically purge the CDN cache.
+
+## Third-Party Notices
+
+Third-party attribution and redistributed asset notices are maintained in
+[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md). A plain-text copy is also
+published with the widget CDN build as `THIRD_PARTY_NOTICES.txt`.
