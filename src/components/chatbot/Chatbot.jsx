@@ -1328,14 +1328,13 @@ const removeExistingSchedulerEmbeds = (
 			piiRedactionSessionKeyRef.current || getPiiRedactionSessionKey();
 		if (!key) return;
 
-		try {
-			localStorage.setItem(key, JSON.stringify(envelope));
+		const saved = safeSetLocalStorageJson(key, envelope, {
+			maxValueLength: 200000,
+			storageLabel: "PII redaction session",
+			onError: (...args) => console.warn(...args)
+		});
+		if (saved) {
 			piiRedactionSessionKeyRef.current = key;
-		} catch (error) {
-			console.warn(
-				'DOCSBOT: Failed to save the local PII redaction session.',
-				error
-			);
 		}
 	};
 
@@ -1692,7 +1691,10 @@ const removeExistingSchedulerEmbeds = (
 		safeSetLocalStorageJson(
 			`DocsBot_${botId}_chatHistory`,
 			state.messages,
-			{ trim: trimPersistedConversationMessages }
+			{
+				storageLabel: "visible chat history",
+				trim: trimPersistedConversationMessages
+			}
 		);
 	}, [state.messages]);
 
@@ -1701,7 +1703,10 @@ const removeExistingSchedulerEmbeds = (
 			safeSetLocalStorageJson(
 				`DocsBot_${botId}_localChatHistory`,
 				state.chatHistory,
-				{ trim: trimPersistedChatHistory }
+				{
+					storageLabel: "request chat history",
+					trim: trimPersistedChatHistory
+				}
 			);
 		}
 	}, [state.chatHistory]);

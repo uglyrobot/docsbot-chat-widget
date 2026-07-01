@@ -32,9 +32,7 @@ test("normalizes pii redaction option", () => {
 
 test("serializes pii redaction sessions in a versioned local envelope", () => {
 	const session = {
-		forward: [["EMAIL:jane@example.com", "[EMAIL_1]"]],
-		reverse: [["[EMAIL_1]", "jane@example.com"]],
-		counters: [["EMAIL", 1]],
+		entries: [["EMAIL", "[EMAIL_1]", "jane@example.com"]],
 	};
 	const envelope = createPiiRedactionSessionStorageEnvelope(session);
 
@@ -67,7 +65,9 @@ test("local Rampart runtime keeps the session snapshot patch", () => {
 	);
 
 	assert.match(runtimeSource, /exportSession\(\)\s*\{\s*return\s*\{/);
+	assert.match(runtimeSource, /entries:\s*Array\.from\(this\.forward\.entries\(\)\)/);
 	assert.match(runtimeSource, /importSession\(session\s*=\s*\{\}\)\s*\{/);
+	assert.match(runtimeSource, /Array\.isArray\(session\.entries\)/);
 	assert.match(runtimeSource, /this\.table\.exportSession\(\)/);
 	assert.match(runtimeSource, /this\.table\.importSession\(session\)/);
 });

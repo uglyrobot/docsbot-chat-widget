@@ -35540,12 +35540,33 @@ class SessionEntityTable {
   }
   exportSession() {
     return {
-      forward: Array.from(this.forward.entries()),
-      reverse: Array.from(this.reverse.entries()),
-      counters: Array.from(this.counters.entries())
+      entries: Array.from(this.forward.entries()).flatMap(([key, token]) => {
+        const separator = key.indexOf(":");
+        const value = this.reverse.get(token);
+        if (separator <= 0 || typeof value !== "string") return [];
+        return [[key.slice(0, separator), token, value]];
+      })
     };
   }
   importSession(session = {}) {
+    this.forward = new Map;
+    this.reverse = new Map;
+    this.counters = new Map;
+    if (Array.isArray(session.entries)) {
+      for (const [label, token, value] of session.entries) {
+        if (typeof label !== "string" || typeof token !== "string" || typeof value !== "string")
+          continue;
+        const key = `${label}:${value.toLowerCase().replace(/\s+/g, " ").trim()}`;
+        this.forward.set(key, token);
+        this.reverse.set(token, value);
+        const match = token.match(/^\[([A-Z][A-Z_]*)_(\d+)\]$/);
+        if (match) {
+          const count = Number(match[2]);
+          this.counters.set(match[1], Math.max(this.counters.get(match[1]) ?? 0, count));
+        }
+      }
+      return;
+    }
     this.forward = new Map(Array.isArray(session.forward) ? session.forward : []);
     this.reverse = new Map(Array.isArray(session.reverse) ? session.reverse : []);
     this.counters = new Map(Array.isArray(session.counters) ? session.counters : []);

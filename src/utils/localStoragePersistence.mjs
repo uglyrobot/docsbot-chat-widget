@@ -41,6 +41,7 @@ export function safeSetLocalStorageJson(
 		storage = typeof localStorage !== "undefined" ? localStorage : null,
 		trim,
 		maxValueLength = DEFAULT_MAX_STORAGE_VALUE_LENGTH,
+		storageLabel = "chat history",
 		onError = console.warn
 	} = {}
 ) {
@@ -53,7 +54,7 @@ export function safeSetLocalStorageJson(
 		try {
 			serialized = JSON.stringify(candidate);
 		} catch (error) {
-			onError?.("DOCSBOT: Failed to serialize chat history.", error);
+			onError?.(`DOCSBOT: Failed to serialize ${storageLabel}.`, error);
 			return false;
 		}
 
@@ -75,13 +76,13 @@ export function safeSetLocalStorageJson(
 			return true;
 		} catch (error) {
 			if (!isStorageQuotaError(error)) {
-				onError?.("DOCSBOT: Failed to persist chat history.", error);
+				onError?.(`DOCSBOT: Failed to persist ${storageLabel}.`, error);
 				return false;
 			}
 
 			if (!warned) {
 				onError?.(
-					"DOCSBOT: Local chat history exceeded browser storage quota; trimming persisted history.",
+					`DOCSBOT: Local ${storageLabel} exceeded browser storage quota; trimming persisted data.`,
 					error
 				);
 				warned = true;
