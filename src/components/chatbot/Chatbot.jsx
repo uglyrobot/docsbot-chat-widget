@@ -48,7 +48,11 @@ import {
 } from '../../utils/chatbotMessageState.mjs';
 import {
 	createPiiRedactionGuard,
-	isPiiRedactionEnabled
+	createPiiRedactionSessionStorageEnvelope,
+	exportPiiRedactionGuardSession,
+	getPiiRedactionSessionStorageKey,
+	isPiiRedactionEnabled,
+	readPiiRedactionSessionStorageEnvelope
 } from '../../utils/piiRedaction.mjs';
 import { loadCalendlyWidgetScript } from '../../utils/calendly';
 import { loadTidyCalWidgetScript } from '../../utils/tidycal';
@@ -306,6 +310,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const piiRedactionGuardPromiseRef = useRef(null);
 	const piiRedactionModeRef = useRef(null);
 	const piiRedactionBypassedRef = useRef(false);
+	const piiRedactionSessionKeyRef = useRef('');
 	const stateMessagesRef = useRef(state.messages);
 	const hasRestoredConversationRef = useRef(false);
 	const shouldRedactPii = isPiiRedactionEnabled(piiRedaction);
@@ -1269,11 +1274,82 @@ const removeExistingSchedulerEmbeds = (
 		return conversationId;
 	};
 
+	const getStoredConversationId = () => {
+		return localStorage.getItem(`DocsBot_${botId}_conversationId`);
+	};
+
+	const getPiiRedactionSessionKey = (conversationId = getConversationId()) => {
+		return getPiiRedactionSessionStorageKey(botId, conversationId);
+	};
+
+	const loadPiiRedactionSession = () => {
+		const key = getPiiRedactionSessionKey();
+		piiRedactionSessionKeyRef.current = key;
+		if (!key) return null;
+
+		try {
+			const raw = localStorage.getItem(key);
+			if (!raw) return null;
+
+			const session = readPiiRedactionSessionStorageEnvelope(
+				JSON.parse(raw)
+			);
+			if (!session) {
+				localStorage.removeItem(key);
+				return null;
+			}
+
+			return session;
+		} catch (error) {
+			console.warn(
+				'DOCSBOT: Failed to load the local PII redaction session.',
+				error
+			);
+			localStorage.removeItem(key);
+			return null;
+		}
+	};
+
+	const savePiiRedactionSession = () => {
+		if (!shouldRedactPii || !piiRedactionGuardRef.current) return;
+
+		const session = exportPiiRedactionGuardSession(
+			piiRedactionGuardRef.current
+		);
+		const envelope = createPiiRedactionSessionStorageEnvelope(session);
+		if (!envelope) return;
+
+		const key =
+			piiRedactionSessionKeyRef.current || getPiiRedactionSessionKey();
+		if (!key) return;
+
+		try {
+			localStorage.setItem(key, JSON.stringify(envelope));
+			piiRedactionSessionKeyRef.current = key;
+		} catch (error) {
+			console.warn(
+				'DOCSBOT: Failed to save the local PII redaction session.',
+				error
+			);
+		}
+	};
+
+	const clearPiiRedactionSession = () => {
+		const key =
+			piiRedactionSessionKeyRef.current ||
+			getPiiRedactionSessionStorageKey(botId, getStoredConversationId());
+		if (key) {
+			localStorage.removeItem(key);
+		}
+		piiRedactionSessionKeyRef.current = '';
+	};
+
 	const resetPiiRedactionGuard = () => {
 		piiRedactionGuardRef.current = null;
 		piiRedactionGuardPromiseRef.current = null;
 		piiRedactionModeRef.current = null;
 		piiRedactionBypassedRef.current = false;
+		piiRedactionSessionKeyRef.current = '';
 		setIsPiiRedactionLoading(false);
 		setIsPiiRedactionOverrideAvailable(false);
 		setIsPiiRedactionBypassed(false);
@@ -1287,8 +1363,13 @@ const removeExistingSchedulerEmbeds = (
 
 		if (!piiRedactionGuardPromiseRef.current) {
 			setIsPiiRedactionLoading(true);
+			const session = loadPiiRedactionSession();
+			const guardOption =
+				piiRedaction && typeof piiRedaction === 'object'
+					? { ...piiRedaction, session }
+					: { enabled: true, session };
 			piiRedactionGuardPromiseRef.current =
-				createPiiRedactionGuard(piiRedaction)
+				createPiiRedactionGuard(guardOption)
 					.then((result) => {
 						piiRedactionGuardRef.current = result?.guard || null;
 						piiRedactionModeRef.current = result?.mode || null;
@@ -1333,6 +1414,7 @@ const removeExistingSchedulerEmbeds = (
 
 		try {
 			const safe = await guard.protect(text);
+			savePiiRedactionSession();
 			return safe?.text || text;
 		} catch (error) {
 			console.warn(
@@ -1465,6 +1547,7 @@ const removeExistingSchedulerEmbeds = (
 		dispatch({ type: 'clear_messages' });
 		localStorage.removeItem(`DocsBot_${botId}_chatHistory`);
 		localStorage.removeItem(`DocsBot_${botId}_localChatHistory`);
+		clearPiiRedactionSession();
 		localStorage.removeItem(`DocsBot_${botId}_conversationId`);
 
 		// Reset lead collection state so it can trigger again

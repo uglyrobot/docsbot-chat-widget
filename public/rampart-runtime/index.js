@@ -35538,6 +35538,18 @@ class SessionEntityTable {
   knows(token) {
     return this.reverse.has(token);
   }
+  exportSession() {
+    return {
+      forward: Array.from(this.forward.entries()),
+      reverse: Array.from(this.reverse.entries()),
+      counters: Array.from(this.counters.entries())
+    };
+  }
+  importSession(session = {}) {
+    this.forward = new Map(Array.isArray(session.forward) ? session.forward : []);
+    this.reverse = new Map(Array.isArray(session.reverse) ? session.reverse : []);
+    this.counters = new Map(Array.isArray(session.counters) ? session.counters : []);
+  }
 }
 
 // src/streaming.ts
@@ -35632,6 +35644,13 @@ class ChatGuard {
   async protectReply(reply) {
     const spans = await this.detect(reply);
     return this.table.scrub(reply, spans);
+  }
+  exportSession() {
+    return this.table.exportSession();
+  }
+  importSession(session) {
+    this.table.importSession(session);
+    return this;
   }
 }
 async function buildNer(options) {

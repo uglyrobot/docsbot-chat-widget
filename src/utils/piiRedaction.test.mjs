@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
 	canUseRampartInBrowser,
+	createPiiRedactionSessionStorageEnvelope,
+	getPiiRedactionSessionStorageKey,
 	isPiiRedactionEnabled,
 	normalizePiiRedactionConfig,
+	readPiiRedactionSessionStorageEnvelope,
 	resolveEffectivePiiRedactionConfig,
 	resolveDefaultRampartModelRootUrl,
 	resolveDefaultRampartModelUrl,
@@ -20,6 +23,36 @@ test("normalizes pii redaction option", () => {
 		enabled: false,
 	});
 	assert.equal(isPiiRedactionEnabled({ device: "wasm" }), true);
+});
+
+test("serializes pii redaction sessions in a versioned local envelope", () => {
+	const session = {
+		forward: [["EMAIL:jane@example.com", "[EMAIL_1]"]],
+		reverse: [["[EMAIL_1]", "jane@example.com"]],
+		counters: [["EMAIL", 1]],
+	};
+	const envelope = createPiiRedactionSessionStorageEnvelope(session);
+
+	assert.equal(envelope.version, 1);
+	assert.equal(typeof envelope.updatedAt, "number");
+	assert.deepEqual(readPiiRedactionSessionStorageEnvelope(envelope), session);
+	assert.equal(readPiiRedactionSessionStorageEnvelope(null), null);
+	assert.equal(
+		readPiiRedactionSessionStorageEnvelope({
+			version: 999,
+			session,
+		}),
+		null
+	);
+});
+
+test("scopes pii redaction session storage by bot and conversation", () => {
+	assert.equal(
+		getPiiRedactionSessionStorageKey("bot_123", "conversation_456"),
+		"DocsBot_bot_123_piiRedactionSession_conversation_456"
+	);
+	assert.equal(getPiiRedactionSessionStorageKey("", "conversation_456"), "");
+	assert.equal(getPiiRedactionSessionStorageKey("bot_123", ""), "");
 });
 
 test("resolves effective pii redaction config from API with disable-only embed override", () => {

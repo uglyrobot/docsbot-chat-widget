@@ -1,6 +1,7 @@
 const RAMPART_MODEL_PATH = "rampart-model/";
 const RAMPART_MODEL_ID = "rampart-model";
 const RAMPART_RUNTIME_PATH = "rampart-runtime/index.js";
+const PII_REDACTION_SESSION_STORAGE_VERSION = 1;
 
 let rampartModulePromise = null;
 
@@ -46,6 +47,39 @@ export function resolveEffectivePiiRedactionConfig(
 	}
 
 	return apiOption;
+}
+
+export function getPiiRedactionSessionStorageKey(botId, conversationId) {
+	if (!botId || !conversationId) return "";
+	return `DocsBot_${botId}_piiRedactionSession_${conversationId}`;
+}
+
+export function createPiiRedactionSessionStorageEnvelope(session) {
+	if (!session || typeof session !== "object") {
+		return null;
+	}
+
+	return {
+		version: PII_REDACTION_SESSION_STORAGE_VERSION,
+		updatedAt: Date.now(),
+		session
+	};
+}
+
+export function readPiiRedactionSessionStorageEnvelope(envelope) {
+	if (!envelope || typeof envelope !== "object") {
+		return null;
+	}
+
+	if (envelope.version !== PII_REDACTION_SESSION_STORAGE_VERSION) {
+		return null;
+	}
+
+	if (!envelope.session || typeof envelope.session !== "object") {
+		return null;
+	}
+
+	return envelope.session;
 }
 
 export function canUseRampartInBrowser() {
@@ -107,6 +141,7 @@ export async function createPiiRedactionGuard(option) {
 		fallbackToHeuristicsOnly,
 		model,
 		modelRootUrl,
+		session,
 		...guardConfig
 	} = config;
 	const rampart = await loadRampartModule();
@@ -125,7 +160,10 @@ export async function createPiiRedactionGuard(option) {
 
 	try {
 		return {
-			guard: await rampart.createGuard(baseGuardConfig),
+			guard: restorePiiRedactionGuardSession(
+				await rampart.createGuard(baseGuardConfig),
+				session
+			),
 			mode: guardConfig.heuristicsOnly ? "heuristics" : "model"
 		};
 	} catch (error) {
@@ -138,13 +176,37 @@ export async function createPiiRedactionGuard(option) {
 			error
 		);
 		return {
-			guard: await rampart.createGuard({
-				...guardConfig,
-				heuristicsOnly: true
-			}),
+			guard: restorePiiRedactionGuardSession(
+				await rampart.createGuard({
+					...guardConfig,
+					heuristicsOnly: true
+				}),
+				session
+			),
 			mode: "heuristics"
 		};
 	}
+}
+
+export function exportPiiRedactionGuardSession(guard) {
+	if (!guard || typeof guard.exportSession !== "function") {
+		return null;
+	}
+
+	return guard.exportSession();
+}
+
+function restorePiiRedactionGuardSession(guard, session) {
+	if (
+		guard &&
+		session &&
+		typeof session === "object" &&
+		typeof guard.importSession === "function"
+	) {
+		guard.importSession(session);
+	}
+
+	return guard;
 }
 
 async function loadRampartModule() {
