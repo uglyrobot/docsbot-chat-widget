@@ -25,6 +25,12 @@ export const defaultLabels = {
     "Could not record a voice message. Please try again.",
   audioTooLarge:
     "Voice message is too large. Please record a shorter message.",
+  privacyProtectionLoading: "Preparing privacy protection",
+  privacyProtectionLoadingDetail:
+    "Messages will be filtered on this device before sending.",
+  privacyProtectionSendAnyway: "Send without waiting",
+  privacyProtectionBypassWarning:
+    "Privacy protection is still loading. Messages sent now may include personal information.",
   cancel: "Cancel",
   rateLimitMessage:
     "You are sending messages too fast. Please slow down.",

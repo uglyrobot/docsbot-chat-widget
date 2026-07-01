@@ -1,0 +1,16 @@
+Rampart runtime artifacts
+=========================
+
+Name: Rampart
+Author: National Design Studio
+Source: https://github.com/nationaldesignstudio/rampart
+Model: https://huggingface.co/nationaldesignstudio/rampart
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+License text: https://creativecommons.org/licenses/by/4.0/legalcode
+
+DocsBot self-hosts this runtime from the widget CDN for optional client-side PII
+redaction. The hosted runtime copy exposes a small configureTransformersEnv
+helper so the widget can force Transformers.js to load the self-hosted model
+files and avoid remote Hugging Face requests.
+
+No endorsement by National Design Studio is implied.

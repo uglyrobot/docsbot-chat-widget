@@ -16,6 +16,7 @@ import { BotChatMessage } from '../botChatMessage/BotChatMessage';
 import { LeadCollectMessage } from '../leadCollectMessage/LeadCollectMessage';
 import { UserChatMessage } from '../userChatMessage/UserChatMessage';
 import { Options } from '../options/Options';
+import { Loader } from '../loader/Loader';
 import clsx from 'clsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -45,6 +46,14 @@ import {
 	getVisibleMessageKeys,
 	sanitizeRestoredConversation
 } from '../../utils/chatbotMessageState.mjs';
+import {
+	createPiiRedactionGuard,
+	createPiiRedactionSessionStorageEnvelope,
+	exportPiiRedactionGuardSession,
+	getPiiRedactionSessionStorageKey,
+	isPiiRedactionEnabled,
+	readPiiRedactionSessionStorageEnvelope
+} from '../../utils/piiRedaction.mjs';
 import { loadCalendlyWidgetScript } from '../../utils/calendly';
 import { loadTidyCalWidgetScript } from '../../utils/tidycal';
 import { LazyStreamdown } from '../streamdown/LazyStreamdown';
@@ -257,7 +266,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		supportCallback,
 		supportLink,
 		browserLocaleTag,
-		browserRequestLanguageTag
+		browserRequestLanguageTag,
+		piiRedaction
 	} = useConfig();
 	const ref = useRef();
 	const inputRef = useRef();
@@ -296,8 +306,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const streamControllerRef = useRef(null);
 	const requestIdCounterRef = useRef(0);
 	const activeRequestIdRef = useRef(null);
+	const piiRedactionGuardRef = useRef(null);
+	const piiRedactionGuardPromiseRef = useRef(null);
+	const piiRedactionModeRef = useRef(null);
+	const piiRedactionBypassedRef = useRef(false);
+	const piiRedactionSessionKeyRef = useRef('');
 	const stateMessagesRef = useRef(state.messages);
 	const hasRestoredConversationRef = useRef(false);
+	const shouldRedactPii = isPiiRedactionEnabled(piiRedaction);
 	const hasConversationStarted = Object.keys(state.messages).length > 1;
 	const isLeadFormVisible = Object.values(state.messages || {}).some(
 		(message) =>
@@ -306,6 +322,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const [pendingLeadCapture, setPendingLeadCapture] = useState(null);
 	const [isLeadCaptureLocked, setIsLeadCaptureLocked] = useState(false);
 	const [leadCollected, setLeadCollected] = useState(false);
+	const [isPiiRedactionLoading, setIsPiiRedactionLoading] = useState(false);
+	const [
+		isPiiRedactionOverrideAvailable,
+		setIsPiiRedactionOverrideAvailable
+	] = useState(false);
+	const [isPiiRedactionBypassed, setIsPiiRedactionBypassed] = useState(false);
+	const isPiiRedactionBlockingSend =
+		isPiiRedactionLoading && !isPiiRedactionBypassed;
+	const showPiiRedactionStatus =
+		shouldRedactPii &&
+		isPiiRedactionLoading &&
+		!piiRedactionGuardRef.current;
 
 	useEffect(() => {
 		streamControllerRef.current = streamController;
@@ -314,6 +342,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	useEffect(() => {
 		stateMessagesRef.current = state.messages;
 	}, [state.messages]);
+
+	useEffect(() => {
+		piiRedactionGuardRef.current = null;
+		piiRedactionGuardPromiseRef.current = null;
+		piiRedactionModeRef.current = null;
+		piiRedactionBypassedRef.current = false;
+		setIsPiiRedactionLoading(false);
+		setIsPiiRedactionOverrideAvailable(false);
+		setIsPiiRedactionBypassed(false);
+	}, [piiRedaction]);
 
 	useEffect(() => {
 		return () => {
@@ -698,7 +736,12 @@ const removeExistingSchedulerEmbeds = (
 	};
 
 	const startAudioRecording = async () => {
-		if (!isAudioUploadEnabled || isFetching || isLeadFormVisible) return;
+		if (
+			!isAudioUploadEnabled ||
+			isFetching ||
+			isPiiRedactionLoading ||
+			isLeadFormVisible
+		) return;
 
 		if (isMicrophoneDisallowedByEmbeddedPagePolicy()) {
 			console.warn(
@@ -1231,6 +1274,265 @@ const removeExistingSchedulerEmbeds = (
 		return conversationId;
 	};
 
+	const getStoredConversationId = () => {
+		return localStorage.getItem(`DocsBot_${botId}_conversationId`);
+	};
+
+	const getPiiRedactionSessionKey = (conversationId = getConversationId()) => {
+		return getPiiRedactionSessionStorageKey(botId, conversationId);
+	};
+
+	const loadPiiRedactionSession = () => {
+		const key = getPiiRedactionSessionKey();
+		piiRedactionSessionKeyRef.current = key;
+		if (!key) return null;
+
+		try {
+			const raw = localStorage.getItem(key);
+			if (!raw) return null;
+
+			const session = readPiiRedactionSessionStorageEnvelope(
+				JSON.parse(raw)
+			);
+			if (!session) {
+				localStorage.removeItem(key);
+				return null;
+			}
+
+			return session;
+		} catch (error) {
+			console.warn(
+				'DOCSBOT: Failed to load the local PII redaction session.',
+				error
+			);
+			localStorage.removeItem(key);
+			return null;
+		}
+	};
+
+	const savePiiRedactionSession = () => {
+		if (!shouldRedactPii || !piiRedactionGuardRef.current) return;
+
+		const session = exportPiiRedactionGuardSession(
+			piiRedactionGuardRef.current
+		);
+		const envelope = createPiiRedactionSessionStorageEnvelope(session);
+		if (!envelope) return;
+
+		const key =
+			piiRedactionSessionKeyRef.current || getPiiRedactionSessionKey();
+		if (!key) return;
+
+		try {
+			localStorage.setItem(key, JSON.stringify(envelope));
+			piiRedactionSessionKeyRef.current = key;
+		} catch (error) {
+			console.warn(
+				'DOCSBOT: Failed to save the local PII redaction session.',
+				error
+			);
+		}
+	};
+
+	const clearPiiRedactionSession = () => {
+		const key =
+			piiRedactionSessionKeyRef.current ||
+			getPiiRedactionSessionStorageKey(botId, getStoredConversationId());
+		if (key) {
+			localStorage.removeItem(key);
+		}
+		piiRedactionSessionKeyRef.current = '';
+	};
+
+	const resetPiiRedactionGuard = () => {
+		piiRedactionGuardRef.current = null;
+		piiRedactionGuardPromiseRef.current = null;
+		piiRedactionModeRef.current = null;
+		piiRedactionBypassedRef.current = false;
+		piiRedactionSessionKeyRef.current = '';
+		setIsPiiRedactionLoading(false);
+		setIsPiiRedactionOverrideAvailable(false);
+		setIsPiiRedactionBypassed(false);
+	};
+
+	const getPiiRedactionGuard = async ({ allowBypass = false } = {}) => {
+		if (!shouldRedactPii) return null;
+		if (piiRedactionGuardRef.current) {
+			return piiRedactionGuardRef.current;
+		}
+
+		if (!piiRedactionGuardPromiseRef.current) {
+			setIsPiiRedactionLoading(true);
+			const session = loadPiiRedactionSession();
+			const guardOption =
+				piiRedaction && typeof piiRedaction === 'object'
+					? { ...piiRedaction, session }
+					: { enabled: true, session };
+			piiRedactionGuardPromiseRef.current =
+				createPiiRedactionGuard(guardOption)
+					.then((result) => {
+						piiRedactionGuardRef.current = result?.guard || null;
+						piiRedactionModeRef.current = result?.mode || null;
+						if (!result?.guard) {
+							console.warn(
+								'DOCSBOT: PII redaction was requested, but this browser does not support the client-side redaction runtime.'
+							);
+						}
+						return piiRedactionGuardRef.current;
+					})
+					.catch((error) => {
+						console.warn(
+							'DOCSBOT: Failed to initialize PII redaction. Sending the message without client-side redaction.',
+							error
+						);
+						piiRedactionGuardRef.current = null;
+						piiRedactionModeRef.current = null;
+						return null;
+					})
+					.finally(() => {
+						piiRedactionBypassedRef.current = false;
+						setIsPiiRedactionLoading(false);
+						setIsPiiRedactionOverrideAvailable(false);
+						setIsPiiRedactionBypassed(false);
+					});
+		}
+
+		if (allowBypass && piiRedactionBypassedRef.current) {
+			return null;
+		}
+
+		return piiRedactionGuardPromiseRef.current;
+	};
+
+	const protectTextForRequest = async (text) => {
+		if (!shouldRedactPii || typeof text !== 'string' || !text) {
+			return text;
+		}
+
+		const guard = await getPiiRedactionGuard({ allowBypass: true });
+		if (!guard) return text;
+
+		try {
+			const safe = await guard.protect(text);
+			savePiiRedactionSession();
+			return safe?.text || text;
+		} catch (error) {
+			console.warn(
+				'DOCSBOT: Failed to redact message PII. Sending the original message.',
+				error
+			);
+			return text;
+		}
+	};
+
+	useEffect(() => {
+		if (!isOpen || !shouldRedactPii || piiRedactionGuardRef.current) {
+			return;
+		}
+
+		setIsPiiRedactionOverrideAvailable(false);
+		piiRedactionBypassedRef.current = false;
+		setIsPiiRedactionBypassed(false);
+		void getPiiRedactionGuard();
+	}, [isOpen, piiRedaction, shouldRedactPii]);
+
+	const handlePiiRedactionBypass = () => {
+		if (!showPiiRedactionStatus || !isPiiRedactionOverrideAvailable) {
+			return;
+		}
+
+		piiRedactionBypassedRef.current = true;
+		setIsPiiRedactionBypassed(true);
+		void sendCurrentChatMessage();
+	};
+
+	const revealTextFromResponse = (text) => {
+		if (
+			!shouldRedactPii ||
+			typeof text !== 'string' ||
+			!piiRedactionGuardRef.current
+		) {
+			return text;
+		}
+
+		try {
+			return piiRedactionGuardRef.current.reveal(text);
+		} catch (error) {
+			console.warn(
+				'DOCSBOT: Failed to restore PII placeholders in the assistant response.',
+				error
+			);
+			return text;
+		}
+	};
+
+	const revealResponsePayload = (payload) => {
+		if (!payload || typeof payload !== 'object') return payload;
+
+		return {
+			...payload,
+			...(typeof payload.answer === 'string' && {
+				answer: revealTextFromResponse(payload.answer)
+			}),
+			...(typeof payload.message === 'string' && {
+				message: revealTextFromResponse(payload.message)
+			}),
+			...(Array.isArray(payload.history) && {
+				history: revealHistoryFromResponse(payload.history)
+			})
+		};
+	};
+
+	const protectHistoryForRequest = async (history) => {
+		if (!shouldRedactPii || !Array.isArray(history)) {
+			return history;
+		}
+
+		return Promise.all(history.map(protectHistoryEntryForRequest));
+	};
+
+	const protectHistoryEntryForRequest = async (entry) => {
+		if (typeof entry === 'string') {
+			return protectTextForRequest(entry);
+		}
+		if (!entry || typeof entry !== 'object') {
+			return entry;
+		}
+
+		const nextEntry = { ...entry };
+		for (const key of ['content', 'message', 'answer', 'question']) {
+			if (typeof nextEntry[key] === 'string') {
+				nextEntry[key] = await protectTextForRequest(nextEntry[key]);
+			}
+		}
+		return nextEntry;
+	};
+
+	const revealHistoryFromResponse = (history) => {
+		if (!Array.isArray(history)) {
+			return history;
+		}
+
+		return history.map(revealHistoryEntryFromResponse);
+	};
+
+	const revealHistoryEntryFromResponse = (entry) => {
+		if (typeof entry === 'string') {
+			return revealTextFromResponse(entry);
+		}
+		if (!entry || typeof entry !== 'object') {
+			return entry;
+		}
+
+		const nextEntry = { ...entry };
+		for (const key of ['content', 'message', 'answer', 'question']) {
+			if (typeof nextEntry[key] === 'string') {
+				nextEntry[key] = revealTextFromResponse(nextEntry[key]);
+			}
+		}
+		return nextEntry;
+	};
+
 	const refreshChatHistory = async () => {
 		if (streamController) {
 			if (streamController.abort) {
@@ -1245,12 +1547,14 @@ const removeExistingSchedulerEmbeds = (
 		dispatch({ type: 'clear_messages' });
 		localStorage.removeItem(`DocsBot_${botId}_chatHistory`);
 		localStorage.removeItem(`DocsBot_${botId}_localChatHistory`);
+		clearPiiRedactionSession();
 		localStorage.removeItem(`DocsBot_${botId}_conversationId`);
 
 		// Reset lead collection state so it can trigger again
 		setLeadCollected(isLeadCollectionSatisfied());
 		setIsLeadCaptureLocked(false);
 		setPendingLeadCapture(null);
+		resetPiiRedactionGuard();
 
 		// Add first message after clearing
 		if (labels.firstMessage) {
@@ -1501,6 +1805,9 @@ const removeExistingSchedulerEmbeds = (
 		let pendingSchedulerEmbed = null;
 		let currentAgentActivity = null;
 		let hasStartedStreaming = false;
+		const safeQuestion = audio
+			? question
+			: await protectTextForRequest(question);
 		// Use metadataOverride if provided (e.g. from lead form submission) to avoid
 		// stale closure over identify that hasn't re-rendered yet.
 		const metadata = options.metadataOverride || mergeIdentifyMetadata(identify);
@@ -1511,7 +1818,7 @@ const removeExistingSchedulerEmbeds = (
 		if (isAgent) {
 			const sse_req = {
 				stream: true,
-				...(audio ? { audio } : { question }),
+				...(audio ? { audio } : { question: safeQuestion }),
 				format: 'markdown',
 				human_escalation: useEscalation ? true : false,
 				followup_rating: useFeedback ? true : false,
@@ -1767,12 +2074,14 @@ const removeExistingSchedulerEmbeds = (
 							} else {
 								answer += data.data;
 							}
+							const revealedAnswer =
+								revealTextFromResponse(answer);
 							dispatch({
 								type: 'update_message',
 								payload: {
 									id,
 									variant: 'chatbot',
-									message: answer,
+									message: revealedAnswer,
 									sources: null,
 									loading: false,
 									streaming: true,
@@ -1782,7 +2091,9 @@ const removeExistingSchedulerEmbeds = (
 							currentAgentActivity = null;
 						} else {
 								if (data.data) {
-									const finalData = JSON.parse(data.data);
+									const rawFinalData = JSON.parse(data.data);
+									const finalData =
+										revealResponsePayload(rawFinalData);
 										const isCustomButton =
 											data.event === 'custom_button';
 										const eventSchedulerEmbed =
@@ -1941,9 +2252,11 @@ const removeExistingSchedulerEmbeds = (
 				scrollToBottom(ref);
 			}
 		} else {
-			const history = state.chatHistory || [];
+			const history = await protectHistoryForRequest(
+				state.chatHistory || []
+			);
 			const req = {
-				question,
+				question: safeQuestion,
 				markdown: true,
 				history,
 				metadata,
@@ -2013,12 +2326,14 @@ const removeExistingSchedulerEmbeds = (
 					if (data.type === 'stream') {
 						//append to answer
 						answer += data.message;
+						const revealedAnswer =
+							revealTextFromResponse(answer);
 						dispatch({
 							type: 'update_message',
 							payload: {
 								id,
 								variant: 'chatbot',
-								message: answer,
+								message: revealedAnswer,
 								sources: null,
 								loading: false,
 								streaming: true
@@ -2026,7 +2341,8 @@ const removeExistingSchedulerEmbeds = (
 						});
 					} else if (data.type === 'info') {
 					} else if (data.type === 'end') {
-						const finalData = JSON.parse(data.message);
+						const rawFinalData = JSON.parse(data.message);
+						const finalData = revealResponsePayload(rawFinalData);
 						dispatch({
 							type: 'update_message',
 							payload: {
@@ -2082,6 +2398,31 @@ const removeExistingSchedulerEmbeds = (
 
 	async function handleSubmit(event) {
 		event.preventDefault();
+		if (
+			isPiiRedactionBlockingSend &&
+			!isFetching &&
+			!isRecordingAudio &&
+			!isLeadFormVisible &&
+			chatInput.trim().length >= minInputLength
+		) {
+			setIsPiiRedactionOverrideAvailable(true);
+			return;
+		}
+
+		if (
+			isFetching ||
+			isPiiRedactionBlockingSend ||
+			isRecordingAudio ||
+			isLeadFormVisible ||
+			chatInput.trim().length < minInputLength
+		) {
+			return;
+		}
+
+		sendCurrentChatMessage();
+	}
+
+	function sendCurrentChatMessage() {
 		if (
 			isFetching ||
 			isRecordingAudio ||
@@ -2801,10 +3142,52 @@ const removeExistingSchedulerEmbeds = (
 							</button>
 						)}
 
-						<div className="docsbot-chat-footer-inner-wrapper">
-							<div className="docsbot-chat-input-container">
-								<form
-									className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching || isRecordingAudio || isLeadFormVisible ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''}`}
+							<div className="docsbot-chat-footer-inner-wrapper">
+								<div className="docsbot-chat-input-container">
+									{showPiiRedactionStatus && (
+										<div
+											className={clsx(
+												'docsbot-privacy-protection-status',
+												isPiiRedactionBypassed &&
+													'is-bypassed'
+											)}
+											role="status"
+											aria-live="polite"
+										>
+											<div
+												className="docsbot-privacy-protection-loader"
+												aria-hidden="true"
+											>
+												<Loader />
+											</div>
+											<div className="docsbot-privacy-protection-copy">
+												<strong>
+													{
+														labels.privacyProtectionLoading
+													}
+												</strong>
+												<span>
+													{isPiiRedactionBypassed
+														? labels.privacyProtectionBypassWarning
+														: labels.privacyProtectionLoadingDetail}
+												</span>
+											</div>
+											{isPiiRedactionOverrideAvailable &&
+												!isPiiRedactionBypassed && (
+													<button
+														type="button"
+														className="docsbot-privacy-protection-bypass"
+														onClick={handlePiiRedactionBypass}
+													>
+														{
+															labels.privacyProtectionSendAnyway
+														}
+													</button>
+												)}
+										</div>
+									)}
+									<form
+										className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching || isRecordingAudio || isLeadFormVisible ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''}`}
 									onSubmit={handleSubmit}
 									onDragEnter={
 										useImageUpload ? handleDragEnter : null
@@ -3080,6 +3463,7 @@ const removeExistingSchedulerEmbeds = (
 											disabled={
 												selectedImages.length >= 2 ||
 												isFetching ||
+												isPiiRedactionLoading ||
 												isRecordingAudio ||
 												isLeadFormVisible
 											}
@@ -3096,6 +3480,7 @@ const removeExistingSchedulerEmbeds = (
 											className="docsbot-audio-record-btn"
 											disabled={
 												isFetching ||
+												isPiiRedactionLoading ||
 												isLeadFormVisible
 											}
 											aria-label={labels.audioRecord}
@@ -3116,13 +3501,13 @@ const removeExistingSchedulerEmbeds = (
 										].includes(color) && {
 											style: { fill: 'inherit' }
 										})}
-										disabled={
-											chatInput.trim().length <
-												minInputLength ||
-											isFetching ||
-											isRecordingAudio ||
-											isLeadFormVisible
-										}
+											disabled={
+												chatInput.trim().length <
+													minInputLength ||
+												isFetching ||
+												isRecordingAudio ||
+												isLeadFormVisible
+											}
 										aria-label={labels.submit}
 									>
 										<FontAwesomeIcon
