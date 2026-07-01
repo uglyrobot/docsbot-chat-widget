@@ -204,6 +204,8 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
           horizontalMargin: 20,
           verticalMargin: 20,
           showCopyButton: false,
+          // Local dev can force-enable PII redaction here. Production can only disable API-enabled PII redaction.
+          piiRedaction: true,
           //useCalendly: "uglyrobot/30min",
           //useCalCom: false,
           //useTidyCal: "docsbot/onboarding",
