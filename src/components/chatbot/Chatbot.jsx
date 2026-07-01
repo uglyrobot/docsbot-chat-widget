@@ -46,6 +46,7 @@ import {
 	sanitizeRestoredConversation
 } from '../../utils/chatbotMessageState.mjs';
 import {
+	cleanupExpiredDocsBotLocalStorage,
 	safeSetLocalStorageJson,
 	trimPersistedChatHistory,
 	trimPersistedConversationMessages
@@ -1310,6 +1311,8 @@ const removeExistingSchedulerEmbeds = (
 
 		const fetchData = async () => {
 			try {
+				cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
+
 				const savedConversationRaw = localStorage.getItem(
 					`DocsBot_${botId}_chatHistory`
 				);
@@ -1385,6 +1388,7 @@ const removeExistingSchedulerEmbeds = (
 		if (!hasRestoredConversationRef.current) {
 			return;
 		}
+		cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
 		safeSetLocalStorageJson(
 			`DocsBot_${botId}_chatHistory`,
 			state.messages,
