@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test:labels": "node --test src/utils/mergeWidgetLabels.test.mjs src/utils/localeLabelCompleteness.test.mjs src/utils/chatbotMessageState.test.mjs",
+    "test:labels": "node --test src/utils/mergeWidgetLabels.test.mjs src/utils/localeLabelCompleteness.test.mjs src/utils/chatbotMessageState.test.mjs src/utils/chatHistoryTransforms.test.mjs",
     "a11y": "npm-run-all a11y:lint a11y:axe",
     "a11y:axe": "PLAYWRIGHT_JSON_OUTPUT_FILE=artifacts/accessibility/playwright-axe-report.json playwright test tests/accessibility/widget.a11y.spec.mjs --reporter=list,json",
     "a11y:lint": "eslint src/**/*.{js,jsx}",

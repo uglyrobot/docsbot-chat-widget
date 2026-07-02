@@ -54,6 +54,10 @@ import {
 	trimPersistedConversationMessages
 } from '../../utils/localStoragePersistence.mjs';
 import {
+	mapChatHistoryStrings,
+	mapChatHistoryStringsSync
+} from '../../utils/chatHistoryTransforms.mjs';
+import {
 	createPiiRedactionGuard,
 	createPiiRedactionSessionStorageEnvelope,
 	exportPiiRedactionGuardSession,
@@ -1524,24 +1528,7 @@ const removeExistingSchedulerEmbeds = (
 			return history;
 		}
 
-		return Promise.all(history.map(protectHistoryEntryForRequest));
-	};
-
-	const protectHistoryEntryForRequest = async (entry) => {
-		if (typeof entry === 'string') {
-			return protectTextForRequest(entry);
-		}
-		if (!entry || typeof entry !== 'object') {
-			return entry;
-		}
-
-		const nextEntry = { ...entry };
-		for (const key of ['content', 'message', 'answer', 'question']) {
-			if (typeof nextEntry[key] === 'string') {
-				nextEntry[key] = await protectTextForRequest(nextEntry[key]);
-			}
-		}
-		return nextEntry;
+		return mapChatHistoryStrings(history, protectTextForRequest);
 	};
 
 	const revealHistoryFromResponse = (history) => {
@@ -1549,24 +1536,7 @@ const removeExistingSchedulerEmbeds = (
 			return history;
 		}
 
-		return history.map(revealHistoryEntryFromResponse);
-	};
-
-	const revealHistoryEntryFromResponse = (entry) => {
-		if (typeof entry === 'string') {
-			return revealTextFromResponse(entry);
-		}
-		if (!entry || typeof entry !== 'object') {
-			return entry;
-		}
-
-		const nextEntry = { ...entry };
-		for (const key of ['content', 'message', 'answer', 'question']) {
-			if (typeof nextEntry[key] === 'string') {
-				nextEntry[key] = revealTextFromResponse(nextEntry[key]);
-			}
-		}
-		return nextEntry;
+		return mapChatHistoryStringsSync(history, revealTextFromResponse);
 	};
 
 	const refreshChatHistory = async () => {
