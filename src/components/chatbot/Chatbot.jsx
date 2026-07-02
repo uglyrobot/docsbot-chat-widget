@@ -1272,42 +1272,48 @@ const removeExistingSchedulerEmbeds = (
 		setPendingLeadCapture(null);
 	};
 
+	const conversationIdStorageKey = `DocsBot_${botId}_conversationId`;
+
 	const persistConversationId = (conversationId) => {
-		const key = `DocsBot_${botId}_conversationId`;
 		cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
 
 		try {
-			localStorage.setItem(key, conversationId);
-			return;
+			localStorage.setItem(conversationIdStorageKey, conversationId);
+			return true;
 		} catch (error) {
 			if (!isStorageQuotaError(error)) {
 				console.warn(
 					'DOCSBOT: Failed to persist conversation id.',
 					error
 				);
-				return;
+				return false;
 			}
 		}
 
 		cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
 		try {
-			localStorage.setItem(key, conversationId);
+			localStorage.setItem(conversationIdStorageKey, conversationId);
+			return true;
 		} catch (error) {
 			console.warn(
 				'DOCSBOT: Failed to persist conversation id after storage cleanup.',
 				error
 			);
+			return false;
 		}
 	};
 
+	const createConversationId = () => {
+		const conversationId = uuidv4();
+		conversationIdRef.current = conversationId;
+		persistConversationId(conversationId);
+		return conversationId;
+	};
+
 	const getConversationId = () => {
-		let conversationId =
-			conversationIdRef.current ||
-			localStorage.getItem(`DocsBot_${botId}_conversationId`);
+		let conversationId = localStorage.getItem(conversationIdStorageKey);
 		if (!conversationId) {
-			conversationId = uuidv4();
-			conversationIdRef.current = conversationId;
-			persistConversationId(conversationId);
+			conversationId = createConversationId();
 		} else {
 			conversationIdRef.current = conversationId;
 		}
@@ -1315,8 +1321,11 @@ const removeExistingSchedulerEmbeds = (
 	};
 
 	const getStoredConversationId = () => {
-		return localStorage.getItem(`DocsBot_${botId}_conversationId`);
+		return localStorage.getItem(conversationIdStorageKey);
 	};
+
+	const getExistingConversationId = (message) =>
+		message?.conversationId || getStoredConversationId() || null;
 
 	const getPiiRedactionSessionKey = (conversationId = getConversationId()) => {
 		return getPiiRedactionSessionStorageKey(botId, conversationId);
@@ -1381,6 +1390,17 @@ const removeExistingSchedulerEmbeds = (
 		if (key) {
 			localStorage.removeItem(key);
 		}
+		const prefix = `DocsBot_${botId}_piiRedactionSession_`;
+		const sessionKeys = [];
+		for (let index = 0; index < localStorage.length; index += 1) {
+			const storageKey = localStorage.key(index);
+			if (storageKey?.startsWith(prefix)) {
+				sessionKeys.push(storageKey);
+			}
+		}
+		sessionKeys.forEach((storageKey) => {
+			localStorage.removeItem(storageKey);
+		});
 		piiRedactionSessionKeyRef.current = '';
 	};
 
@@ -1540,21 +1560,28 @@ const removeExistingSchedulerEmbeds = (
 	};
 
 	const refreshChatHistory = async () => {
-		if (streamController) {
-			if (streamController.abort) {
-				streamController.abort(); // If it's a fetch AbortController
-			} else if (streamController.close) {
-				streamController.close(); // If it's a WebSocket
+		activeRequestIdRef.current = null;
+		setIsFetching(false);
+
+		const activeStreamController = streamControllerRef.current;
+		if (activeStreamController) {
+			if (activeStreamController.abort) {
+				activeStreamController.abort(); // If it's a fetch AbortController
+			} else if (activeStreamController.close) {
+				activeStreamController.close(); // If it's a WebSocket
 			}
 
 			setStreamController(null); // Clear the controller after aborting/closing
+			streamControllerRef.current = null;
 		}
 
 		dispatch({ type: 'clear_messages' });
 		localStorage.removeItem(`DocsBot_${botId}_chatHistory`);
 		localStorage.removeItem(`DocsBot_${botId}_localChatHistory`);
 		clearPiiRedactionSession();
-		localStorage.removeItem(`DocsBot_${botId}_conversationId`);
+		conversationIdRef.current = null;
+		localStorage.removeItem(conversationIdStorageKey);
+		createConversationId();
 
 		// Reset lead collection state so it can trigger again
 		setLeadCollected(isLeadCollectionSatisfied());
@@ -1789,6 +1816,11 @@ const removeExistingSchedulerEmbeds = (
 
 		const abortController = new AbortController();
 		setStreamController(abortController);
+		streamControllerRef.current = abortController;
+		const requestConversationId = isAgent ? getConversationId() : null;
+		const isCurrentRequest = () =>
+			activeRequestIdRef.current === requestId &&
+			!abortController.signal.aborted;
 
 		dispatch({
 			type: 'add_message',
@@ -1836,7 +1868,7 @@ const removeExistingSchedulerEmbeds = (
 				tidycal: isTidyCalEnabled,
 				full_source: false,
 				metadata,
-				conversationId: getConversationId(),
+				conversationId: requestConversationId,
 				context_items: contextItems || 6,
 				autocut: 2,
 				default_language: browserRequestLanguageTag,
@@ -1921,6 +1953,10 @@ const removeExistingSchedulerEmbeds = (
 						}
 					},
 					async onmessage(event) {
+						if (!isCurrentRequest()) {
+							return;
+						}
+
 						const data = event;
 						//console.log(data.event);
 
@@ -2156,7 +2192,7 @@ const removeExistingSchedulerEmbeds = (
 										sources: finalData.sources || null,
 										answerId:
 											answerId || finalData.id || null, // use saved prev id for feedback button
-										conversationId: getConversationId(),
+										conversationId: requestConversationId,
 										loading: false,
 										streaming: false,
 										responses: finalData.options || null,
@@ -2221,6 +2257,10 @@ const removeExistingSchedulerEmbeds = (
 					}
 				});
 				} catch (error) {
+					if (!isCurrentRequest()) {
+						return;
+					}
+
 					console.error('DOCSBOT: Failed to fetch answer:', error);
 
 				let errorMessage = 'Unknown error. Please try again later.';
@@ -2280,6 +2320,7 @@ const removeExistingSchedulerEmbeds = (
 				: `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
 			const ws = new WebSocket(apiUrl);
 			setStreamController(ws);
+			streamControllerRef.current = ws;
 
 			// Send message to server when connection is established
 			ws.onopen = function (event) {
@@ -2906,7 +2947,10 @@ const removeExistingSchedulerEmbeds = (
 															message: message.message,
 															leadForm: undefined,
 															loading: !ready,
-															conversationId: getConversationId()
+															conversationId:
+																getExistingConversationId(
+																	message
+																)
 														}}
 														messageBoxRef={
 															messagesRefs.current[message.id]
@@ -2925,7 +2969,10 @@ const removeExistingSchedulerEmbeds = (
 													<LeadCollectMessage
 														payload={{
 															...message,
-															conversationId: getConversationId()
+															conversationId:
+																getExistingConversationId(
+																	message
+																)
 														}}
 														messageBoxRef={
 															messagesRefs.current[message.id]
@@ -2950,7 +2997,10 @@ const removeExistingSchedulerEmbeds = (
 										<BotChatMessage
 											payload={{
 												...message,
-												conversationId: getConversationId() //lets us escalate historic conversations
+												conversationId:
+													getExistingConversationId(
+														message
+													) //lets us escalate historic conversations
 											}}
 											messageBoxRef={
 												messagesRefs.current[message.id]

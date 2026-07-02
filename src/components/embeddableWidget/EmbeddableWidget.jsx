@@ -166,6 +166,18 @@ export default class EmbeddableWidget {
       }
 
       if (this.botId) {
+        localStorage.removeItem(`DocsBot_${this.botId}_chatHistory`);
+        localStorage.removeItem(`DocsBot_${this.botId}_localChatHistory`);
+        localStorage.removeItem(`DocsBot_${this.botId}_conversationId`);
+        const piiSessionPrefix = `DocsBot_${this.botId}_piiRedactionSession_`;
+        const piiSessionKeys = [];
+        for (let index = 0; index < localStorage.length; index += 1) {
+          const key = localStorage.key(index);
+          if (key?.startsWith(piiSessionPrefix)) {
+            piiSessionKeys.push(key);
+          }
+        }
+        piiSessionKeys.forEach((key) => localStorage.removeItem(key));
         localStorage.removeItem(`${this.botId}_docsbot_chat_history`);
         localStorage.removeItem(`${this.botId}_chatHistory`);
         //console.log(`Cleared chat history for bot ID: ${this.botId}`);
