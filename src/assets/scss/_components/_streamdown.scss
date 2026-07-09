@@ -13,3 +13,9 @@
 	background-color: #f8fafc; // slate-50
 }
 
+.docsbot-streamdown [data-streamdown='list-item'] [data-streamdown='link'] {
+	display: inline;
+	vertical-align: baseline;
+	overflow-wrap: anywhere;
+	word-break: normal;
+}
