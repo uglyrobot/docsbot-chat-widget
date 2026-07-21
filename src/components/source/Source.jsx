@@ -1,6 +1,8 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faLink, faFile, faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faLink, faFile, faArrowUpRightFromSquare, faPlay, faChevronUp } from "@fortawesome/free-solid-svg-icons";
+import { useEffect, useRef, useState } from "react";
 import { useConfig } from "../configContext/ConfigContext";
+import { getSourceInlineMedia } from "../../utils/sourceMedia.mjs";
 
 function stripLeadingWww(hostname) {
   if (!hostname) return "";
@@ -57,7 +59,9 @@ function sourceDisplayBase(source) {
 }
 
 export const Source = ({ source }) => {
-  const { noURLSourceTypes, hideSources } = useConfig();
+  const { noURLSourceTypes, hideSources, inlineMediaSourcePlayer, labels } = useConfig();
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const mediaRef = useRef(null);
   const ALWAYS_HIDE_SOURCE_TYPES = [
     'helpscout',
     'freshdesk',
@@ -93,6 +97,35 @@ export const Source = ({ source }) => {
     isWebSourceTypeForFavicon(source.type) &&
     isHttpUrlString(source.url);
   const faviconSrc = useSiteFavicon ? googleFaviconUrl(source.url) : null;
+  const inlineMedia = inlineMediaSourcePlayer
+    ? getSourceInlineMedia(source)
+    : null;
+  const canOpenInlineMedia =
+    inlineMedia != null && source.url && !shouldHideUrl;
+
+  useEffect(() => {
+    if (!isPlayerOpen || !mediaRef.current || inlineMedia?.kind === "youtube") {
+      return;
+    }
+
+    const media = mediaRef.current;
+    if (inlineMedia?.start > 0) {
+      const setStartTime = () => {
+        try {
+          media.currentTime = inlineMedia.start;
+        } catch {
+          // Some signed media URLs reject seeking until metadata is fully available.
+        }
+      };
+
+      if (media.readyState >= 1) {
+        setStartTime();
+      } else {
+        media.addEventListener("loadedmetadata", setStartTime, { once: true });
+        return () => media.removeEventListener("loadedmetadata", setStartTime);
+      }
+    }
+  }, [inlineMedia, isPlayerOpen]);
 
   const leadingIcon =
     faviconSrc != null ? (
@@ -107,23 +140,65 @@ export const Source = ({ source }) => {
     ) : null;
 
   return (
-    <li {...(!(source.url && !shouldHideUrl) && {className: 'docsbot-sources-unlinked'})}>
+    <li
+      className={[
+        !(source.url && !shouldHideUrl) ? 'docsbot-sources-unlinked' : '',
+        canOpenInlineMedia ? 'docsbot-source-has-media' : '',
+        isPlayerOpen ? 'is-media-open' : '',
+      ].filter(Boolean).join(' ') || undefined}
+    >
 		{source.url && !shouldHideUrl
 		? (
-			<a
-				href={source.url}
-				target="_blank"
-				rel="noopener noreferrer"
-				title={tooltipText}
-			>
-				<span className="docsbot-source-link-main">
-					{leadingIcon}
-					<span className="docsbot-source-label">{displayText}</span>
-				</span>
-				<span className="docsbot-source-external-icon" aria-hidden>
-					<FontAwesomeIcon icon={faArrowUpRightFromSquare} />
-				</span>
-			</a>
+      <div className="docsbot-source-link-row">
+        {canOpenInlineMedia ? (
+          <button
+            type="button"
+            className="docsbot-source-inline-button"
+            title={tooltipText}
+            aria-expanded={isPlayerOpen}
+            onClick={() => setIsPlayerOpen((open) => !open)}
+          >
+            <span className="docsbot-source-link-main">
+              {leadingIcon || (
+                <span className="docsbot-source-play-icon" aria-hidden>
+                  <FontAwesomeIcon icon={isPlayerOpen ? faChevronUp : faPlay} />
+                </span>
+              )}
+              <span className="docsbot-source-label">{displayText}</span>
+            </span>
+          </button>
+        ) : (
+          <a
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={tooltipText}
+          >
+            <span className="docsbot-source-link-main">
+              {leadingIcon}
+              <span className="docsbot-source-label">{displayText}</span>
+            </span>
+            <span className="docsbot-source-external-icon" aria-hidden>
+              <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+            </span>
+          </a>
+        )}
+
+        {canOpenInlineMedia && (
+          <a
+            className="docsbot-source-external-button"
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={labels?.openSource || tooltipText}
+          >
+            <span className="docsbot-screen-reader-only">
+              {labels?.openSource || 'Open source'}
+            </span>
+            <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden />
+          </a>
+        )}
+      </div>
 		)
 		: (
 			<>
@@ -133,6 +208,26 @@ export const Source = ({ source }) => {
 				</span>
 			</>
 		)}
+      {canOpenInlineMedia && isPlayerOpen && (
+        <div className="docsbot-source-media-player">
+          {inlineMedia.kind === "youtube" ? (
+            <iframe
+              src={inlineMedia.src}
+              title={displayText}
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+            />
+          ) : inlineMedia.kind === "audio" ? (
+            // Source payloads do not include caption track URLs.
+            // eslint-disable-next-line jsx-a11y/media-has-caption
+            <audio ref={mediaRef} src={inlineMedia.src} controls autoPlay preload="metadata" />
+          ) : (
+            // Source payloads do not include caption track URLs.
+            // eslint-disable-next-line jsx-a11y/media-has-caption
+            <video ref={mediaRef} src={inlineMedia.src} controls autoPlay preload="metadata" playsInline />
+          )}
+        </div>
+      )}
     </li>
   );
 };

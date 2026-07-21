@@ -204,6 +204,7 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
           horizontalMargin: 20,
           verticalMargin: 20,
           showCopyButton: false,
+          inlineMediaSourcePlayer: true, // Inline playback for timestamped YouTube/media sources.
           // Local dev can force-enable PII redaction here. Production can only disable API-enabled PII redaction.
           piiRedaction: true,
           //useCalendly: "uglyrobot/30min",
