@@ -292,10 +292,14 @@
 	right: 74px;
 }
 
-// Adjust position when submit button is disabled and image upload is the only media button.
-.docsbot-chat-input-form.has-disabled-submit:not(:has(.docsbot-audio-record-btn))
+// Tighten the disabled-state icon spacing while keeping the upload control above
+// the overlapping transparent edge of the disabled submit button.
+.docsbot-chat-input-form.has-disabled-submit:not(
+		:has(.docsbot-audio-record-btn)
+	)
 	.docsbot-image-upload-btn {
 	right: 35px;
+	z-index: 2;
 }
 
 .docsbot-chat-input-form.has-disabled-submit:has(.docsbot-image-upload-btn)
