@@ -8,6 +8,10 @@ Full documentation can be found at https://docsbot.ai/docs/embeddable-chat-widge
 
 When using the widget in agent mode with a signed request, you can control the reasoning depth of responses by supplying a `reasoningEffort` option. Valid values are `minimal`, `low`, `medium`, and `high`. The parameter is only sent to the API when `signature` is set.
 
+### Inline Media Source Player
+
+Set **`options.inlineMediaSourcePlayer`** to `true` to make YouTube and downloadable `media` sources open an inline player from the source row. The widget starts playback from timestamps already present in source URLs, including YouTube `t=` query params and media download `#t=start,end` fragments. Inline playback for `media` sources only activates when the source URL looks like a playable media file (or includes an audio/video mime type); original/HTML page URLs used when source downloads are disabled stay as normal external links.
+
 ### `signature`: legacy HMAC or JWT (Stripe tools, private bots)
 
 Pass **`signature`** in `DocsBotAI.mount` / `init`. It may be either the **legacy expiring HMAC** string or an **HS256 JWT** signed with your bot’s **signature key** (Widget embed page). The widget sends `Authorization: Bearer <signature>` on chat-agent and related API calls.

@@ -36,6 +36,76 @@
 			}
 		}
 
+		.docsbot-source-link-row {
+			display: flex;
+			align-items: center;
+			gap: $spacing-xs;
+			min-width: 0;
+			max-width: 100%;
+		}
+
+		.docsbot-source-inline-button,
+		.docsbot-source-external-button {
+			appearance: none;
+			border: 0;
+			background: transparent;
+			color: inherit;
+			font: inherit;
+		}
+
+		.docsbot-source-inline-button {
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			gap: $spacing-xs;
+			min-width: 0;
+			flex: 1;
+			padding: 0;
+			text-align: start;
+
+			&:hover {
+				text-decoration: underline;
+			}
+
+			&:focus-visible {
+				outline: 2px solid var(--docsbot-focus-ring, $color-primary-100);
+				outline-offset: 2px;
+			}
+		}
+
+		.docsbot-source-external-button {
+			cursor: pointer;
+			flex: 0 0 24px;
+			width: 24px;
+			height: 24px;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			border-radius: 6px;
+			color: $color-secondary-100;
+			text-decoration: none;
+			transition:
+				background-color $transition-duration-default ease,
+				color $transition-duration-default ease;
+
+			&:hover,
+			&:focus-visible {
+				background: $color-secondary-400;
+				color: $color-neutral-100;
+				text-decoration: none;
+			}
+
+			&:focus-visible {
+				outline: 2px solid var(--docsbot-focus-ring, $color-primary-100);
+				outline-offset: 2px;
+			}
+
+			svg {
+				width: 10px;
+				height: 10px;
+			}
+		}
+
 		.docsbot-source-external-icon {
 			flex-shrink: 0;
 			display: inline-flex;
@@ -56,12 +126,64 @@
 			margin-right: $spacing-sm;
 		}
 
-		a .docsbot-source-link-main {
+		a .docsbot-source-link-main,
+		.docsbot-source-inline-button .docsbot-source-link-main {
 			display: flex;
 			align-items: center;
 			min-width: 0;
 			flex: 1;
 			max-width: 100%;
+		}
+
+		.docsbot-source-play-icon {
+			width: 18px;
+			height: 18px;
+			flex: 0 0 18px;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			margin-right: $spacing-sm;
+			border-radius: 999px;
+			color: var(--docsbot-color-main, $color-primary-100);
+
+			svg {
+				width: 8px;
+				height: 8px;
+			}
+		}
+
+		.docsbot-source-media-player {
+			margin-top: $spacing-sm;
+			width: 100%;
+			overflow: hidden;
+			border: 1px solid $color-secondary-300;
+			border-radius: 8px;
+			background: #fff;
+
+			audio,
+			video,
+			iframe {
+				display: block;
+				width: 100%;
+				border: 0;
+			}
+
+			audio {
+				height: 42px;
+			}
+
+			video,
+			iframe {
+				aspect-ratio: 16 / 9;
+				background: #111827;
+			}
+		}
+
+		&.docsbot-source-has-media.is-media-open {
+			margin-top: $spacing-sm;
+			padding: $spacing-sm;
+			border: 1px solid color-mix(in srgb, var(--docsbot-color-main, $color-primary-100) 24%, $color-secondary-300);
+			border-radius: 8px;
 		}
 
 		&.docsbot-sources-unlinked {
