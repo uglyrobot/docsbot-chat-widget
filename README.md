@@ -12,6 +12,20 @@ When using the widget in agent mode with a signed request, you can control the r
 
 Set **`options.inlineMediaSourcePlayer`** to `true` to make YouTube and downloadable `media` sources open an inline player from the source row. The widget starts playback from timestamps already present in source URLs, including YouTube `t=` query params and media download `#t=start,end` fragments. Inline playback for `media` sources only activates when the source URL looks like a playable media file (or includes an audio/video mime type); original/HTML page URLs used when source downloads are disabled stay as normal external links.
 
+### Live voice calls
+
+When browser voice is enabled for a bot, the widget creates a browser WebRTC connection by posting its SDP offer to the DocsBot endpoint `/teams/{team_id}/bots/{bot_id}/voice/webrtc`. OpenAI credentials are never sent to the browser. The existing `useAudioUpload` recorded-message control remains separate from live voice.
+
+If the widget is placed inside an iframe, the embedding page must delegate microphone access:
+
+```html
+<iframe src="https://example.com/chat" allow="microphone"></iframe>
+```
+
+The embedding page's `Permissions-Policy` response header must also allow the framed origin when a restrictive policy is used, for example `Permissions-Policy: microphone=(self "https://example.com")`. Without both permissions, browsers may block the microphone without showing a permission prompt; the widget reports that distinction to the caller.
+
+For local or integration testing, `options.useVoiceAgent` can explicitly enable or disable the live-call control and `options.voiceApiBaseUrl` can point it at a DocsBot-compatible test endpoint. Production normally uses the bot's saved `voiceAgent.enabled` setting and `https://api.docsbot.ai`.
+
 ### `signature`: legacy HMAC or JWT (Stripe tools, private bots)
 
 Pass **`signature`** in `DocsBotAI.mount` / `init`. It may be either the **legacy expiring HMAC** string or an **HS256 JWT** signed with your bot’s **signature key** (Widget embed page). The widget sends `Authorization: Bearer <signature>` on chat-agent and related API calls.

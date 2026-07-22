@@ -231,7 +231,8 @@
 
 // Media action buttons
 .docsbot-image-upload-btn,
-.docsbot-audio-record-btn {
+.docsbot-audio-record-btn,
+.docsbot-live-voice-btn {
 	cursor: pointer;
 	width: 32px;
 	height: 40px;
@@ -282,6 +283,44 @@
 	right: 42px;
 }
 
+.docsbot-live-voice-btn {
+	right: 42px;
+}
+
+.docsbot-chat-input-form:has(.docsbot-image-upload-btn)
+	.docsbot-live-voice-btn,
+.docsbot-chat-input-form:has(.docsbot-audio-record-btn)
+	.docsbot-live-voice-btn {
+	right: 74px;
+}
+
+.docsbot-chat-input-form:has(.docsbot-image-upload-btn):has(
+		.docsbot-audio-record-btn
+	)
+	.docsbot-live-voice-btn {
+	right: 106px;
+}
+
+.docsbot-chat-input-form:has(.docsbot-live-voice-btn)
+	.docsbot-chat-input {
+	padding-right: 88px;
+}
+
+.docsbot-chat-input-form:has(.docsbot-live-voice-btn):has(
+		.docsbot-image-upload-btn,
+		.docsbot-audio-record-btn
+	)
+	.docsbot-chat-input {
+	padding-right: 120px;
+}
+
+.docsbot-chat-input-form:has(.docsbot-live-voice-btn):has(
+		.docsbot-image-upload-btn
+	):has(.docsbot-audio-record-btn)
+	.docsbot-chat-input {
+	padding-right: 152px;
+}
+
 .docsbot-chat-input-form:has(.docsbot-image-upload-btn)
 	.docsbot-audio-record-btn {
 	right: 42px;
@@ -319,6 +358,108 @@
 	border: 0;
 	border-radius: #{$spacing-md - 1px};
 	background: $color-neutral-300;
+}
+
+.docsbot-live-voice-status {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 42px;
+	margin-bottom: 8px;
+	padding: 6px 7px 6px 11px;
+	border: 1px solid rgba(166, 179, 191, 0.52);
+	border-radius: 10px;
+	background: $color-neutral-300;
+	color: $color-neutral-100;
+	font-family: $font-family;
+	font-size: 12px;
+	line-height: 16px;
+
+	&.is-connected {
+		border-color: color-mix(
+			in srgb,
+			var(--docsbot-input--hover, $color-primary-200) 45%,
+			transparent
+		);
+	}
+
+	&.is-error {
+		border-color: rgba(185, 28, 28, 0.35);
+		background: #fff7f7;
+		color: #991b1b;
+	}
+}
+
+.docsbot-live-voice-state {
+	min-width: 0;
+	flex: 1 1 auto;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 600;
+
+	> span {
+		width: 8px;
+		height: 8px;
+		flex: 0 0 auto;
+		border-radius: 999px;
+		background: $color-secondary-200;
+	}
+
+	.is-connected & > span {
+		background: #16a34a;
+		box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+	}
+
+	.is-connecting & > span {
+		background: var(--docsbot-input--hover, $color-primary-200);
+		animation: docsbot-voice-pulse 1.2s ease-in-out infinite;
+	}
+
+	.is-error & > span {
+		background: #dc2626;
+	}
+}
+
+.docsbot-live-voice-mute,
+.docsbot-live-voice-end {
+	width: 30px;
+	height: 30px;
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: 1px solid rgba(166, 179, 191, 0.45);
+	border-radius: 9px;
+	background: transparent;
+	color: $color-secondary-100;
+	cursor: pointer;
+
+	&:hover {
+		background: rgba(166, 179, 191, 0.12);
+		color: $color-neutral-100;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--docsbot-focus-ring, #1292ee);
+		outline-offset: 2px;
+	}
+}
+
+.docsbot-live-voice-mute[aria-pressed='true'],
+.docsbot-live-voice-end {
+	color: #b91c1c;
+}
+
+@keyframes docsbot-voice-pulse {
+	0%,
+	100% {
+		opacity: 0.45;
+	}
+	50% {
+		opacity: 1;
+	}
 }
 
 .docsbot-audio-recorder-cancel,

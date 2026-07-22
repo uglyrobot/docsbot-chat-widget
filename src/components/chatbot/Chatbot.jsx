@@ -26,6 +26,9 @@ import {
 	faChevronDown,
 	faTimes,
 	faMicrophone,
+	faMicrophoneSlash,
+	faPhone,
+	faPhoneSlash,
 	faCheck
 } from '@fortawesome/free-solid-svg-icons';
 import { faImage } from '@fortawesome/free-regular-svg-icons';
@@ -70,6 +73,10 @@ import { loadTidyCalWidgetScript } from '../../utils/tidycal';
 import { LazyStreamdown } from '../streamdown/LazyStreamdown';
 import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
+import {
+	createDocsBotVoiceSession,
+	resolveLiveVoiceEnabled
+} from '../../utils/voiceWebRtc.mjs';
 
 // Define error classes for fetchEventSource
 class RetriableError extends Error {}
@@ -263,6 +270,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		useEscalation, // If escalation collection is enabled
 		useImageUpload, // If image upload is enabled
 		useAudioUpload, // If audio message recording is enabled
+		voiceAgent, // Saved voice-agent configuration
+		useVoiceAgent, // Optional embed override for browser live voice
+		voiceApiBaseUrl, // Optional DocsBot API base override for local/test use
 		useWebSearch, // If agent web search tool is enabled (API)
 		useCustomButtons, // Agent API: request custom_button terminal events
 		useCalendly,
@@ -292,6 +302,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const audioSourceRef = useRef(null);
 	const audioAnalyserRef = useRef(null);
 	const audioAnalysisFrameRef = useRef(null);
+	const liveVoiceSessionRef = useRef(null);
+	const liveVoiceAbortRef = useRef(null);
+	const liveVoiceAudioRef = useRef(null);
 	const lastAudioWaveformUpdateRef = useRef(0);
 	const chatInputId = useId();
 	const chatInputLabelId = useId();
@@ -313,6 +326,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const [audioWaveformLevels, setAudioWaveformLevels] = useState(() =>
 		Array(40).fill(0.04)
 	);
+	const [voiceCallState, setVoiceCallState] = useState('idle');
+	const [isVoiceCallMuted, setIsVoiceCallMuted] = useState(false);
+	const [voiceCallError, setVoiceCallError] = useState('');
 	const [streamController, setStreamController] = useState(null);
 	const streamControllerRef = useRef(null);
 	const requestIdCounterRef = useRef(0);
@@ -383,6 +399,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				discardAudioOnStopRef.current = true;
 				recorder.stop();
 			}
+			liveVoiceAbortRef.current?.abort();
+			liveVoiceAbortRef.current = null;
+			liveVoiceSessionRef.current?.end();
+			liveVoiceSessionRef.current = null;
 		};
 	}, []);
 
@@ -408,10 +428,35 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		typeof navigator !== 'undefined' &&
 		Boolean(navigator.mediaDevices?.getUserMedia) &&
 		typeof window.MediaRecorder !== 'undefined';
+	const isLiveVoiceEnabled = resolveLiveVoiceEnabled({
+		voiceAgent,
+		useVoiceAgent
+	});
+	const isLiveVoiceSupported =
+		isLiveVoiceEnabled &&
+		typeof navigator !== 'undefined' &&
+		Boolean(navigator.mediaDevices?.getUserMedia) &&
+		typeof window.RTCPeerConnection !== 'undefined';
+	const isLiveVoiceBusy =
+		voiceCallState === 'connecting' || voiceCallState === 'connected';
 	const showAudioRecordButton =
 		isAudioUploadEnabled &&
 		!isRecordingAudio &&
+		!isLiveVoiceBusy &&
 		chatInput === '';
+	const showLiveVoiceButton =
+		isLiveVoiceSupported && !isRecordingAudio && !isLiveVoiceBusy && chatInput === '';
+	const voiceCallLabels = {
+		start: labels.voiceCallStart || 'Start voice call',
+		connecting: labels.voiceCallConnecting || 'Connecting voice call…',
+		connected: labels.voiceCallConnected || 'Voice call active',
+		ended: labels.voiceCallEnded || 'Voice call ended',
+		mute: labels.voiceCallMute || 'Mute microphone',
+		unmute: labels.voiceCallUnmute || 'Unmute microphone',
+		end: labels.voiceCallEnd || 'End voice call',
+		error:
+			labels.voiceCallError || 'Could not start the voice call. Please try again.'
+	};
 	const maxAudioBytes = 25 * 1024 * 1024;
 	const maxAudioRecordingMs = 30 * 1000;
 	const audioMimeType =
@@ -853,6 +898,76 @@ const removeExistingSchedulerEmbeds = (
 
 	const handleAudioButtonClick = () => {
 		void startAudioRecording();
+	};
+
+	const endLiveVoiceCall = () => {
+		liveVoiceAbortRef.current?.abort();
+		liveVoiceAbortRef.current = null;
+		liveVoiceSessionRef.current?.end();
+		liveVoiceSessionRef.current = null;
+		setIsVoiceCallMuted(false);
+		setVoiceCallState('ended');
+	};
+
+	const startLiveVoiceCall = async () => {
+		if (
+			!isLiveVoiceSupported ||
+			isFetching ||
+			isPiiRedactionLoading ||
+			isLeadFormVisible ||
+			isRecordingAudio ||
+			isLiveVoiceBusy
+		) return;
+
+		if (isMicrophoneDisallowedByEmbeddedPagePolicy()) {
+			setVoiceCallError(labels.audioMicrophonePolicyError);
+			setVoiceCallState('error');
+			return;
+		}
+
+		const abortController = new AbortController();
+		liveVoiceAbortRef.current = abortController;
+		setVoiceCallError('');
+		setIsVoiceCallMuted(false);
+
+		try {
+			const session = await createDocsBotVoiceSession({
+				teamId,
+				botId,
+				signature,
+				localDev,
+				voiceApiBaseUrl,
+				audioElement: liveVoiceAudioRef.current,
+				signal: abortController.signal,
+				onStateChange: setVoiceCallState
+			});
+			if (abortController.signal.aborted) {
+				session.end();
+				return;
+			}
+			liveVoiceSessionRef.current = session;
+		} catch (error) {
+			if (error?.name === 'AbortError') return;
+			const policyBlocked =
+				isMicrophoneDisallowedByEmbeddedPagePolicy() ||
+				errorSuggestsMicrophoneBlockedByPermissionsPolicy(error);
+			setVoiceCallError(
+				policyBlocked
+					? labels.audioMicrophonePolicyError
+					: error?.message || voiceCallLabels.error
+			);
+			setVoiceCallState('error');
+		} finally {
+			if (liveVoiceAbortRef.current === abortController) {
+				liveVoiceAbortRef.current = null;
+			}
+		}
+	};
+
+	const toggleLiveVoiceMute = () => {
+		const session = liveVoiceSessionRef.current;
+		if (!session) return;
+		setIsVoiceCallMuted(session.setMuted(!isVoiceCallMuted));
 	};
 
 	const isEmbeddedAutoHeightHost = () => {
@@ -3152,6 +3267,56 @@ const removeExistingSchedulerEmbeds = (
 
 							<div className="docsbot-chat-footer-inner-wrapper">
 								<div className="docsbot-chat-input-container">
+									{/* Realtime remote speech has no synchronized caption track. */}
+									{/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+									<audio
+										ref={liveVoiceAudioRef}
+										autoPlay
+										hidden
+									/>
+									{voiceCallState !== 'idle' && (
+										<div
+											className={`docsbot-live-voice-status is-${voiceCallState}`}
+											role={voiceCallState === 'error' ? 'alert' : 'status'}
+											aria-live="polite"
+										>
+											<span className="docsbot-live-voice-state">
+												<span aria-hidden="true" />
+												{voiceCallState === 'connecting' && voiceCallLabels.connecting}
+												{voiceCallState === 'connected' && voiceCallLabels.connected}
+												{voiceCallState === 'ended' && voiceCallLabels.ended}
+												{voiceCallState === 'error' &&
+													(voiceCallError || voiceCallLabels.error)}
+											</span>
+											{voiceCallState === 'connected' && (
+												<button
+													type="button"
+													className="docsbot-live-voice-mute"
+													onClick={toggleLiveVoiceMute}
+													aria-pressed={isVoiceCallMuted}
+													aria-label={
+														isVoiceCallMuted
+															? voiceCallLabels.unmute
+															: voiceCallLabels.mute
+													}
+												>
+													<FontAwesomeIcon
+														icon={isVoiceCallMuted ? faMicrophoneSlash : faMicrophone}
+													/>
+												</button>
+											)}
+											{isLiveVoiceBusy && (
+												<button
+													type="button"
+													className="docsbot-live-voice-end"
+													onClick={endLiveVoiceCall}
+													aria-label={voiceCallLabels.end}
+												>
+													<FontAwesomeIcon icon={faPhoneSlash} />
+												</button>
+											)}
+										</div>
+									)}
 									{showPiiRedactionStatus && (
 										<div
 											className={clsx(
@@ -3195,7 +3360,7 @@ const removeExistingSchedulerEmbeds = (
 										</div>
 									)}
 									<form
-										className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching || isRecordingAudio || isLeadFormVisible ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''}`}
+										className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching || isRecordingAudio || isLeadFormVisible ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''} ${showLiveVoiceButton ? 'has-live-voice' : ''}`}
 									onSubmit={handleSubmit}
 									onDragEnter={
 										useImageUpload ? handleDragEnter : null
@@ -3416,7 +3581,8 @@ const removeExistingSchedulerEmbeds = (
 											ref={inputRef}
 											disabled={
 												isLeadFormVisible ||
-												isRecordingAudio
+												isRecordingAudio ||
+												isLiveVoiceBusy
 											}
 											aria-labelledby={chatInputLabelId}
 											maxLength={
@@ -3473,6 +3639,7 @@ const removeExistingSchedulerEmbeds = (
 												isFetching ||
 												isPiiRedactionLoading ||
 												isRecordingAudio ||
+												isLiveVoiceBusy ||
 												isLeadFormVisible
 											}
 											aria-label="Upload image"
@@ -3496,6 +3663,22 @@ const removeExistingSchedulerEmbeds = (
 											<FontAwesomeIcon
 												icon={faMicrophone}
 											/>
+										</button>
+									)}
+
+									{showLiveVoiceButton && (
+										<button
+											type="button"
+											onClick={() => void startLiveVoiceCall()}
+											className="docsbot-live-voice-btn"
+											disabled={
+												isFetching ||
+												isPiiRedactionLoading ||
+												isLeadFormVisible
+											}
+											aria-label={voiceCallLabels.start}
+										>
+											<FontAwesomeIcon icon={faPhone} />
 										</button>
 									)}
 
