@@ -927,6 +927,7 @@ const removeExistingSchedulerEmbeds = (
 					type: 'support_escalation',
 					message: action.message,
 					responses: action.responses,
+					voiceAction: true,
 					conversationId: getConversationId(),
 					loading: false,
 					timestamp: Date.now()
@@ -3245,6 +3246,19 @@ const removeExistingSchedulerEmbeds = (
 												setPendingLeadCapture(null);
 												setIsLeadCaptureLocked(false);
 											}}
+											onVoiceEscalationAccept={
+												message.voiceAction
+													? endLiveVoiceCall
+													: undefined
+											}
+											onVoiceEscalationDecline={
+												message.voiceAction
+													? (response) =>
+														liveVoiceSessionRef.current?.sendText(
+															response
+														)
+													: undefined
+											}
 											onSchedulerBookingMetadata={async (
 												metadata
 											) => {

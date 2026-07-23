@@ -84,9 +84,12 @@ test("posts SDP to DocsBot with widget auth, supports mute, and cleans up", asyn
       this.dataChannel = {
         label,
         closed: false,
+        sent: [],
+        readyState: "open",
         addEventListener(name, callback) {
           if (name === "message") this.onMessage = callback;
         },
+        send(message) { this.sent.push(JSON.parse(message)); },
         close() { this.closed = true; },
       };
       return this.dataChannel;
@@ -161,6 +164,19 @@ test("posts SDP to DocsBot with widget auth, supports mute, and cleans up", asyn
   });
   assert.deepEqual(clientActions, [
     { type: "custom_button", buttonText: "Open account" },
+  ]);
+
+  assert.equal(session.sendText("No, thanks"), true);
+  assert.deepEqual(session.eventsDataChannel.sent, [
+    {
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "user",
+        content: [{ type: "input_text", text: "No, thanks" }],
+      },
+    },
+    { type: "response.create" },
   ]);
 
   assert.equal(session.setMuted(true), true);

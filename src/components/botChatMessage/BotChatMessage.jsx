@@ -233,6 +233,8 @@ export const BotChatMessage = ({
 	onLeadCollectRequest,
 	onLeadCollectEscalated,
 	onLeadCollectCancel,
+	onVoiceEscalationAccept,
+	onVoiceEscalationDecline,
 	onSchedulerBookingMetadata,
 	leadCollectMode,
 	pendingLeadCapture,
@@ -1452,6 +1454,13 @@ export const BotChatMessage = ({
 								onClick={(e) =>
 									{
 										if (
+											payload.voiceAction &&
+											typeof onVoiceEscalationAccept ===
+												'function'
+										) {
+											onVoiceEscalationAccept();
+										}
+										if (
 											leadCollectMode ===
 											'before_escalation'
 										) {
@@ -1499,7 +1508,15 @@ export const BotChatMessage = ({
 												timestamp: Date.now()
 											}
 										});
-										fetchAnswer(message);
+										if (
+											payload.voiceAction &&
+											typeof onVoiceEscalationDecline ===
+												'function'
+										) {
+											onVoiceEscalationDecline(message);
+										} else {
+											fetchAnswer(message);
+										}
 										// Scroll to bottom and focus input after clicking no
 										scrollToBottom(chatContainerRef);
 										if (inputRef?.current) {

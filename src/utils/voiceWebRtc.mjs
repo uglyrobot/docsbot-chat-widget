@@ -259,6 +259,26 @@ export async function createDocsBotVoiceSession({
 
     return {
       end,
+      sendText(text) {
+        const value = String(text || "").trim();
+        if (
+          !value ||
+          typeof eventsDataChannel?.send !== "function" ||
+          (eventsDataChannel.readyState && eventsDataChannel.readyState !== "open")
+        ) return false;
+        eventsDataChannel.send(
+          JSON.stringify({
+            type: "conversation.item.create",
+            item: {
+              type: "message",
+              role: "user",
+              content: [{ type: "input_text", text: value }],
+            },
+          }),
+        );
+        eventsDataChannel.send(JSON.stringify({ type: "response.create" }));
+        return true;
+      },
       setMuted(nextMuted) {
         muted = Boolean(nextMuted);
         stream.getAudioTracks().forEach((track) => {

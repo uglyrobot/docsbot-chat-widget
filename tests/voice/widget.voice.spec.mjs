@@ -10,6 +10,8 @@ const MOCK_CONFIG = {
   language: "en",
   allowedDomains: [],
   isAgent: true,
+  useEscalation: true,
+  supportLink: "#",
   useAudioUpload: true,
   voiceAgent: { enabled: true, widgetEnabled: true },
 };
@@ -19,6 +21,9 @@ async function installVoiceMocks(page) {
   // remain blocked on fetch while Playwright fulfills the DocsBot route.
   const peerPage = await page.context().newPage();
   await peerPage.goto("about:blank");
+  await page.route("**/conversations/**/escalate", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "{}" }),
+  );
   const widgetConfigPatterns = [
     "https://docsbot.ai/api/widget/**",
     "http://localhost:3000/api/widget/**",
@@ -157,7 +162,29 @@ test("starts, mutes, and ends a real browser WebRTC call through DocsBot SDP", a
     root.getByRole("button", { name: "Unmute microphone" }),
   ).toHaveAttribute("aria-pressed", "true");
 
-  await root.getByRole("button", { name: "End voice call" }).click();
+  await peerPage.waitForFunction(
+    () => window.__docsbotVoiceTestDataChannel?.readyState === "open",
+  );
+  await peerPage.evaluate(() => {
+    window.__docsbotVoiceTestDataChannel.send(
+      JSON.stringify({
+        item: {
+          type: "function_call_output",
+          output: JSON.stringify({
+            client_action: {
+              type: "support_escalation",
+              message: "Would you like human support?",
+              responses: {
+                yes: "Connect me",
+                no: "Keep talking",
+              },
+            },
+          }),
+        },
+      }),
+    );
+  });
+  await root.getByRole("button", { name: "Connect me" }).click();
   await expect(root.locator("textarea")).toBeVisible();
   await expect(
     root.getByRole("button", { name: "Start voice call" }),
