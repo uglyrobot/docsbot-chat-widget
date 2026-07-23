@@ -37,9 +37,8 @@
 	a {
 		color: inherit;
 		font-weight: 500;
-		word-break: break-all;
-		display: inline-block;
-		max-width: 100%;
+		overflow-wrap: anywhere;
+		word-break: normal;
 
 		&:hover {
 			text-decoration: none;

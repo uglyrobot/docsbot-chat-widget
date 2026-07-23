@@ -26,9 +26,7 @@ import {
 	faChevronDown,
 	faTimes,
 	faMicrophone,
-	faMicrophoneSlash,
 	faPhone,
-	faPhoneSlash,
 	faCheck
 } from '@fortawesome/free-solid-svg-icons';
 import { faImage } from '@fortawesome/free-regular-svg-icons';
@@ -73,11 +71,7 @@ import { loadTidyCalWidgetScript } from '../../utils/tidycal';
 import { LazyStreamdown } from '../streamdown/LazyStreamdown';
 import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
-import {
-	createDocsBotVoiceSession,
-	isVoiceOutputActive,
-	resolveLiveVoiceEnabled
-} from '../../utils/voiceWebRtc.mjs';
+import { VoiceCallView } from '../voiceCall/VoiceCallView';
 
 // Define error classes for fetchEventSource
 class RetriableError extends Error {}
@@ -90,10 +84,7 @@ function resolveSchedulerEmbedForToolCall(toolCall, enabledProviders) {
 		return null;
 	}
 
-	if (
-		enabledProviders?.calendly &&
-		isCalendlyToolCallName(toolName)
-	) {
+	if (enabledProviders?.calendly && isCalendlyToolCallName(toolName)) {
 		return buildSchedulerEmbed('calendly', params);
 	}
 
@@ -108,8 +99,14 @@ function resolveSchedulerEmbedForToolCall(toolCall, enabledProviders) {
 	return null;
 }
 
-function resolveSchedulerEmbedForEventType(eventType, eventData, enabledProviders) {
-	const normalized = String(eventType || '').trim().toLowerCase();
+function resolveSchedulerEmbedForEventType(
+	eventType,
+	eventData,
+	enabledProviders
+) {
+	const normalized = String(eventType || '')
+		.trim()
+		.toLowerCase();
 	if (!normalized) return null;
 	const payload = parseSchedulerPayload(eventData);
 	if (!payload?.eventPath) return null;
@@ -192,11 +189,7 @@ function isSchedulerEnabled(toggleOrPath) {
 }
 
 function isSameSchedulerEmbed(a, provider, path) {
-	return (
-		a &&
-		a.provider === provider &&
-		a.path === path
-	);
+	return a && a.provider === provider && a.path === path;
 }
 
 /**
@@ -220,7 +213,8 @@ function isMicrophoneDisallowedByEmbeddedPagePolicy() {
 function errorSuggestsMicrophoneBlockedByPermissionsPolicy(error) {
 	const msg = String(error?.message || '').toLowerCase();
 	return (
-		msg.includes('permissions policy') || msg.includes('not allowed in this document')
+		msg.includes('permissions policy') ||
+		msg.includes('not allowed in this document')
 	);
 }
 
@@ -271,9 +265,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		useEscalation, // If escalation collection is enabled
 		useImageUpload, // If image upload is enabled
 		useAudioUpload, // If audio message recording is enabled
-		voiceAgent, // Saved voice-agent configuration
-		useVoiceAgent, // Optional embed override for browser live voice
-		voiceApiBaseUrl, // Optional DocsBot API base override for local/test use
+		useVoiceAgent, // Server-gated browser Realtime voice calling
 		useWebSearch, // If agent web search tool is enabled (API)
 		useCustomButtons, // Agent API: request custom_button terminal events
 		useCalendly,
@@ -303,9 +295,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const audioSourceRef = useRef(null);
 	const audioAnalyserRef = useRef(null);
 	const audioAnalysisFrameRef = useRef(null);
-	const liveVoiceSessionRef = useRef(null);
-	const liveVoiceAbortRef = useRef(null);
-	const liveVoiceAudioRef = useRef(null);
 	const lastAudioWaveformUpdateRef = useRef(0);
 	const chatInputId = useId();
 	const chatInputLabelId = useId();
@@ -317,26 +306,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		useState(null);
 	const [anchoredTopScrollMessageId, setAnchoredTopScrollMessageId] =
 		useState(null);
-	const [bottomScrollSpacerHeight, setBottomScrollSpacerHeight] =
-		useState(0);
+	const [bottomScrollSpacerHeight, setBottomScrollSpacerHeight] = useState(0);
 	const anchoredTopScrollClientHeightRef = useRef(null);
 	const [isCalendlyScriptReady, setIsCalendlyScriptReady] = useState(false);
 	const [isTidyCalScriptReady, setIsTidyCalScriptReady] = useState(false);
 	const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+	const [isVoiceCallView, setIsVoiceCallView] = useState(false);
+	const [voiceConversationId, setVoiceConversationId] = useState(null);
 	const [audioRecordingElapsedMs, setAudioRecordingElapsedMs] = useState(0);
 	const [audioWaveformLevels, setAudioWaveformLevels] = useState(() =>
 		Array(40).fill(0.04)
-	);
-	const [voiceCallState, setVoiceCallState] = useState('idle');
-	const [isVoiceCallMuted, setIsVoiceCallMuted] = useState(false);
-	const [voiceCallError, setVoiceCallError] = useState('');
-	const [voiceOutputLevel, setVoiceOutputLevel] = useState(0);
-	const [voiceWaveformLevels, setVoiceWaveformLevels] = useState(() =>
-		Array(32).fill(0.04)
-	);
-	const isVoiceAgentSpeaking = isVoiceOutputActive(
-		voiceOutputLevel,
-		voiceCallState
 	);
 	const [streamController, setStreamController] = useState(null);
 	const streamControllerRef = useRef(null);
@@ -408,10 +387,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				discardAudioOnStopRef.current = true;
 				recorder.stop();
 			}
-			liveVoiceAbortRef.current?.abort();
-			liveVoiceAbortRef.current = null;
-			liveVoiceSessionRef.current?.end();
-			liveVoiceSessionRef.current = null;
 		};
 	}, []);
 
@@ -423,8 +398,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				? [navigator.language]
 				: [];
 	const allowSingleCharMessage = navLangList.some((tag) =>
-		allowedSingleCharLanguages.some((lang) =>
-			typeof tag === 'string' && tag.toLowerCase().startsWith(lang)
+		allowedSingleCharLanguages.some(
+			(lang) =>
+				typeof tag === 'string' && tag.toLowerCase().startsWith(lang)
 		)
 	);
 	const minInputLength = allowSingleCharMessage ? 1 : 2;
@@ -437,35 +413,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		typeof navigator !== 'undefined' &&
 		Boolean(navigator.mediaDevices?.getUserMedia) &&
 		typeof window.MediaRecorder !== 'undefined';
-	const isLiveVoiceEnabled = resolveLiveVoiceEnabled({
-		voiceAgent,
-		useVoiceAgent
-	});
-	const isLiveVoiceSupported =
-		isLiveVoiceEnabled &&
-		typeof navigator !== 'undefined' &&
-		Boolean(navigator.mediaDevices?.getUserMedia) &&
-		typeof window.RTCPeerConnection !== 'undefined';
-	const isLiveVoiceBusy =
-		voiceCallState === 'connecting' || voiceCallState === 'connected';
+	const isVoiceAgentCallAvailable = useVoiceAgent === true;
 	const showAudioRecordButton =
+		!isVoiceAgentCallAvailable &&
 		isAudioUploadEnabled &&
 		!isRecordingAudio &&
-		!isLiveVoiceBusy &&
 		chatInput === '';
-	const showLiveVoiceButton =
-		isLiveVoiceSupported && !isRecordingAudio && !isLiveVoiceBusy && chatInput === '';
-	const voiceCallLabels = {
-		start: labels.voiceCallStart || 'Start voice call',
-		connecting: labels.voiceCallConnecting || 'Connecting voice call…',
-		connected: labels.voiceCallConnected || 'Voice call active',
-		ended: labels.voiceCallEnded || 'Voice call ended',
-		mute: labels.voiceCallMute || 'Mute microphone',
-		unmute: labels.voiceCallUnmute || 'Unmute microphone',
-		end: labels.voiceCallEnd || 'End voice call',
-		error:
-			labels.voiceCallError || 'Could not start the voice call. Please try again.'
-	};
+	const showVoiceCallButton =
+		isVoiceAgentCallAvailable && !isRecordingAudio && chatInput === '';
+	const hasVoiceOrAudioAction = showAudioRecordButton || showVoiceCallButton;
 	const maxAudioBytes = 25 * 1024 * 1024;
 	const maxAudioRecordingMs = 30 * 1000;
 	const audioMimeType =
@@ -474,35 +430,34 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			? 'audio/webm;codecs=opus'
 			: 'audio/webm';
 
-const removeExistingSchedulerEmbeds = (
+	const removeExistingSchedulerEmbeds = (
 		schedulerEmbed,
 		excludeMessageId = null
 	) => {
 		if (!schedulerEmbed?.provider || !schedulerEmbed?.path) return;
 
-	Object.values(state.messages || {}).forEach((message) => {
-		if (
-			message?.id === excludeMessageId ||
-			message?.variant !== 'chatbot' ||
+		Object.values(state.messages || {}).forEach((message) => {
+			if (
+				message?.id === excludeMessageId ||
+				message?.variant !== 'chatbot' ||
 				!isSameSchedulerEmbed(
 					message?.schedulerEmbed,
 					schedulerEmbed.provider,
 					schedulerEmbed.path
 				)
-		) {
-			return;
-		}
-
-		dispatch({
-			type: 'update_message',
-			payload: {
-				id: message.id,
-				schedulerEmbed: null
+			) {
+				return;
 			}
-		});
-	});
-};
 
+			dispatch({
+				type: 'update_message',
+				payload: {
+					id: message.id,
+					schedulerEmbed: null
+				}
+			});
+		});
+	};
 
 	const handleImageSelect = (e) => {
 		if (!useImageUpload) return;
@@ -634,7 +589,9 @@ const removeExistingSchedulerEmbeds = (
 			existing.length === 0
 				? null
 				: existing.reduce((latest, m) =>
-						(m.timestamp ?? 0) >= (latest.timestamp ?? 0) ? m : latest
+						(m.timestamp ?? 0) >= (latest.timestamp ?? 0)
+							? m
+							: latest
 					);
 		if (
 			lastByTime &&
@@ -807,7 +764,8 @@ const removeExistingSchedulerEmbeds = (
 			isFetching ||
 			isPiiRedactionLoading ||
 			isLeadFormVisible
-		) return;
+		)
+			return;
 
 		if (isMicrophoneDisallowedByEmbeddedPagePolicy()) {
 			console.warn(
@@ -832,7 +790,9 @@ const removeExistingSchedulerEmbeds = (
 			setAudioRecordingElapsedMs(0);
 			setAudioWaveformLevels(Array(40).fill(0.04));
 			startAudioAnalysis(stream);
-			const recorder = new MediaRecorder(stream, { mimeType: audioMimeType });
+			const recorder = new MediaRecorder(stream, {
+				mimeType: audioMimeType
+			});
 			mediaRecorderRef.current = recorder;
 
 			recorder.ondataavailable = (event) => {
@@ -863,7 +823,10 @@ const removeExistingSchedulerEmbeds = (
 			};
 
 			recorder.onerror = (event) => {
-				console.warn('DOCSBOT: Voice recording error', event.error || event);
+				console.warn(
+					'DOCSBOT: Voice recording error',
+					event.error || event
+				);
 				discardAudioOnStopRef.current = true;
 				stream.getTracks().forEach((track) => track.stop());
 				clearAudioRecordingTimer();
@@ -909,175 +872,6 @@ const removeExistingSchedulerEmbeds = (
 		void startAudioRecording();
 	};
 
-	const endLiveVoiceCall = () => {
-		liveVoiceAbortRef.current?.abort();
-		liveVoiceAbortRef.current = null;
-		liveVoiceSessionRef.current?.end();
-		liveVoiceSessionRef.current = null;
-		setIsVoiceCallMuted(false);
-		setVoiceOutputLevel(0);
-		setVoiceWaveformLevels(Array(32).fill(0.04));
-		setVoiceCallState('ended');
-	};
-
-	const handleVoiceClientAction = (action) => {
-		if (!action?.type) return;
-		const id = uuidv4();
-		if (action.type === 'support_escalation') {
-			dispatch({
-				type: 'add_message',
-				payload: {
-					id,
-					variant: 'chatbot',
-					type: 'support_escalation',
-					message: action.message,
-					responses: action.responses,
-					voiceAction: true,
-					conversationId: getConversationId(),
-					loading: false,
-					timestamp: Date.now()
-				}
-			});
-			return;
-		}
-
-		if (['calendly', 'calcom', 'tidycal'].includes(action.type)) {
-			const schedulerEmbed = buildSchedulerEmbed(action.type, action);
-			removeExistingSchedulerEmbeds(schedulerEmbed);
-			dispatch({
-				type: 'add_message',
-				payload: {
-					id,
-					variant: 'chatbot',
-					type: action.type,
-					message: action.message,
-					schedulerEmbed,
-					conversationId: getConversationId(),
-					loading: false,
-					timestamp: Date.now()
-				}
-			});
-			return;
-		}
-
-		if (action.type === 'custom_button') {
-			dispatch({
-				type: 'add_message',
-				payload: {
-					id,
-					variant: 'chatbot',
-					type: 'custom_button',
-					message: action.message,
-					customButton: action,
-					conversationId: getConversationId(),
-					loading: false,
-					timestamp: Date.now()
-				}
-			});
-			return;
-		}
-
-		if (action.type === 'stripe_billing' && action.stripeBilling) {
-			dispatch({
-				type: 'add_message',
-				payload: {
-					id,
-					variant: 'chatbot',
-					type: 'stripe_billing',
-					message: action.message || '',
-					stripeBilling: action.stripeBilling,
-					conversationId: getConversationId(),
-					loading: false,
-					timestamp: Date.now()
-				}
-			});
-		}
-	};
-
-	const startLiveVoiceCall = async () => {
-		if (shouldRequireLeadBeforeSend()) {
-			const leadFormMessage = buildLeadFormMessage('before_response');
-			if (leadFormMessage) {
-				setIsLeadCaptureLocked(true);
-				setPendingLeadCapture({ type: 'before_voice' });
-				dispatch({ type: 'add_message', payload: leadFormMessage });
-			}
-			return;
-		}
-		if (
-			!isLiveVoiceSupported ||
-			isFetching ||
-			isLeadFormVisible ||
-			isRecordingAudio ||
-			isLiveVoiceBusy
-		) return;
-
-		if (isMicrophoneDisallowedByEmbeddedPagePolicy()) {
-			setVoiceCallError(labels.audioMicrophonePolicyError);
-			setVoiceCallState('error');
-			return;
-		}
-
-		const abortController = new AbortController();
-		liveVoiceAbortRef.current = abortController;
-		setVoiceCallError('');
-		setIsVoiceCallMuted(false);
-		setVoiceOutputLevel(0);
-		setVoiceWaveformLevels(Array(32).fill(0.04));
-
-		try {
-			const session = await createDocsBotVoiceSession({
-				teamId,
-				botId,
-				signature,
-				localDev,
-				voiceApiBaseUrl,
-				conversationId: getConversationId(),
-				metadata: mergeIdentifyMetadata(identify),
-				audioElement: liveVoiceAudioRef.current,
-				signal: abortController.signal,
-				onStateChange: setVoiceCallState,
-				onClientAction: handleVoiceClientAction,
-				onOutputLevel: (level) => {
-					setVoiceOutputLevel(level);
-					setVoiceWaveformLevels((previous) => [
-						...previous.slice(1),
-						Math.max(0.04, level)
-					]);
-				},
-				onSession: ({ conversationId }) => {
-					if (conversationId) persistConversationId(conversationId);
-				}
-			});
-			if (abortController.signal.aborted) {
-				session.end();
-				return;
-			}
-			liveVoiceSessionRef.current = session;
-		} catch (error) {
-			if (error?.name === 'AbortError') return;
-			const policyBlocked =
-				isMicrophoneDisallowedByEmbeddedPagePolicy() ||
-				errorSuggestsMicrophoneBlockedByPermissionsPolicy(error);
-			setVoiceCallError(
-				policyBlocked
-					? labels.audioMicrophonePolicyError
-					: error?.message || voiceCallLabels.error
-			);
-			setVoiceCallState('error');
-		} finally {
-			if (liveVoiceAbortRef.current === abortController) {
-				liveVoiceAbortRef.current = null;
-			}
-		}
-	};
-
-	const toggleLiveVoiceMute = () => {
-		const session = liveVoiceSessionRef.current;
-		if (!session) return;
-		setIsVoiceCallMuted(session.setMuted(!isVoiceCallMuted));
-	};
-
 	const isEmbeddedAutoHeightHost = () => {
 		if (!isEmbeddedBox || !ref.current) return false;
 		const rootNode = ref.current.getRootNode?.();
@@ -1086,7 +880,7 @@ const removeExistingSchedulerEmbeds = (
 		const embedHost =
 			host.id === 'docsbot-widget-embed'
 				? host
-				: host.closest('#docsbot-widget-embed') ?? host;
+				: (host.closest('#docsbot-widget-embed') ?? host);
 		return embedHost.style.height.trim().toLowerCase() === 'auto';
 	};
 
@@ -1297,7 +1091,10 @@ const removeExistingSchedulerEmbeds = (
 				body: responseBody
 			});
 		} catch (err) {
-			console.warn('DOCSBOT: Failed to update conversation metadata', err);
+			console.warn(
+				'DOCSBOT: Failed to update conversation metadata',
+				err
+			);
 		}
 	};
 
@@ -1330,8 +1127,7 @@ const removeExistingSchedulerEmbeds = (
 			return;
 		}
 
-		const isBeforeResponse =
-			activeLeadContext?.type === 'before_response';
+		const isBeforeResponse = activeLeadContext?.type === 'before_response';
 		finalizeLeadSubmission(
 			{
 				...data,
@@ -1339,9 +1135,7 @@ const removeExistingSchedulerEmbeds = (
 				imageUrls: activeLeadContext?.imageUrls,
 				audio: activeLeadContext?.audio,
 				audioUserMessageId: activeLeadContext?.audioUserMessageId,
-				nextAction: isBeforeResponse
-					? 'send_message'
-					: data.nextAction
+				nextAction: isBeforeResponse ? 'send_message' : data.nextAction
 			},
 			leadMetadata,
 			{
@@ -1495,42 +1289,48 @@ const removeExistingSchedulerEmbeds = (
 		setPendingLeadCapture(null);
 	};
 
+	const conversationIdStorageKey = `DocsBot_${botId}_conversationId`;
+
 	const persistConversationId = (conversationId) => {
-		const key = `DocsBot_${botId}_conversationId`;
 		cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
 
 		try {
-			localStorage.setItem(key, conversationId);
-			return;
+			localStorage.setItem(conversationIdStorageKey, conversationId);
+			return true;
 		} catch (error) {
 			if (!isStorageQuotaError(error)) {
 				console.warn(
 					'DOCSBOT: Failed to persist conversation id.',
 					error
 				);
-				return;
+				return false;
 			}
 		}
 
 		cleanupExpiredDocsBotLocalStorage({ currentBotId: botId });
 		try {
-			localStorage.setItem(key, conversationId);
+			localStorage.setItem(conversationIdStorageKey, conversationId);
+			return true;
 		} catch (error) {
 			console.warn(
 				'DOCSBOT: Failed to persist conversation id after storage cleanup.',
 				error
 			);
+			return false;
 		}
 	};
 
+	const createConversationId = () => {
+		const conversationId = uuidv4();
+		conversationIdRef.current = conversationId;
+		persistConversationId(conversationId);
+		return conversationId;
+	};
+
 	const getConversationId = () => {
-		let conversationId =
-			conversationIdRef.current ||
-			localStorage.getItem(`DocsBot_${botId}_conversationId`);
+		let conversationId = localStorage.getItem(conversationIdStorageKey);
 		if (!conversationId) {
-			conversationId = uuidv4();
-			conversationIdRef.current = conversationId;
-			persistConversationId(conversationId);
+			conversationId = createConversationId();
 		} else {
 			conversationIdRef.current = conversationId;
 		}
@@ -1538,10 +1338,52 @@ const removeExistingSchedulerEmbeds = (
 	};
 
 	const getStoredConversationId = () => {
-		return localStorage.getItem(`DocsBot_${botId}_conversationId`);
+		return localStorage.getItem(conversationIdStorageKey);
 	};
 
-	const getPiiRedactionSessionKey = (conversationId = getConversationId()) => {
+	const getExistingConversationId = (message) =>
+		message?.conversationId || getStoredConversationId() || null;
+
+	const handleVoiceConversationId = (conversationId) => {
+		if (!conversationId) return;
+		conversationIdRef.current = conversationId;
+		persistConversationId(conversationId);
+		setVoiceConversationId(conversationId);
+	};
+
+	const upsertVoiceTranscriptMessage = ({ itemId, role, text }) => {
+		if (!itemId || !text || (role !== 'caller' && role !== 'agent')) return;
+		const messageId = `voice-${itemId}`;
+		const existing = stateMessagesRef.current?.[messageId];
+		const payload = {
+			id: messageId,
+			variant: role === 'caller' ? 'user' : 'chatbot',
+			message: text,
+			loading: false,
+			streaming: false,
+			voiceCall: true,
+			realtimeItemId: itemId,
+			conversationId:
+				voiceConversationId || getStoredConversationId() || null,
+			timestamp: existing?.timestamp || Date.now()
+		};
+		dispatch({
+			type: existing ? 'update_message' : 'add_message',
+			payload
+		});
+	};
+
+	const startVoiceCall = () => {
+		if (!isVoiceAgentCallAvailable || isFetching || isLeadFormVisible)
+			return;
+		const conversationId = getConversationId();
+		setVoiceConversationId(conversationId);
+		setIsVoiceCallView(true);
+	};
+
+	const getPiiRedactionSessionKey = (
+		conversationId = getConversationId()
+	) => {
 		return getPiiRedactionSessionStorageKey(botId, conversationId);
 	};
 
@@ -1604,6 +1446,17 @@ const removeExistingSchedulerEmbeds = (
 		if (key) {
 			localStorage.removeItem(key);
 		}
+		const prefix = `DocsBot_${botId}_piiRedactionSession_`;
+		const sessionKeys = [];
+		for (let index = 0; index < localStorage.length; index += 1) {
+			const storageKey = localStorage.key(index);
+			if (storageKey?.startsWith(prefix)) {
+				sessionKeys.push(storageKey);
+			}
+		}
+		sessionKeys.forEach((storageKey) => {
+			localStorage.removeItem(storageKey);
+		});
 		piiRedactionSessionKeyRef.current = '';
 	};
 
@@ -1631,33 +1484,34 @@ const removeExistingSchedulerEmbeds = (
 				piiRedaction && typeof piiRedaction === 'object'
 					? { ...piiRedaction, session }
 					: { enabled: true, session };
-			piiRedactionGuardPromiseRef.current =
-				createPiiRedactionGuard(guardOption)
-					.then((result) => {
-						piiRedactionGuardRef.current = result?.guard || null;
-						piiRedactionModeRef.current = result?.mode || null;
-						if (!result?.guard) {
-							console.warn(
-								'DOCSBOT: PII redaction was requested, but this browser does not support the client-side redaction runtime.'
-							);
-						}
-						return piiRedactionGuardRef.current;
-					})
-					.catch((error) => {
+			piiRedactionGuardPromiseRef.current = createPiiRedactionGuard(
+				guardOption
+			)
+				.then((result) => {
+					piiRedactionGuardRef.current = result?.guard || null;
+					piiRedactionModeRef.current = result?.mode || null;
+					if (!result?.guard) {
 						console.warn(
-							'DOCSBOT: Failed to initialize PII redaction. Sending the message without client-side redaction.',
-							error
+							'DOCSBOT: PII redaction was requested, but this browser does not support the client-side redaction runtime.'
 						);
-						piiRedactionGuardRef.current = null;
-						piiRedactionModeRef.current = null;
-						return null;
-					})
-					.finally(() => {
-						piiRedactionBypassedRef.current = false;
-						setIsPiiRedactionLoading(false);
-						setIsPiiRedactionOverrideAvailable(false);
-						setIsPiiRedactionBypassed(false);
-					});
+					}
+					return piiRedactionGuardRef.current;
+				})
+				.catch((error) => {
+					console.warn(
+						'DOCSBOT: Failed to initialize PII redaction. Sending the message without client-side redaction.',
+						error
+					);
+					piiRedactionGuardRef.current = null;
+					piiRedactionModeRef.current = null;
+					return null;
+				})
+				.finally(() => {
+					piiRedactionBypassedRef.current = false;
+					setIsPiiRedactionLoading(false);
+					setIsPiiRedactionOverrideAvailable(false);
+					setIsPiiRedactionBypassed(false);
+				});
 		}
 
 		if (allowBypass && piiRedactionBypassedRef.current) {
@@ -1763,21 +1617,28 @@ const removeExistingSchedulerEmbeds = (
 	};
 
 	const refreshChatHistory = async () => {
-		if (streamController) {
-			if (streamController.abort) {
-				streamController.abort(); // If it's a fetch AbortController
-			} else if (streamController.close) {
-				streamController.close(); // If it's a WebSocket
+		activeRequestIdRef.current = null;
+		setIsFetching(false);
+
+		const activeStreamController = streamControllerRef.current;
+		if (activeStreamController) {
+			if (activeStreamController.abort) {
+				activeStreamController.abort(); // If it's a fetch AbortController
+			} else if (activeStreamController.close) {
+				activeStreamController.close(); // If it's a WebSocket
 			}
 
 			setStreamController(null); // Clear the controller after aborting/closing
+			streamControllerRef.current = null;
 		}
 
 		dispatch({ type: 'clear_messages' });
 		localStorage.removeItem(`DocsBot_${botId}_chatHistory`);
 		localStorage.removeItem(`DocsBot_${botId}_localChatHistory`);
 		clearPiiRedactionSession();
-		localStorage.removeItem(`DocsBot_${botId}_conversationId`);
+		conversationIdRef.current = null;
+		localStorage.removeItem(conversationIdStorageKey);
+		createConversationId();
 
 		// Reset lead collection state so it can trigger again
 		setLeadCollected(isLeadCollectionSatisfied());
@@ -1863,7 +1724,10 @@ const removeExistingSchedulerEmbeds = (
 								lastMsgTimeStamp = message?.timestamp;
 							}
 						});
-						if (currentTime - lastMsgTimeStamp > 12 * 60 * 60 * 1000) {
+						if (
+							currentTime - lastMsgTimeStamp >
+							12 * 60 * 60 * 1000
+						) {
 							refreshChatHistory();
 						} else {
 							dispatch({
@@ -2012,6 +1876,11 @@ const removeExistingSchedulerEmbeds = (
 
 		const abortController = new AbortController();
 		setStreamController(abortController);
+		streamControllerRef.current = abortController;
+		const requestConversationId = isAgent ? getConversationId() : null;
+		const isCurrentRequest = () =>
+			activeRequestIdRef.current === requestId &&
+			!abortController.signal.aborted;
 
 		dispatch({
 			type: 'add_message',
@@ -2028,7 +1897,10 @@ const removeExistingSchedulerEmbeds = (
 		// Change this to use native JS event
 		document.dispatchEvent(
 			new CustomEvent('docsbot_fetching_answer', {
-				detail: { question: audio ? null : question, audio: Boolean(audio) }
+				detail: {
+					question: audio ? null : question,
+					audio: Boolean(audio)
+				}
 			})
 		);
 
@@ -2041,7 +1913,8 @@ const removeExistingSchedulerEmbeds = (
 			: await protectTextForRequest(question);
 		// Use metadataOverride if provided (e.g. from lead form submission) to avoid
 		// stale closure over identify that hasn't re-rendered yet.
-		const metadata = options.metadataOverride || mergeIdentifyMetadata(identify);
+		const metadata =
+			options.metadataOverride || mergeIdentifyMetadata(identify);
 		if (!Object.prototype.hasOwnProperty.call(metadata, 'referrer')) {
 			metadata.referrer = window.location.href;
 		}
@@ -2059,7 +1932,7 @@ const removeExistingSchedulerEmbeds = (
 				tidycal: isTidyCalEnabled,
 				full_source: false,
 				metadata,
-				conversationId: getConversationId(),
+				conversationId: requestConversationId,
 				context_items: contextItems || 6,
 				autocut: 2,
 				default_language: browserRequestLanguageTag,
@@ -2144,25 +2017,29 @@ const removeExistingSchedulerEmbeds = (
 						}
 					},
 					async onmessage(event) {
+						if (!isCurrentRequest()) {
+							return;
+						}
+
 						const data = event;
 						//console.log(data.event);
 
 						// If server sends an error event, handle accordingly
-							if (data.event === 'error') {
-								const errorMessage =
-									data.data ||
-									'Sorry, something went wrong. Please try again.';
-								if (audioUserMessageId) {
-									dispatch({
-										type: 'update_message',
-										payload: {
-											id: audioUserMessageId,
-											loading: false
-										}
-									});
-								}
+						if (data.event === 'error') {
+							const errorMessage =
+								data.data ||
+								'Sorry, something went wrong. Please try again.';
+							if (audioUserMessageId) {
 								dispatch({
 									type: 'update_message',
+									payload: {
+										id: audioUserMessageId,
+										loading: false
+									}
+								});
+							}
+							dispatch({
+								type: 'update_message',
 								payload: {
 									id,
 									variant: 'chatbot',
@@ -2178,40 +2055,40 @@ const removeExistingSchedulerEmbeds = (
 							setIsFetching(false);
 							scrollToBottom(ref);
 							abortController.abort();
+							return;
+						}
+
+						if (data.event === 'user_message') {
+							if (!audioUserMessageId || !data.data) {
 								return;
 							}
 
-							if (data.event === 'user_message') {
-								if (!audioUserMessageId || !data.data) {
-									return;
+							try {
+								const userMessageData = JSON.parse(data.data);
+								if (
+									userMessageData?.source === 'audio' &&
+									typeof userMessageData.message === 'string'
+								) {
+									dispatch({
+										type: 'update_message',
+										payload: {
+											id: audioUserMessageId,
+											message: userMessageData.message,
+											loading: false
+										}
+									});
 								}
-
-								try {
-									const userMessageData = JSON.parse(data.data);
-									if (
-										userMessageData?.source === 'audio' &&
-										typeof userMessageData.message === 'string'
-									) {
-										dispatch({
-											type: 'update_message',
-											payload: {
-												id: audioUserMessageId,
-												message: userMessageData.message,
-												loading: false
-											}
-										});
-									}
-								} catch (error) {
-									console.warn(
-										'DOCSBOT: Failed to parse user_message event',
-										error
-									);
-								}
-								return;
+							} catch (error) {
+								console.warn(
+									'DOCSBOT: Failed to parse user_message event',
+									error
+								);
 							}
+							return;
+						}
 
-							// Agent SSE: reasoning + tool_call use JSON `data`; stream uses plain text (see agentActivityFromSse.js)
-							if (data.event === 'tool_call') {
+						// Agent SSE: reasoning + tool_call use JSON `data`; stream uses plain text (see agentActivityFromSse.js)
+						if (data.event === 'tool_call') {
 							const toolCall = parseToolCallPayload(data.data);
 							document.dispatchEvent(
 								new CustomEvent('docsbot_tool_call', {
@@ -2226,22 +2103,20 @@ const removeExistingSchedulerEmbeds = (
 									}
 								})
 							);
-								const schedulerEmbedFromTool = resolveSchedulerEmbedForToolCall(
-									toolCall,
-									{
-										calendly: isCalendlyEnabled,
-										calcom: isCalComEnabled,
-										tidycal: isTidyCalEnabled
-									}
+							const schedulerEmbedFromTool =
+								resolveSchedulerEmbedForToolCall(toolCall, {
+									calendly: isCalendlyEnabled,
+									calcom: isCalComEnabled,
+									tidycal: isTidyCalEnabled
+								});
+							if (schedulerEmbedFromTool) {
+								removeExistingSchedulerEmbeds(
+									schedulerEmbedFromTool,
+									id
 								);
-								if (schedulerEmbedFromTool) {
-									removeExistingSchedulerEmbeds(
-										schedulerEmbedFromTool,
-										id
-									);
-									pendingSchedulerEmbed = schedulerEmbedFromTool;
-									dispatch({
-										type: 'update_message',
+								pendingSchedulerEmbed = schedulerEmbedFromTool;
+								dispatch({
+									type: 'update_message',
 									payload: {
 										id,
 										schedulerEmbed: pendingSchedulerEmbed
@@ -2255,10 +2130,7 @@ const removeExistingSchedulerEmbeds = (
 								'tool_call',
 								data.data
 							);
-							if (
-								activity &&
-								showAgentActivity !== false
-							) {
+							if (activity && showAgentActivity !== false) {
 								currentAgentActivity = activity;
 								dispatch({
 									type: 'update_message',
@@ -2284,10 +2156,7 @@ const removeExistingSchedulerEmbeds = (
 								'reasoning',
 								data.data
 							);
-							if (
-								activity &&
-								showAgentActivity !== false
-							) {
+							if (activity && showAgentActivity !== false) {
 								currentAgentActivity = activity;
 								dispatch({
 									type: 'update_message',
@@ -2321,43 +2190,41 @@ const removeExistingSchedulerEmbeds = (
 							});
 							currentAgentActivity = null;
 						} else {
-								if (data.data) {
-									const rawFinalData = JSON.parse(data.data);
-									const finalData =
-										revealResponsePayload(rawFinalData);
-										const isCustomButton =
-											data.event === 'custom_button';
-										const eventSchedulerEmbed =
-											isCustomButton
-												? null
-												: resolveSchedulerEmbedForEventType(
-														data.event,
-														finalData,
-														{
-															calendly: isCalendlyEnabled,
-															calcom: isCalComEnabled,
-															tidycal: isTidyCalEnabled
-														}
-													);
-										if (eventSchedulerEmbed) {
-											removeExistingSchedulerEmbeds(
-												eventSchedulerEmbed,
-												id
-											);
-										}
-										//console.log(finalData);
+							if (data.data) {
+								const rawFinalData = JSON.parse(data.data);
+								const finalData =
+									revealResponsePayload(rawFinalData);
+								const isCustomButton =
+									data.event === 'custom_button';
+								const eventSchedulerEmbed = isCustomButton
+									? null
+									: resolveSchedulerEmbedForEventType(
+											data.event,
+											finalData,
+											{
+												calendly: isCalendlyEnabled,
+												calcom: isCalComEnabled,
+												tidycal: isTidyCalEnabled
+											}
+										);
+								if (eventSchedulerEmbed) {
+									removeExistingSchedulerEmbeds(
+										eventSchedulerEmbed,
+										id
+									);
+								}
+								//console.log(finalData);
 
-									const terminalMessage = isCustomButton
-										? finalData.message || finalData.answer
-										: finalData.answer;
+								const terminalMessage = isCustomButton
+									? finalData.message || finalData.answer
+									: finalData.answer;
 
-									const finalMessageId =
-										data.event ===
-										'is_resolved_question'
-											? uuidv4()
-											: id;
+								const finalMessageId =
+									data.event === 'is_resolved_question'
+										? uuidv4()
+										: id;
 
-									dispatch({
+								dispatch({
 									type:
 										data.event === 'is_resolved_question'
 											? 'add_message'
@@ -2370,8 +2237,10 @@ const removeExistingSchedulerEmbeds = (
 										...(isCustomButton && {
 											customButton: {
 												url: finalData.url,
-												functionKey: finalData.functionKey,
-												buttonText: finalData.buttonText,
+												functionKey:
+													finalData.functionKey,
+												buttonText:
+													finalData.buttonText,
 												message: finalData.message,
 												answer: finalData.answer
 											}
@@ -2379,12 +2248,13 @@ const removeExistingSchedulerEmbeds = (
 										sources: finalData.sources || null,
 										answerId:
 											answerId || finalData.id || null, // use saved prev id for feedback button
-										conversationId: getConversationId(),
+										conversationId: requestConversationId,
 										loading: false,
 										streaming: false,
 										responses: finalData.options || null,
 										agentActivity: null,
-										stripeBilling: finalData.stripeBilling || null,
+										stripeBilling:
+											finalData.stripeBilling || null,
 										schedulerEmbed:
 											pendingSchedulerEmbed ||
 											eventSchedulerEmbed
@@ -2433,7 +2303,9 @@ const removeExistingSchedulerEmbeds = (
 						}
 						// Only RetriableError opts into library retry; never use default ~1s retry.
 						const message =
-							err && typeof err.message === 'string' && err.message
+							err &&
+							typeof err.message === 'string' &&
+							err.message
 								? err.message
 								: 'The connection was interrupted.';
 						const wrapped = new FatalError(message);
@@ -2443,8 +2315,12 @@ const removeExistingSchedulerEmbeds = (
 						throw wrapped;
 					}
 				});
-				} catch (error) {
-					console.error('DOCSBOT: Failed to fetch answer:', error);
+			} catch (error) {
+				if (!isCurrentRequest()) {
+					return;
+				}
+
+				console.error('DOCSBOT: Failed to fetch answer:', error);
 
 				let errorMessage = 'Unknown error. Please try again later.';
 				let isRateLimitError = false;
@@ -2453,20 +2329,20 @@ const removeExistingSchedulerEmbeds = (
 					isRateLimitError = error.status === 429;
 				} else if (error instanceof Error && error.message) {
 					errorMessage = error.message;
-					}
+				}
 
-					if (audioUserMessageId) {
-						dispatch({
-							type: 'update_message',
-							payload: {
-								id: audioUserMessageId,
-								loading: false
-							}
-						});
-					}
-
+				if (audioUserMessageId) {
 					dispatch({
 						type: 'update_message',
+						payload: {
+							id: audioUserMessageId,
+							loading: false
+						}
+					});
+				}
+
+				dispatch({
+					type: 'update_message',
 					payload: {
 						id,
 						variant: 'chatbot',
@@ -2503,6 +2379,7 @@ const removeExistingSchedulerEmbeds = (
 				: `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
 			const ws = new WebSocket(apiUrl);
 			setStreamController(ws);
+			streamControllerRef.current = ws;
 
 			// Send message to server when connection is established
 			ws.onopen = function (event) {
@@ -2557,8 +2434,7 @@ const removeExistingSchedulerEmbeds = (
 					if (data.type === 'stream') {
 						//append to answer
 						answer += data.message;
-						const revealedAnswer =
-							revealTextFromResponse(answer);
+						const revealedAnswer = revealTextFromResponse(answer);
 						dispatch({
 							type: 'update_message',
 							payload: {
@@ -2817,8 +2693,7 @@ const removeExistingSchedulerEmbeds = (
 		const maxAttempts = 3;
 
 		const scrollWhenReady = () => {
-			const messageRef =
-				messagesRefs.current[anchoredTopScrollMessageId];
+			const messageRef = messagesRefs.current[anchoredTopScrollMessageId];
 			const container = ref.current;
 			const messageEl = messageRef?.current;
 			if (container && messageEl) {
@@ -3029,892 +2904,962 @@ const removeExistingSchedulerEmbeds = (
 							</span>
 						</button>
 					)}
-					<div
-						className={clsx(
-							'docsbot-chat-header',
-							isEmbeddedBox && hideHeader && 'unbranded',
-							hasConversationStarted && 'is-small'
-						)}
-						data-shadow={
-							isWhite &&
-							(isFloatingSmall || !isEmbeddedBox || isEmbeddedBox)
-						}
-					>
-						<div
-							className="docsbot-chat-header-inner"
-							style={{ width: '100%' }}
-						>
-							<button
-								type="button"
-								onClick={() => refreshChatHistory()}
-								className="docsbot-chat-header-button"
-								aria-label={labels?.resetChat}
-							>
-								<FontAwesomeIcon icon={faRefresh} />
-							</button>
-							<div
-								className="docsbot-chat-header-content"
-								style={{
-									textAlign:
-										headerAlignment === 'left'
-											? 'left'
-											: 'center'
-								}}
-							>
-								{!(isEmbeddedBox && hideHeader) &&
-									(logo ? (
-										<div
-											className="docsbot-chat-header-branded"
-											style={{
-												justifyContent:
-													headerAlignment === 'left'
-														? 'start'
-														: 'center'
-											}}
-										>
-											<img src={logo} alt={botName} />
-										</div>
-									) : (
-										<>
-											<h1 className="docsbot-chat-header-title">
-												{botName}
-											</h1>
-											<span className="docsbot-chat-header-subtitle">
-												{description}
-											</span>
-										</>
-									))}
-							</div>
-							{!isEmbeddedBox && (
-								<div className="docsbot-chat-header-background-wrapper">
-									<div
-										className="docsbot-chat-header-background"
-										data-shadow="true"
-									/>
-								</div>
-							)}
-						</div>
-					</div>
-
-					<div
-						className="docsbot-chat-message-container"
-						ref={ref}
-						role="log"
-						aria-live="polite"
-						aria-relevant="additions text"
-						aria-busy={isFetching ? 'true' : 'false'}
-						aria-label={chatRegionLabel}
-					>
-						{isLiveVoiceBusy && (
+					{isVoiceCallView ? (
+						<VoiceCallView
+							apiBase={
+								localDev
+									? 'http://127.0.0.1:9000'
+									: 'https://api.docsbot.ai'
+							}
+							teamId={teamId}
+							botId={botId}
+							conversationId={voiceConversationId}
+							signature={signature}
+							labels={labels}
+							color={color}
+							showAgentActivity={showAgentActivity}
+							onConversationId={handleVoiceConversationId}
+							onTranscriptFinal={upsertVoiceTranscriptMessage}
+							onExit={() => setIsVoiceCallView(false)}
+						/>
+					) : (
+						<>
 							<div
 								className={clsx(
-									'docsbot-live-voice-orb-overlay',
-									`is-${voiceCallState}`,
-									isVoiceAgentSpeaking && 'is-speaking'
+									'docsbot-chat-header',
+									isEmbeddedBox && hideHeader && 'unbranded',
+									hasConversationStarted && 'is-small'
 								)}
-								aria-hidden="true"
+								data-shadow={
+									isWhite &&
+									(isFloatingSmall ||
+										!isEmbeddedBox ||
+										isEmbeddedBox)
+								}
 							>
-								<span
-									className="docsbot-live-voice-orb"
-									style={{
-										'--docsbot-voice-scale': 1 + voiceOutputLevel * 0.2,
-										'--docsbot-voice-glow': `${7 + voiceOutputLevel * 12}px`
-									}}
+								<div
+									className="docsbot-chat-header-inner"
+									style={{ width: '100%' }}
 								>
-									<span className="docsbot-live-voice-orb-wave">
-										{voiceWaveformLevels.slice(-5).map((level, index) => (
-											<i
-												key={index}
-												style={{
-													height: `${Math.round(3 + level * 10)}px`
-												}}
-											/>
-										))}
-									</span>
-								</span>
-							</div>
-						)}
-						{visibleMessageKeys.map((key, index) => {
-							const message = state.messages[key];
-							message.isLast =
-								key === visibleMessageKeys[visibleMessageKeys.length - 1];
-							if (
-								message.id &&
-								!messagesRefs.current[message.id]
-							) {
-								messagesRefs.current[message.id] = createRef();
-							}
-							
-							return message.variant === 'chatbot' ? (
-								<div key={key}>
-									{message.type === 'lead_collect' ? (
-										<LeadCollectBlock message={message}>
-											{(ready) => (
-												<>
-													<BotChatMessage
-														payload={{
-															...message,
-															type: 'lead_collect_message',
-															message: message.message,
-															leadForm: undefined,
-															loading: !ready,
-															conversationId: getConversationId()
-														}}
-														messageBoxRef={
-															messagesRefs.current[message.id]
-														}
-														chatContainerRef={ref}
-														fetchAnswer={fetchAnswer}
-														inputRef={inputRef}
-														onLeadCollectSubmit={() => {}}
-														onLeadCollectRequest={() => false}
-														onLeadCollectEscalated={() => {}}
-														onLeadCollectCancel={() => {}}
-														leadCollectMode={leadCollect?.mode}
-														pendingLeadCapture={pendingLeadCapture}
+									<button
+										type="button"
+										onClick={() => refreshChatHistory()}
+										className="docsbot-chat-header-button"
+										aria-label={labels?.resetChat}
+									>
+										<FontAwesomeIcon icon={faRefresh} />
+									</button>
+									<div
+										className="docsbot-chat-header-content"
+										style={{
+											textAlign:
+												headerAlignment === 'left'
+													? 'left'
+													: 'center'
+										}}
+									>
+										{!(isEmbeddedBox && hideHeader) &&
+											(logo ? (
+												<div
+													className="docsbot-chat-header-branded"
+													style={{
+														justifyContent:
+															headerAlignment ===
+															'left'
+																? 'start'
+																: 'center'
+													}}
+												>
+													<img
+														src={logo}
+														alt={botName}
 													/>
-													{ready && (
-													<LeadCollectMessage
-														payload={{
-															...message,
-															conversationId: getConversationId()
-														}}
-														messageBoxRef={
-															messagesRefs.current[message.id]
-														}
-														onLeadCollectSubmit={(data, event) =>
-															handleLeadCollectSubmit(
-																message,
-																data,
-																event
-															)
-														}
-												onLeadCollectCancel={() => {
-													setPendingLeadCapture(null);
-													setIsLeadCaptureLocked(false);
-												}}
-											/>
-													)}
+												</div>
+											) : (
+												<>
+													<h1 className="docsbot-chat-header-title">
+														{botName}
+													</h1>
+													<span className="docsbot-chat-header-subtitle">
+														{description}
+													</span>
 												</>
-											)}
-										</LeadCollectBlock>
-									) : (
-										<BotChatMessage
-											payload={{
-												...message,
-												conversationId: getConversationId() //lets us escalate historic conversations
-											}}
-											messageBoxRef={
-												messagesRefs.current[message.id]
-											}
-											chatContainerRef={ref}
-											fetchAnswer={fetchAnswer}
-											inputRef={inputRef}
-											onLeadCollectSubmit={(data, event) =>
-												handleLeadCollectSubmit(
-													message,
-													data,
-													event
-												)
-											}
-											onLeadCollectRequest={(data) => {
-												if (
-													leadCollect?.mode !==
-													'before_escalation'
-												) {
-													return false;
-												}
-												if (leadCollected) {
-													return false;
-												}
+											))}
+									</div>
+									{!isEmbeddedBox && (
+										<div className="docsbot-chat-header-background-wrapper">
+											<div
+												className="docsbot-chat-header-background"
+												data-shadow="true"
+											/>
+										</div>
+									)}
+								</div>
+							</div>
 
-												const leadMessage =
-													buildLeadFormMessage(
-														'before_escalation'
-													);
-												if (!leadMessage) return false;
+							<div
+								className="docsbot-chat-message-container"
+								ref={ref}
+								role="log"
+								aria-live="polite"
+								aria-relevant="additions text"
+								aria-busy={isFetching ? 'true' : 'false'}
+								aria-label={chatRegionLabel}
+							>
+								{visibleMessageKeys.map((key, index) => {
+									const message = state.messages[key];
+									message.isLast =
+										key ===
+										visibleMessageKeys[
+											visibleMessageKeys.length - 1
+										];
+									if (
+										message.id &&
+										!messagesRefs.current[message.id]
+									) {
+										messagesRefs.current[message.id] =
+											createRef();
+									}
 
-												setPendingLeadCapture({
-													type: 'support',
-													history:
-														data?.history ||
-														state.chatHistory ||
-														[],
-													trigger: false
-												});
-												dispatch({
-													type: 'add_message',
-													payload: {
-														...leadMessage,
-														leadContext: {
+									return message.variant === 'chatbot' ? (
+										<div key={key}>
+											{message.type === 'lead_collect' ? (
+												<LeadCollectBlock
+													message={message}
+												>
+													{(ready) => (
+														<>
+															<BotChatMessage
+																payload={{
+																	...message,
+																	type: 'lead_collect_message',
+																	message:
+																		message.message,
+																	leadForm:
+																		undefined,
+																	loading:
+																		!ready,
+																	conversationId:
+																		getExistingConversationId(
+																			message
+																		)
+																}}
+																messageBoxRef={
+																	messagesRefs
+																		.current[
+																		message
+																			.id
+																	]
+																}
+																chatContainerRef={
+																	ref
+																}
+																fetchAnswer={
+																	fetchAnswer
+																}
+																inputRef={
+																	inputRef
+																}
+																onLeadCollectSubmit={() => {}}
+																onLeadCollectRequest={() =>
+																	false
+																}
+																onLeadCollectEscalated={() => {}}
+																onLeadCollectCancel={() => {}}
+																leadCollectMode={
+																	leadCollect?.mode
+																}
+																pendingLeadCapture={
+																	pendingLeadCapture
+																}
+															/>
+															{ready && (
+																<LeadCollectMessage
+																	payload={{
+																		...message,
+																		conversationId:
+																			getExistingConversationId(
+																				message
+																			)
+																	}}
+																	messageBoxRef={
+																		messagesRefs
+																			.current[
+																			message
+																				.id
+																		]
+																	}
+																	onLeadCollectSubmit={(
+																		data,
+																		event
+																	) =>
+																		handleLeadCollectSubmit(
+																			message,
+																			data,
+																			event
+																		)
+																	}
+																	onLeadCollectCancel={() => {
+																		setPendingLeadCapture(
+																			null
+																		);
+																		setIsLeadCaptureLocked(
+																			false
+																		);
+																	}}
+																/>
+															)}
+														</>
+													)}
+												</LeadCollectBlock>
+											) : (
+												<BotChatMessage
+													payload={{
+														...message,
+														conversationId:
+															getExistingConversationId(
+																message
+															) //lets us escalate historic conversations
+													}}
+													messageBoxRef={
+														messagesRefs.current[
+															message.id
+														]
+													}
+													chatContainerRef={ref}
+													fetchAnswer={fetchAnswer}
+													inputRef={inputRef}
+													onLeadCollectSubmit={(
+														data,
+														event
+													) =>
+														handleLeadCollectSubmit(
+															message,
+															data,
+															event
+														)
+													}
+													onLeadCollectRequest={(
+														data
+													) => {
+														if (
+															leadCollect?.mode !==
+															'before_escalation'
+														) {
+															return false;
+														}
+														if (leadCollected) {
+															return false;
+														}
+
+														const leadMessage =
+															buildLeadFormMessage(
+																'before_escalation'
+															);
+														if (!leadMessage)
+															return false;
+
+														setPendingLeadCapture({
 															type: 'support',
 															history:
 																data?.history ||
 																state.chatHistory ||
-																[]
-														}
-													}
-												});
-												scrollToBottom(ref);
-												return true;
-											}}
-											onLeadCollectEscalated={() => {
-												setPendingLeadCapture(null);
-												setIsLeadCaptureLocked(false);
-											}}
-											onLeadCollectCancel={() => {
-												setPendingLeadCapture(null);
-												setIsLeadCaptureLocked(false);
-											}}
-											onVoiceEscalationAccept={
-												message.voiceAction
-													? endLiveVoiceCall
-													: undefined
-											}
-											onVoiceEscalationDecline={
-												message.voiceAction
-													? (response) =>
-														liveVoiceSessionRef.current?.sendText(
-															response
-														)
-													: undefined
-											}
-											onSchedulerBookingMetadata={async (
-												metadata
-											) => {
-												if (
-													!metadata ||
-													typeof metadata !==
-														'object'
-												) {
-													return;
-												}
-												updateIdentity({
-													metadata
-												});
-												await updateConversationMetadata(
-													metadata
-												);
-											}}
-											leadCollectMode={leadCollect?.mode}
-											pendingLeadCapture={pendingLeadCapture}
-											isCalendlyScriptReady={
-												isCalendlyScriptReady
-											}
-											isTidyCalScriptReady={
-												isTidyCalScriptReady
-											}
-										/>
-									)}
-									{message?.options ? (
-										<Options
-											key={key + 'opts'}
-											options={message.options}
-										/>
-									) : null}
-								</div>
-							) : (
-								<UserChatMessage
-									key={key}
-										loading={message.loading}
-										message={message.message}
-										imageUrls={message.imageUrls}
-										audio={message.audio}
-										messageBoxRef={
-											messagesRefs.current[message.id]
-										}
-								/>
-							);
-						})}
-
-						{visibleMessageKeys.length <= 1 &&
-							Object.keys(questions).length >= 1 && (
-								<div
-									className={clsx(
-										'docsbot-chat-suggested-questions-container consecutive-bot-message',
-										botIcon && 'has-avatar'
-									)}
-								>
-								<span className="docsbot-chat-suggested-questions-title bg-slate-100 text-slate-800">
-									{labels.suggestions}
-								</span>
-									<div className="docsbot-chat-suggested-questions-grid">
-										{Object.keys(questions).map((index) => {
-											const suggestion = questions[index];
-											const prompt =
-												typeof suggestion === 'string'
-													? suggestion
-													: suggestion?.question;
-											const chipLabel =
-												typeof suggestion === 'string'
-													? suggestion
-													: suggestion?.label ?? prompt;
-											return (
-												<button
-													key={'question' + index}
-													type="button"
-													dir="auto"
-													onClick={() => {
-														const messageId = uuidv4();
+																[],
+															trigger: false
+														});
 														dispatch({
 															type: 'add_message',
 															payload: {
-																id: messageId,
-																variant: 'user',
-																message: prompt,
-																loading: false,
-																timestamp:
-																	Date.now()
+																...leadMessage,
+																leadContext: {
+																	type: 'support',
+																	history:
+																		data?.history ||
+																		state.chatHistory ||
+																		[]
+																}
 															}
 														});
-														fetchAnswer(prompt);
-														setChatInput('');
-														scrollMessageToTopAfterRender(
-															messageId
-														);
-														if (mediaMatch.matches) {
-															inputRef.current?.focus();
-														} else {
-															inputRef.current?.blur();
-														}
+														scrollToBottom(ref);
+														return true;
 													}}
-													className="docsbot-chat-suggested-questions-button"
-												>
-													{chipLabel}
-												</button>
-											);
-										})}
-									</div>
-								</div>
-							)}
-
-						{bottomScrollSpacerHeight > 0 && (
-							<div
-								aria-hidden="true"
-								style={{
-									height: bottomScrollSpacerHeight,
-									marginTop: 0,
-									pointerEvents: 'none'
-								}}
-							/>
-						)}
-					</div>
-
-					<div className="docsbot-chat-footer">
-						{!isAtBottom && (
-							<button
-								type="button"
-								className={clsx(
-									'docsbot-scroll-button',
-									isAtBottom && 'hide'
-								)}
-								onClick={scrollToLatestContent}
-								aria-label="Scroll to latest messages"
-							>
-								<FontAwesomeIcon icon={faChevronDown} />
-							</button>
-						)}
-
-							<div className="docsbot-chat-footer-inner-wrapper">
-								<div className="docsbot-chat-input-container">
-									{/* Realtime remote speech has no synchronized caption track. */}
-									{/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-									<audio
-										ref={liveVoiceAudioRef}
-										autoPlay
-										hidden
-									/>
-									{voiceCallState === 'error' && (
-										<div
-											className="docsbot-live-voice-status is-error"
-											role="alert"
-											aria-live="polite"
-										>
-											<span className="docsbot-live-voice-state">
-												<span aria-hidden="true" />
-												{voiceCallError || voiceCallLabels.error}
-											</span>
-										</div>
-									)}
-									{showPiiRedactionStatus && !isLiveVoiceBusy && (
-										<div
-											className={clsx(
-												'docsbot-privacy-protection-status',
-												isPiiRedactionBypassed &&
-													'is-bypassed'
-											)}
-											role="status"
-											aria-live="polite"
-										>
-											<div
-												className="docsbot-privacy-protection-loader"
-												aria-hidden="true"
-											>
-												<Loader />
-											</div>
-											<div className="docsbot-privacy-protection-copy">
-												<strong>
-													{
-														labels.privacyProtectionLoading
-													}
-												</strong>
-												<span>
-													{isPiiRedactionBypassed
-														? labels.privacyProtectionBypassWarning
-														: labels.privacyProtectionLoadingDetail}
-												</span>
-											</div>
-											{isPiiRedactionOverrideAvailable &&
-												!isPiiRedactionBypassed && (
-													<button
-														type="button"
-														className="docsbot-privacy-protection-bypass"
-														onClick={handlePiiRedactionBypass}
-													>
-														{
-															labels.privacyProtectionSendAnyway
-														}
-													</button>
-												)}
-										</div>
-									)}
-									<form
-										className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching || isRecordingAudio || isLeadFormVisible ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''} ${showLiveVoiceButton ? 'has-live-voice' : ''} ${isLiveVoiceBusy ? 'is-live-voice' : ''}`}
-									onSubmit={handleSubmit}
-									onDragEnter={
-										useImageUpload ? handleDragEnter : null
-									}
-									onDragLeave={
-										useImageUpload ? handleDragLeave : null
-									}
-									onDragOver={
-										useImageUpload ? handleDragOver : null
-									}
-									onDrop={useImageUpload ? handleDrop : null}
-								>
-									{/* Hidden file input */}
-									{useImageUpload && (
-										<input
-											type="file"
-											ref={fileInputRef}
-											onChange={handleImageSelect}
-											accept="image/*"
-											multiple
-											className="docsbot-hidden-file-input"
-											aria-label="Upload image"
-											tabIndex={-1}
-											/>
-										)}
-
-										{isRecordingAudio && (
-											<div
-												className="docsbot-audio-recorder-overlay"
-												role="group"
-												aria-label={labels.audioRecord}
-											>
-												<button
-													type="button"
-													className="docsbot-audio-recorder-cancel"
-													onClick={() =>
-														stopAudioRecording({
-															send: false
-														})
-													}
-													aria-label={labels.cancel}
-												>
-													<FontAwesomeIcon
-														icon={faXmark}
-													/>
-												</button>
-												<div className="docsbot-audio-recorder-visual">
-													<span className="docsbot-audio-recorder-time">
-														{formatAudioRecordingTime(
-															audioRecordingElapsedMs
-														)}
-													</span>
-													<div
-														className="docsbot-audio-recorder-wave"
-														aria-hidden="true"
-													>
-														{audioWaveformLevels.map((level, index) => (
-															<span
-																key={index}
-																style={{
-																	height: `${Math.round(
-																		2 +
-																			level *
-																				18
-																	)}px`,
-																	opacity:
-																		0.42 +
-																		level * 0.5
-																}}
-															/>
-														))}
-													</div>
-												</div>
-												<button
-													type="button"
-													className="docsbot-audio-recorder-send"
-													onClick={() =>
-														stopAudioRecording({
-															send: true
-														})
-													}
-													aria-label={labels.submit}
-												>
-													<FontAwesomeIcon
-														icon={faCheck}
-													/>
-												</button>
-											</div>
-										)}
-
-										{isLiveVoiceBusy && (
-											<div
-												className={`docsbot-live-voice-input is-${voiceCallState}`}
-												role="group"
-												aria-label={voiceCallLabels.connected}
-											>
-												<div className="docsbot-live-voice-wave" aria-hidden="true">
-													{voiceWaveformLevels.map((level, index) => (
-														<span
-															key={index}
-															style={{
-																height: `${Math.round(2 + level * 18)}px`,
-																opacity: 0.42 + level * 0.5
-															}}
-														/>
-													))}
-												</div>
-												<span className="docsbot-screen-reader-only" role="status" aria-live="polite">
-													{voiceCallState === 'connecting'
-														? voiceCallLabels.connecting
-														: voiceCallLabels.connected}
-												</span>
-												{voiceCallState === 'connected' && (
-													<button
-														type="button"
-														className="docsbot-live-voice-mute"
-														onClick={toggleLiveVoiceMute}
-														aria-pressed={isVoiceCallMuted}
-														aria-label={isVoiceCallMuted ? voiceCallLabels.unmute : voiceCallLabels.mute}
-													>
-														<FontAwesomeIcon icon={isVoiceCallMuted ? faMicrophoneSlash : faMicrophone} />
-													</button>
-												)}
-												<button
-													type="button"
-													className="docsbot-live-voice-end"
-													onClick={endLiveVoiceCall}
-													aria-label={voiceCallLabels.end}
-												>
-													<FontAwesomeIcon icon={faPhoneSlash} />
-												</button>
-											</div>
-										)}
-
-										<div
-										className={`docsbot-chat-input-wrapper ${selectedImages.length > 0 ? 'has-images' : ''} ${isDragging ? 'is-dragging' : ''} ${!useImageUpload && !isAudioUploadEnabled ? 'no-media-upload' : ''} ${useImageUpload && isAudioUploadEnabled && showAudioRecordButton ? 'has-image-audio-upload' : ''}`}
-									>
-										<label
-											id={chatInputLabelId}
-											htmlFor={chatInputId}
-											className="docsbot-screen-reader-only"
-										>
-											{labels.inputPlaceholder}
-										</label>
-										<textarea
-											id={chatInputId}
-											className={`docsbot-chat-input ${!useImageUpload && !isAudioUploadEnabled ? 'no-media-upload' : ''} ${useImageUpload && isAudioUploadEnabled && showAudioRecordButton ? 'has-image-audio-upload' : ''}`}
-											placeholder={
-												labels.inputPlaceholder
-											}
-											value={chatInput}
-											onFocus={(e) => {
-												const textarea = e.target;
-												const form =
-													textarea.parentNode
-														.parentNode;
-												const container =
-													form.parentNode;
-
-												container.classList.add(
-													'focused'
-												);
-											}}
-											onBlur={(e) => {
-												const textarea = e.target;
-												const form =
-													textarea.parentNode
-														.parentNode;
-												const container =
-													form.parentNode;
-
-												container.classList.remove(
-													'focused'
-												); // remove focused class
-											}}
-											onChange={(e) => {
-												setChatInput(e.target.value);
-
-												e.target.style.height = 'auto';
-
-												// get the computed style of the textarea
-												const computed =
-													window.getComputedStyle(
-														e.target
-													);
-												const padding =
-													parseInt(
-														computed.paddingTop
-													) +
-													parseInt(
-														computed.paddingBottom
-													);
-
-												if (
-													e.target.scrollHeight > 54
-												) {
-													e.target.style.height =
-														e.target.scrollHeight -
-														padding +
-														'px';
-												}
-											}}
-											onKeyDown={(e) => {
-												//this detects if the user is typing in a IME session (ie Kanji autocomplete) to avoid premature submission
-												if (
-													e.isComposing ||
-													e.keyCode === 229
-												) {
-													return;
-												}
-												if (
-													e.key === 'Enter' &&
-													!e.shiftKey
-												) {
-													handleSubmit(e);
-													e.target.style.height =
-														'auto';
-												}
-											}}
-											onPaste={(e) => {
-												if (!useImageUpload) return;
-
-												const clipboardItems =
-													e.clipboardData.items;
-												const imageItems = Array.from(
-													clipboardItems
-												).filter((item) =>
-													item.type.startsWith(
-														'image/'
-													)
-												);
-
-												if (imageItems.length > 0) {
-													e.preventDefault();
-
-													// Process only one image if multiple are pasted
-													// For simplicity, we're just handling the first image
-													const item = imageItems[0];
-
-													// Convert clipboard item to a file
-													const blob =
-														item.getAsFile();
-													if (blob) {
-														// Check if we'd exceed the limit
+													onLeadCollectEscalated={() => {
+														setPendingLeadCapture(
+															null
+														);
+														setIsLeadCaptureLocked(
+															false
+														);
+													}}
+													onLeadCollectCancel={() => {
+														setPendingLeadCapture(
+															null
+														);
+														setIsLeadCaptureLocked(
+															false
+														);
+													}}
+													onSchedulerBookingMetadata={async (
+														metadata
+													) => {
 														if (
-															selectedImages.length >=
-															2
+															!metadata ||
+															typeof metadata !==
+																'object'
 														) {
-															console.warn(
-																'DOCSBOT: Maximum 2 images allowed'
-															);
 															return;
 														}
-
-														// Process the pasted image file
-														processImageFiles([
-															blob
-														]);
+														updateIdentity({
+															metadata
+														});
+														await updateConversationMetadata(
+															metadata
+														);
+													}}
+													leadCollectMode={
+														leadCollect?.mode
 													}
-												}
-											}}
-											ref={inputRef}
-											disabled={
-												isLeadFormVisible ||
-												isRecordingAudio ||
-												isLiveVoiceBusy
+													pendingLeadCapture={
+														pendingLeadCapture
+													}
+													isCalendlyScriptReady={
+														isCalendlyScriptReady
+													}
+													isTidyCalScriptReady={
+														isTidyCalScriptReady
+													}
+												/>
+											)}
+											{message?.options ? (
+												<Options
+													key={key + 'opts'}
+													options={message.options}
+												/>
+											) : null}
+										</div>
+									) : (
+										<UserChatMessage
+											key={key}
+											loading={message.loading}
+											message={message.message}
+											imageUrls={message.imageUrls}
+											audio={message.audio}
+											messageBoxRef={
+												messagesRefs.current[message.id]
 											}
-											aria-labelledby={chatInputLabelId}
-											maxLength={
-												inputLimit
-													? Math.min(inputLimit, 2000)
-													: 500
-											}
-											rows={1}
 										/>
-										{selectedImages.length > 0 && (
-											<div className="docsbot-image-preview-container">
-												{selectedImages.map(
-													(image, index) => (
-														<div
-															key={index}
-															className="docsbot-image-preview"
-														>
-															<img
-																src={image.url}
-																alt={`Selected ${index + 1}`}
-																className="docsbot-image-preview-img"
-															/>
+									);
+								})}
+
+								{visibleMessageKeys.length <= 1 &&
+									Object.keys(questions).length >= 1 && (
+										<div
+											className={clsx(
+												'docsbot-chat-suggested-questions-container consecutive-bot-message',
+												botIcon && 'has-avatar'
+											)}
+										>
+											<span className="docsbot-chat-suggested-questions-title bg-slate-100 text-slate-800">
+												{labels.suggestions}
+											</span>
+											<div className="docsbot-chat-suggested-questions-grid">
+												{Object.keys(questions).map(
+													(index) => {
+														const suggestion =
+															questions[index];
+														const prompt =
+															typeof suggestion ===
+															'string'
+																? suggestion
+																: suggestion?.question;
+														const chipLabel =
+															typeof suggestion ===
+															'string'
+																? suggestion
+																: (suggestion?.label ??
+																	prompt);
+														return (
 															<button
-																type="button"
-																onClick={() =>
-																	removeImage(
-																		index
-																	)
+																key={
+																	'question' +
+																	index
 																}
-																className="docsbot-image-remove-btn"
-																aria-label="Remove image"
-															>
-																<FontAwesomeIcon
-																	icon={
-																		faTimes
+																type="button"
+																dir="auto"
+																onClick={() => {
+																	const messageId =
+																		uuidv4();
+																	dispatch({
+																		type: 'add_message',
+																		payload:
+																			{
+																				id: messageId,
+																				variant:
+																					'user',
+																				message:
+																					prompt,
+																				loading: false,
+																				timestamp:
+																					Date.now()
+																			}
+																	});
+																	fetchAnswer(
+																		prompt
+																	);
+																	setChatInput(
+																		''
+																	);
+																	scrollMessageToTopAfterRender(
+																		messageId
+																	);
+																	if (
+																		mediaMatch.matches
+																	) {
+																		inputRef.current?.focus();
+																	} else {
+																		inputRef.current?.blur();
 																	}
-																/>
+																}}
+																className="docsbot-chat-suggested-questions-button"
+															>
+																{chipLabel}
 															</button>
-														</div>
-													)
+														);
+													}
 												)}
 											</div>
-										)}
-									</div>
-
-									{/* Image upload button - only show when useImageUpload is true */}
-									{useImageUpload && (
-										<button
-											type="button"
-											onClick={triggerFileInput}
-											className="docsbot-image-upload-btn"
-											disabled={
-												selectedImages.length >= 2 ||
-												isFetching ||
-												isPiiRedactionLoading ||
-												isRecordingAudio ||
-												isLiveVoiceBusy ||
-												isLeadFormVisible
-											}
-											aria-label="Upload image"
-										>
-											<FontAwesomeIcon icon={faImage} />
-										</button>
+										</div>
 									)}
 
-									{showAudioRecordButton && (
-										<button
-											type="button"
-											onClick={handleAudioButtonClick}
-											className="docsbot-audio-record-btn"
-											disabled={
-												isFetching ||
-												isPiiRedactionLoading ||
-												isLeadFormVisible
-											}
-											aria-label={labels.audioRecord}
-										>
-											<FontAwesomeIcon
-												icon={faMicrophone}
-											/>
-										</button>
-									)}
-
-									{showLiveVoiceButton && (
-										<button
-											type="button"
-											onClick={() => void startLiveVoiceCall()}
-											className="docsbot-live-voice-btn"
-											disabled={
-												isFetching ||
-												isLeadFormVisible
-											}
-											aria-label={voiceCallLabels.start}
-										>
-											<FontAwesomeIcon icon={faPhone} />
-										</button>
-									)}
-
-									<button
-										type="submit"
-										className="docsbot-chat-btn-send"
-										{...([
-											'#ffffff',
-											'#FFFFFF',
-											'rgb(255, 255, 255)'
-										].includes(color) && {
-											style: { fill: 'inherit' }
-										})}
-											disabled={
-												chatInput.trim().length <
-													minInputLength ||
-												isFetching ||
-												isRecordingAudio ||
-												isLeadFormVisible
-											}
-										aria-label={labels.submit}
-									>
-										<FontAwesomeIcon
-											icon={faPaperPlane}
-											className="docsbot-chat-btn-send-icon"
-											aria-hidden="true"
-										/>
-									</button>
-								</form>
+								{bottomScrollSpacerHeight > 0 && (
+									<div
+										aria-hidden="true"
+										style={{
+											height: bottomScrollSpacerHeight,
+											marginTop: 0,
+											pointerEvents: 'none'
+										}}
+									/>
+								)}
 							</div>
 
-							{(branding || parsedFooterText?.trim()) && (
-								<div className="docsbot-chat-credits">
-									{parsedFooterText?.trim() &&
-										(keepFooterVisible ||
-											Object.keys(state.messages)
-												.length <= 1) && (
-											<Suspense fallback={null}>
-												<LazyStreamdown
-													className={clsx(
-														'docsbot-chat-credits--policy',
-														'docsbot-streamdown'
-													)}
-													allowedDomains={allowedDomains}
-													linkSafetyEnabled={linkSafetyEnabled}
-													mode="static"
-												>
-													{parsedFooterText}
-												</LazyStreamdown>
-											</Suspense>
+							<div className="docsbot-chat-footer">
+								{!isAtBottom && (
+									<button
+										type="button"
+										className={clsx(
+											'docsbot-scroll-button',
+											isAtBottom && 'hide'
 										)}
+										onClick={scrollToLatestContent}
+										aria-label="Scroll to latest messages"
+									>
+										<FontAwesomeIcon icon={faChevronDown} />
+									</button>
+								)}
 
-									{branding && (
-										<a
-											href="https://docsbot.ai?utm_source=chatbot&utm_medium=chatbot&utm_campaign=chatbot"
-											target="_blank"
-											rel="noopener"
-											aria-label={
-												labels.poweredBy + ' DocsBot'
+								<div className="docsbot-chat-footer-inner-wrapper">
+									<div className="docsbot-chat-input-container">
+										{showPiiRedactionStatus && (
+											<div
+												className={clsx(
+													'docsbot-privacy-protection-status',
+													isPiiRedactionBypassed &&
+														'is-bypassed'
+												)}
+												role="status"
+												aria-live="polite"
+											>
+												<div
+													className="docsbot-privacy-protection-loader"
+													aria-hidden="true"
+												>
+													<Loader />
+												</div>
+												<div className="docsbot-privacy-protection-copy">
+													<strong>
+														{
+															labels.privacyProtectionLoading
+														}
+													</strong>
+													<span>
+														{isPiiRedactionBypassed
+															? labels.privacyProtectionBypassWarning
+															: labels.privacyProtectionLoadingDetail}
+													</span>
+												</div>
+												{isPiiRedactionOverrideAvailable &&
+													!isPiiRedactionBypassed && (
+														<button
+															type="button"
+															className="docsbot-privacy-protection-bypass"
+															onClick={
+																handlePiiRedactionBypass
+															}
+														>
+															{
+																labels.privacyProtectionSendAnyway
+															}
+														</button>
+													)}
+											</div>
+										)}
+										<form
+											className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching || isRecordingAudio || isLeadFormVisible ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''}`}
+											onSubmit={handleSubmit}
+											onDragEnter={
+												useImageUpload
+													? handleDragEnter
+													: null
+											}
+											onDragLeave={
+												useImageUpload
+													? handleDragLeave
+													: null
+											}
+											onDragOver={
+												useImageUpload
+													? handleDragOver
+													: null
+											}
+											onDrop={
+												useImageUpload
+													? handleDrop
+													: null
 											}
 										>
-											<span aria-hidden="true">
-												{labels.poweredBy}
-											</span>
-											<DocsBotLogo
-												aria-hidden="true"
-												className="docsbot-logo"
-											/>
-										</a>
+											{/* Hidden file input */}
+											{useImageUpload && (
+												<input
+													type="file"
+													ref={fileInputRef}
+													onChange={handleImageSelect}
+													accept="image/*"
+													multiple
+													className="docsbot-hidden-file-input"
+													aria-label="Upload image"
+													tabIndex={-1}
+												/>
+											)}
+
+											{isRecordingAudio && (
+												<div
+													className="docsbot-audio-recorder-overlay"
+													role="group"
+													aria-label={
+														labels.audioRecord
+													}
+												>
+													<button
+														type="button"
+														className="docsbot-audio-recorder-cancel"
+														onClick={() =>
+															stopAudioRecording({
+																send: false
+															})
+														}
+														aria-label={
+															labels.cancel
+														}
+													>
+														<FontAwesomeIcon
+															icon={faXmark}
+														/>
+													</button>
+													<div className="docsbot-audio-recorder-visual">
+														<span className="docsbot-audio-recorder-time">
+															{formatAudioRecordingTime(
+																audioRecordingElapsedMs
+															)}
+														</span>
+														<div
+															className="docsbot-audio-recorder-wave"
+															aria-hidden="true"
+														>
+															{audioWaveformLevels.map(
+																(
+																	level,
+																	index
+																) => (
+																	<span
+																		key={
+																			index
+																		}
+																		style={{
+																			height: `${Math.round(
+																				2 +
+																					level *
+																						18
+																			)}px`,
+																			opacity:
+																				0.42 +
+																				level *
+																					0.5
+																		}}
+																	/>
+																)
+															)}
+														</div>
+													</div>
+													<button
+														type="button"
+														className="docsbot-audio-recorder-send"
+														onClick={() =>
+															stopAudioRecording({
+																send: true
+															})
+														}
+														aria-label={
+															labels.submit
+														}
+													>
+														<FontAwesomeIcon
+															icon={faCheck}
+														/>
+													</button>
+												</div>
+											)}
+
+											<div
+												className={`docsbot-chat-input-wrapper ${selectedImages.length > 0 ? 'has-images' : ''} ${isDragging ? 'is-dragging' : ''} ${!useImageUpload && !hasVoiceOrAudioAction ? 'no-media-upload' : ''} ${useImageUpload && hasVoiceOrAudioAction ? 'has-image-audio-upload' : ''}`}
+											>
+												<label
+													id={chatInputLabelId}
+													htmlFor={chatInputId}
+													className="docsbot-screen-reader-only"
+												>
+													{labels.inputPlaceholder}
+												</label>
+												<textarea
+													id={chatInputId}
+													className={`docsbot-chat-input ${!useImageUpload && !hasVoiceOrAudioAction ? 'no-media-upload' : ''} ${useImageUpload && hasVoiceOrAudioAction ? 'has-image-audio-upload' : ''}`}
+													placeholder={
+														labels.inputPlaceholder
+													}
+													value={chatInput}
+													onFocus={(e) => {
+														const textarea =
+															e.target;
+														const form =
+															textarea.parentNode
+																.parentNode;
+														const container =
+															form.parentNode;
+
+														container.classList.add(
+															'focused'
+														);
+													}}
+													onBlur={(e) => {
+														const textarea =
+															e.target;
+														const form =
+															textarea.parentNode
+																.parentNode;
+														const container =
+															form.parentNode;
+
+														container.classList.remove(
+															'focused'
+														); // remove focused class
+													}}
+													onChange={(e) => {
+														setChatInput(
+															e.target.value
+														);
+
+														e.target.style.height =
+															'auto';
+
+														// get the computed style of the textarea
+														const computed =
+															window.getComputedStyle(
+																e.target
+															);
+														const padding =
+															parseInt(
+																computed.paddingTop
+															) +
+															parseInt(
+																computed.paddingBottom
+															);
+
+														if (
+															e.target
+																.scrollHeight >
+															54
+														) {
+															e.target.style.height =
+																e.target
+																	.scrollHeight -
+																padding +
+																'px';
+														}
+													}}
+													onKeyDown={(e) => {
+														//this detects if the user is typing in a IME session (ie Kanji autocomplete) to avoid premature submission
+														if (
+															e.isComposing ||
+															e.keyCode === 229
+														) {
+															return;
+														}
+														if (
+															e.key === 'Enter' &&
+															!e.shiftKey
+														) {
+															handleSubmit(e);
+															e.target.style.height =
+																'auto';
+														}
+													}}
+													onPaste={(e) => {
+														if (!useImageUpload)
+															return;
+
+														const clipboardItems =
+															e.clipboardData
+																.items;
+														const imageItems =
+															Array.from(
+																clipboardItems
+															).filter((item) =>
+																item.type.startsWith(
+																	'image/'
+																)
+															);
+
+														if (
+															imageItems.length >
+															0
+														) {
+															e.preventDefault();
+
+															// Process only one image if multiple are pasted
+															// For simplicity, we're just handling the first image
+															const item =
+																imageItems[0];
+
+															// Convert clipboard item to a file
+															const blob =
+																item.getAsFile();
+															if (blob) {
+																// Check if we'd exceed the limit
+																if (
+																	selectedImages.length >=
+																	2
+																) {
+																	console.warn(
+																		'DOCSBOT: Maximum 2 images allowed'
+																	);
+																	return;
+																}
+
+																// Process the pasted image file
+																processImageFiles(
+																	[blob]
+																);
+															}
+														}
+													}}
+													ref={inputRef}
+													disabled={
+														isLeadFormVisible ||
+														isRecordingAudio
+													}
+													aria-labelledby={
+														chatInputLabelId
+													}
+													maxLength={
+														inputLimit
+															? Math.min(
+																	inputLimit,
+																	2000
+																)
+															: 500
+													}
+													rows={1}
+												/>
+												{selectedImages.length > 0 && (
+													<div className="docsbot-image-preview-container">
+														{selectedImages.map(
+															(image, index) => (
+																<div
+																	key={index}
+																	className="docsbot-image-preview"
+																>
+																	<img
+																		src={
+																			image.url
+																		}
+																		alt={`Selected ${index + 1}`}
+																		className="docsbot-image-preview-img"
+																	/>
+																	<button
+																		type="button"
+																		onClick={() =>
+																			removeImage(
+																				index
+																			)
+																		}
+																		className="docsbot-image-remove-btn"
+																		aria-label="Remove image"
+																	>
+																		<FontAwesomeIcon
+																			icon={
+																				faTimes
+																			}
+																		/>
+																	</button>
+																</div>
+															)
+														)}
+													</div>
+												)}
+											</div>
+
+											{/* Image upload button - only show when useImageUpload is true */}
+											{useImageUpload && (
+												<button
+													type="button"
+													onClick={triggerFileInput}
+													className="docsbot-image-upload-btn"
+													disabled={
+														selectedImages.length >=
+															2 ||
+														isFetching ||
+														isPiiRedactionLoading ||
+														isRecordingAudio ||
+														isLeadFormVisible
+													}
+													aria-label="Upload image"
+												>
+													<FontAwesomeIcon
+														icon={faImage}
+													/>
+												</button>
+											)}
+
+											{showAudioRecordButton && (
+												<button
+													type="button"
+													onClick={
+														handleAudioButtonClick
+													}
+													className="docsbot-audio-record-btn"
+													disabled={
+														isFetching ||
+														isPiiRedactionLoading ||
+														isLeadFormVisible
+													}
+													aria-label={
+														labels.audioRecord
+													}
+												>
+													<FontAwesomeIcon
+														icon={faMicrophone}
+													/>
+												</button>
+											)}
+
+											{showVoiceCallButton && (
+												<button
+													type="button"
+													onClick={startVoiceCall}
+													className="docsbot-audio-record-btn docsbot-voice-call-btn"
+													disabled={
+														isFetching ||
+														isPiiRedactionLoading ||
+														isLeadFormVisible
+													}
+													aria-label={
+														labels.voiceCallStart
+													}
+												>
+													<FontAwesomeIcon
+														icon={faPhone}
+													/>
+												</button>
+											)}
+
+											<button
+												type="submit"
+												className="docsbot-chat-btn-send"
+												{...([
+													'#ffffff',
+													'#FFFFFF',
+													'rgb(255, 255, 255)'
+												].includes(color) && {
+													style: { fill: 'inherit' }
+												})}
+												disabled={
+													chatInput.trim().length <
+														minInputLength ||
+													isFetching ||
+													isRecordingAudio ||
+													isLeadFormVisible
+												}
+												aria-label={labels.submit}
+											>
+												<FontAwesomeIcon
+													icon={faPaperPlane}
+													className="docsbot-chat-btn-send-icon"
+													aria-hidden="true"
+												/>
+											</button>
+										</form>
+									</div>
+
+									{(branding || parsedFooterText?.trim()) && (
+										<div className="docsbot-chat-credits">
+											{parsedFooterText?.trim() &&
+												(keepFooterVisible ||
+													Object.keys(state.messages)
+														.length <= 1) && (
+													<Suspense fallback={null}>
+														<LazyStreamdown
+															className={clsx(
+																'docsbot-chat-credits--policy',
+																'docsbot-streamdown'
+															)}
+															allowedDomains={
+																allowedDomains
+															}
+															linkSafetyEnabled={
+																linkSafetyEnabled
+															}
+															mode="static"
+														>
+															{parsedFooterText}
+														</LazyStreamdown>
+													</Suspense>
+												)}
+
+											{branding && (
+												<a
+													href="https://docsbot.ai?utm_source=chatbot&utm_medium=chatbot&utm_campaign=chatbot"
+													target="_blank"
+													rel="noopener"
+													aria-label={
+														labels.poweredBy +
+														' DocsBot'
+													}
+												>
+													<span aria-hidden="true">
+														{labels.poweredBy}
+													</span>
+													<DocsBotLogo
+														aria-hidden="true"
+														className="docsbot-logo"
+													/>
+												</a>
+											)}
+										</div>
 									)}
 								</div>
-							)}
-						</div>
-					</div>
+							</div>
+						</>
+					)}
 				</div>
 			</section>
 		</div>

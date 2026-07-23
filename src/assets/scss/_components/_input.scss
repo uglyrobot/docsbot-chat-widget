@@ -331,10 +331,14 @@
 	right: 74px;
 }
 
-// Adjust position when submit button is disabled and image upload is the only media button.
-.docsbot-chat-input-form.has-disabled-submit:not(:has(.docsbot-audio-record-btn))
+// Tighten the disabled-state icon spacing while keeping the upload control above
+// the overlapping transparent edge of the disabled submit button.
+.docsbot-chat-input-form.has-disabled-submit:not(
+		:has(.docsbot-audio-record-btn)
+	)
 	.docsbot-image-upload-btn {
 	right: 35px;
+	z-index: 2;
 }
 
 .docsbot-chat-input-form.has-disabled-submit:has(.docsbot-image-upload-btn)
@@ -446,9 +450,7 @@
 	z-index: 1;
 	width: 16px;
 	height: 16px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
+	display: block;
 	border-radius: 999px;
 	background:
 		radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.92), transparent 24%),
@@ -461,36 +463,6 @@
 		transform 90ms linear,
 		box-shadow 90ms linear;
 	will-change: transform, box-shadow;
-}
-
-.docsbot-live-voice-orb-wave {
-	display: none;
-	align-items: center;
-	justify-content: center;
-	gap: 1px;
-	height: 12px;
-
-	i {
-		width: 1.5px;
-		height: 3px;
-		display: block;
-		border-radius: 999px;
-		background: rgba(255, 255, 255, 0.94);
-		transition: height 80ms linear;
-	}
-}
-
-.docsbot-live-voice-orb-overlay.is-speaking {
-	.docsbot-live-voice-orb {
-		width: 24px;
-		background:
-			radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.5), transparent 28%),
-			linear-gradient(145deg, #38bdf8 5%, var(--docsbot-input--hover, $color-primary-200) 48%, #6366f1 100%);
-	}
-
-	.docsbot-live-voice-orb-wave {
-		display: flex;
-	}
 }
 
 .docsbot-live-voice-wave {

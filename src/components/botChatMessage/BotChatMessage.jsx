@@ -20,10 +20,7 @@ import {
 	faVial,
 	faGlobe
 } from '@fortawesome/free-solid-svg-icons';
-import {
-	faCreditCard,
-	faFileCode
-} from '@fortawesome/free-regular-svg-icons';
+import { faCreditCard, faFileCode } from '@fortawesome/free-regular-svg-icons';
 
 import { StripeBilling } from '../stripeBilling/StripeBilling';
 import { CalendlyEmbed } from '../calendlyEmbed/CalendlyEmbed';
@@ -133,9 +130,7 @@ function compactActivityUrl(urlString) {
 
 function buildActivityLabelSegments({ template, replacements = {} }) {
 	const safeTemplate =
-		typeof template === 'string' && template.trim()
-			? template
-			: '';
+		typeof template === 'string' && template.trim() ? template : '';
 	if (!safeTemplate) {
 		return { text: '', segments: [] };
 	}
@@ -213,7 +208,9 @@ function googleFaviconForActivityValue(value) {
 	const normalized = value.trim();
 	try {
 		const parsed = new URL(
-			/^https?:\/\//i.test(normalized) ? normalized : `https://${normalized}`
+			/^https?:\/\//i.test(normalized)
+				? normalized
+				: `https://${normalized}`
 		);
 		const hostname = parsed.hostname?.replace(/^www\./i, '');
 		if (!hostname) return '';
@@ -222,6 +219,63 @@ function googleFaviconForActivityValue(value) {
 		return '';
 	}
 }
+
+export const AgentActivityStatus = ({ agentActivity, labels }) => {
+	if (!agentActivity) return null;
+	const label = resolveAgentActivityLabel(agentActivity, labels);
+	return (
+		<div
+			className="docsbot-agent-activity"
+			role="status"
+			aria-live="polite"
+			aria-atomic="true"
+		>
+			<FontAwesomeIcon
+				icon={iconForAgentActivity(agentActivity.kind)}
+				className="docsbot-agent-activity-icon"
+				fixedWidth
+			/>
+			<span dir="auto" className="docsbot-agent-activity-label">
+				{!label || typeof label !== 'object'
+					? ''
+					: !Array.isArray(label.segments) ||
+						  label.segments.length === 0
+						? label.text || ''
+						: label.segments.map((segment, index) =>
+								segment.isParam ? (
+									<span
+										key={`p-${index}`}
+										className={clsx(
+											'docsbot-agent-activity-param',
+											segment.tokenName === 'url' &&
+												'docsbot-agent-activity-param--url'
+										)}
+										title={segment.full || segment.text}
+									>
+										{segment.faviconSrc ? (
+											<img
+												src={segment.faviconSrc}
+												className="docsbot-agent-activity-param-favicon"
+												alt=""
+												width={12}
+												height={12}
+												loading="lazy"
+											/>
+										) : null}
+										<span className="docsbot-agent-activity-param-text">
+											{segment.text}
+										</span>
+									</span>
+								) : (
+									<span key={`t-${index}`}>
+										{segment.text}
+									</span>
+								)
+							)}
+			</span>
+		</div>
+	);
+};
 
 export const BotChatMessage = ({
 	payload,
@@ -233,8 +287,6 @@ export const BotChatMessage = ({
 	onLeadCollectRequest,
 	onLeadCollectEscalated,
 	onLeadCollectCancel,
-	onVoiceEscalationAccept,
-	onVoiceEscalationDecline,
 	onSchedulerBookingMetadata,
 	leadCollectMode,
 	pendingLeadCapture,
@@ -439,8 +491,7 @@ export const BotChatMessage = ({
 
 				// Build metadata object and include conversation details in agent mode
 				const metadata =
-					metadataOverride ||
-					mergeIdentifyMetadata(identify);
+					metadataOverride || mergeIdentifyMetadata(identify);
 				if (isAgent && payload.conversationId) {
 					metadata.conversationId = payload.conversationId;
 					metadata.conversationUrl = `https://docsbot.ai/app/bots/${botId}/conversations?conversationId=${payload.conversationId}`;
@@ -491,9 +542,7 @@ export const BotChatMessage = ({
 	const runCustomButtonClick = async (reactEvent, history) => {
 		let cancelled = false;
 		const url = payload.customButton?.url;
-		const hasUrl =
-			typeof url === 'string' &&
-			url.trim();
+		const hasUrl = typeof url === 'string' && url.trim();
 		const reservedWindow =
 			reactEvent && hasUrl ? window.open('', '_blank') : null;
 		const syntheticEvent = reactEvent
@@ -543,7 +592,10 @@ export const BotChatMessage = ({
 
 		const key = payload.customButton?.functionKey;
 
-		if (customButtonCallback && typeof customButtonCallback === 'function') {
+		if (
+			customButtonCallback &&
+			typeof customButtonCallback === 'function'
+		) {
 			try {
 				await customButtonCallback(
 					syntheticEvent,
@@ -557,10 +609,7 @@ export const BotChatMessage = ({
 			}
 		}
 
-		if (
-			!cancelled &&
-			hasUrl
-		) {
+		if (!cancelled && hasUrl) {
 			if (reservedWindow && !reservedWindow.closed) {
 				reservedWindow.location.href = url.trim();
 				return;
@@ -696,7 +745,12 @@ export const BotChatMessage = ({
 		if (payload?.schedulerEmbed && !payload.loading && payload.message) {
 			scrollToBottom(chatContainerRef);
 		}
-	}, [payload?.schedulerEmbed, payload.loading, payload.message, chatContainerRef]);
+	}, [
+		payload?.schedulerEmbed,
+		payload.loading,
+		payload.message,
+		chatContainerRef
+	]);
 
 	// Check if this message has been replied to by looking for the next message
 	const hasNextMessage = () => {
@@ -713,7 +767,9 @@ export const BotChatMessage = ({
 		payload.sources?.length > 0 &&
 		(!hideSources ||
 			(Array.isArray(hideSources) &&
-				!payload.sources.every((source) => hideSources.includes(source.type))));
+				!payload.sources.every((source) =>
+					hideSources.includes(source.type)
+				)));
 	const isAgentLookupAnswer =
 		isAgent &&
 		payload.type !== 'is_resolved_question' &&
@@ -745,7 +801,11 @@ export const BotChatMessage = ({
 		persistSchedulerMetadata(metadata);
 	};
 
-	const handleCalComBookingSuccessful = ({ eventName, payload: calPayload, url }) => {
+	const handleCalComBookingSuccessful = ({
+		eventName,
+		payload: calPayload,
+		url
+	}) => {
 		const metadata = buildCalComBookingMetadata({
 			eventName,
 			payload: calPayload,
@@ -802,80 +862,11 @@ export const BotChatMessage = ({
 					{isAgent &&
 						showAgentActivity !== false &&
 						payload.agentActivity && (
-						<div
-							className="docsbot-agent-activity"
-							role="status"
-							aria-live="polite"
-							aria-atomic="true"
-						>
-							<FontAwesomeIcon
-								icon={iconForAgentActivity(
-									payload.agentActivity.kind
-								)}
-								className="docsbot-agent-activity-icon"
-								fixedWidth
+							<AgentActivityStatus
+								agentActivity={payload.agentActivity}
+								labels={labels}
 							/>
-							<span
-								dir="auto"
-								className="docsbot-agent-activity-label"
-							>
-								{(() => {
-									const label = resolveAgentActivityLabel(
-										payload.agentActivity,
-										labels
-									);
-									if (!label || typeof label !== 'object') {
-										return '';
-									}
-									if (
-										!Array.isArray(label.segments) ||
-										label.segments.length === 0
-									) {
-										return label.text || '';
-									}
-									return (
-										<>
-											{label.segments.map(
-												(segment, index) =>
-													segment.isParam ? (
-														<span
-															key={`p-${index}`}
-															className={clsx(
-																'docsbot-agent-activity-param',
-																segment.tokenName === 'url' &&
-																	'docsbot-agent-activity-param--url'
-															)}
-															title={
-																segment.full ||
-																segment.text
-															}
-														>
-															{segment.faviconSrc ? (
-																<img
-																	src={segment.faviconSrc}
-																	className="docsbot-agent-activity-param-favicon"
-																	alt=""
-																	width={12}
-																	height={12}
-																	loading="lazy"
-																/>
-															) : null}
-															<span className="docsbot-agent-activity-param-text">
-																{segment.text}
-															</span>
-														</span>
-													) : (
-														<span key={`t-${index}`}>
-															{segment.text}
-														</span>
-													)
-											)}
-										</>
-									);
-								})()}
-							</span>
-						</div>
-					)}
+						)}
 					<div
 						className={clsx(
 							'docsbot-chat-bot-message bg-slate-100 text-slate-800'
@@ -889,21 +880,316 @@ export const BotChatMessage = ({
 						role={payload.error ? 'alert' : undefined}
 						ref={messageBoxRef}
 					>
-					<span className="docsbot-screen-reader-only">
-						{assistantMessagePrefix}
-					</span>
-					{(() => {
-						if (payload.loading) {
-							return <Loader />;
-						}
+						<span className="docsbot-screen-reader-only">
+							{assistantMessagePrefix}
+						</span>
+						{(() => {
+							if (payload.loading) {
+								return <Loader />;
+							}
 
-						if (payload.type === 'custom_button') {
+							if (payload.type === 'custom_button') {
+								return (
+									<>
+										<div dir="auto" ref={contentRef}>
+											<Suspense fallback={<Loader />}>
+												<LazyStreamdown
+													className="docsbot-streamdown"
+													allowedDomains={
+														allowedDomains
+													}
+													linkSafetyEnabled={
+														linkSafetyEnabled
+													}
+													mode={
+														payload.streaming
+															? undefined
+															: 'static'
+													}
+													isAnimating={Boolean(
+														payload.streaming
+													)}
+												>
+													{preprocessMath(
+														payload.message || ''
+													)}
+												</LazyStreamdown>
+											</Suspense>
+										</div>
+									</>
+								);
+							}
+
+							if (payload.type === 'lead_collect') {
+								const fields =
+									Array.isArray(payload.leadForm?.fields) &&
+									payload.leadForm.fields.length > 0
+										? payload.leadForm.fields
+										: [];
+
+								return (
+									<div className="space-y-4 w-full">
+										<div
+											dir="auto"
+											className="text-sm font-medium text-slate-800"
+										>
+											{payload.message}
+										</div>
+										{fields.length > 0 ? (
+											<form
+												className="space-y-4 w-full"
+												onSubmit={(event) => {
+													event.preventDefault();
+													if (
+														event.currentTarget
+															.reportValidity &&
+														!event.currentTarget.reportValidity()
+													) {
+														return;
+													}
+													setLeadFormTouched(true);
+
+													const metadata = {};
+													fields.forEach(
+														(field, index) => {
+															if (!field?.key)
+																return;
+															const fieldKey =
+																field.key ||
+																`field_${index}`;
+															const value =
+																leadFormValues[
+																	field.key ||
+																		fieldKey
+																];
+															if (
+																value !==
+																	undefined &&
+																value !==
+																	null &&
+																String(
+																	value
+																).trim()
+																	.length > 0
+															) {
+																metadata[
+																	field.key
+																] =
+																	String(
+																		value
+																	).trim();
+															}
+														}
+													);
+
+													if (
+														typeof onLeadCollectSubmit ===
+														'function'
+													) {
+														onLeadCollectSubmit({
+															metadata
+														});
+													}
+												}}
+											>
+												<div className="space-y-4">
+													{fields.map(
+														(field, index) => {
+															const fieldKey =
+																field.key ||
+																`field_${index}`;
+															const inputId = `${payload.id}-${fieldKey}`;
+															const label =
+																field.label ||
+																field.name ||
+																field.key ||
+																`Field ${index + 1}`;
+															const inputType =
+																field.type ||
+																'text';
+															const fieldValue =
+																leadFormValues[
+																	field.key ||
+																		fieldKey
+																] || '';
+															const sharedProps =
+																{
+																	id: inputId,
+																	name:
+																		field.key ||
+																		fieldKey,
+																	required:
+																		!!field.required,
+																	placeholder:
+																		field.placeholder ||
+																		undefined,
+																	autoComplete:
+																		field.autocomplete ||
+																		undefined,
+																	className:
+																		'w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm text-slate-800 shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20',
+																	value: fieldValue,
+																	onChange: (
+																		event
+																	) => {
+																		setLeadFormTouched(
+																			true
+																		);
+																		setLeadFormValues(
+																			(
+																				prev
+																			) => ({
+																				...prev,
+																				[field.key ||
+																				fieldKey]:
+																					event
+																						.target
+																						.value
+																			})
+																		);
+																	}
+																};
+
+															return (
+																<label
+																	key={
+																		inputId
+																	}
+																	htmlFor={
+																		inputId
+																	}
+																	className="block text-sm text-slate-800"
+																>
+																	<span className="mb-1 block font-semibold">
+																		{label}
+																	</span>
+																	{inputType ===
+																	'textarea' ? (
+																		<textarea
+																			{...sharedProps}
+																			rows={
+																				field.rows ||
+																				3
+																			}
+																			className={`${sharedProps.className} min-h-30`}
+																		/>
+																	) : inputType ===
+																	  'select' ? (
+																		<select
+																			{...sharedProps}
+																		>
+																			{field.placeholder && (
+																				<option
+																					value=""
+																					disabled={
+																						!!field.required
+																					}
+																				>
+																					{
+																						field.placeholder
+																					}
+																				</option>
+																			)}
+																			{(
+																				field.options ||
+																				[]
+																			).map(
+																				(
+																					option,
+																					optionIndex
+																				) => {
+																					const optionValue =
+																						typeof option ===
+																						'string'
+																							? option
+																							: option.value;
+																					const optionLabel =
+																						typeof option ===
+																						'string'
+																							? option
+																							: option.label ||
+																								option.value;
+																					return (
+																						<option
+																							key={`${inputId}-${optionIndex}`}
+																							value={
+																								optionValue
+																							}
+																						>
+																							{
+																								optionLabel
+																							}
+																						</option>
+																					);
+																				}
+																			)}
+																		</select>
+																	) : (
+																		<input
+																			{...sharedProps}
+																			type={
+																				inputType
+																			}
+																		/>
+																	)}
+																	{field.help && (
+																		<span className="mt-1 block text-xs text-muted-foreground">
+																			{
+																				field.help
+																			}
+																		</span>
+																	)}
+																</label>
+															);
+														}
+													)}
+												</div>
+												<div className="flex flex-wrap items-center gap-2 pt-2">
+													<button
+														type="submit"
+														className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+													>
+														{labels.submit ||
+															'Submit'}
+													</button>
+													{typeof onLeadCollectCancel ===
+														'function' && (
+														<button
+															type="button"
+															className="rounded-md border border-border bg-background px-4 py-2 text-sm text-slate-800 shadow-sm transition hover:bg-slate-50"
+															onClick={() => {
+																onLeadCollectCancel();
+															}}
+														>
+															{labels.cancel ||
+																'Cancel'}
+														</button>
+													)}
+												</div>
+												{leadFormTouched &&
+													fields.some(
+														(field) =>
+															field.required &&
+															!String(
+																leadFormValues[
+																	field.key
+																] || ''
+															).trim()
+													) && (
+														<div className="text-xs text-red-700">
+															{labels.requiredField ||
+																'Please fill out required fields.'}
+														</div>
+													)}
+											</form>
+										) : null}
+									</div>
+								);
+							}
+
 							return (
 								<>
-									<div
-										dir="auto"
-										ref={contentRef}
-									>
+									<div dir="auto" ref={contentRef}>
 										<Suspense fallback={<Loader />}>
 											<LazyStreamdown
 												className="docsbot-streamdown"
@@ -926,314 +1212,70 @@ export const BotChatMessage = ({
 											</LazyStreamdown>
 										</Suspense>
 									</div>
+
+									{(hasVisibleSources ||
+										shouldShowCopyButton) && (
+										<div className="docsbot-copy-button-row">
+											{hasVisibleSources && (
+												<h3 className="docsbot-sources-title">
+													{labels.sources}
+												</h3>
+											)}
+
+											{shouldShowCopyButton && (
+												<button
+													type="button"
+													className={clsx(
+														'docsbot-copy-button',
+														isCopied && 'copied'
+													)}
+													onClick={
+														copyContentToClipboard
+													}
+												>
+													<span className="docsbot-screen-reader-only">
+														{isCopied
+															? labels?.copied ||
+																'Copied!'
+															: labels?.copyResponse ||
+																'Copy response'}
+													</span>
+													{isCopied ? (
+														<CheckIcon />
+													) : (
+														<CopyIcon />
+													)}
+												</button>
+											)}
+										</div>
+									)}
+
+									{/*
+									 * Show sources if:
+									 * 1. There are sources available (payload.sources?.length > 0)
+									 * 2. AND either:
+									 *    a. hideSources is falsy (sources are not hidden globally)
+									 *    b. OR hideSources is an array AND not all sources are of types that should be hidden
+									 */}
+									{hasVisibleSources && (
+										<div className="docsbot-sources-container">
+											<ul className="docsbot-sources">
+												{payload.sources?.map(
+													(source, index) => {
+														return (
+															<Source
+																key={index}
+																source={source}
+															/>
+														);
+													}
+												)}
+											</ul>
+										</div>
+									)}
 								</>
 							);
-						}
-
-						if (payload.type === 'lead_collect') {
-							const fields =
-								Array.isArray(payload.leadForm?.fields) &&
-								payload.leadForm.fields.length > 0
-									? payload.leadForm.fields
-									: [];
-
-							return (
-								<div className="space-y-4 w-full">
-									<div dir="auto" className="text-sm font-medium text-slate-800">
-										{payload.message}
-									</div>
-									{fields.length > 0 ? (
-										<form
-											className="space-y-4 w-full"
-											onSubmit={(event) => {
-												event.preventDefault();
-												if (
-													event.currentTarget
-														.reportValidity &&
-													!event.currentTarget.reportValidity()
-												) {
-													return;
-												}
-												setLeadFormTouched(true);
-
-												const metadata = {};
-												fields.forEach((field, index) => {
-													if (!field?.key) return;
-													const fieldKey =
-														field.key ||
-														`field_${index}`;
-													const value =
-														leadFormValues[
-															field.key ||
-																fieldKey
-														];
-													if (
-														value !== undefined &&
-														value !== null &&
-														String(value).trim()
-															.length > 0
-													) {
-														metadata[field.key] =
-															String(value).trim();
-													}
-												});
-
-												if (
-													typeof onLeadCollectSubmit ===
-													'function'
-												) {
-													onLeadCollectSubmit({
-														metadata
-													});
-												}
-											}}
-										>
-											<div className="space-y-4">
-												{fields.map((field, index) => {
-													const fieldKey =
-														field.key ||
-														`field_${index}`;
-													const inputId = `${payload.id}-${fieldKey}`;
-													const label =
-														field.label ||
-														field.name ||
-														field.key ||
-														`Field ${index + 1}`;
-													const inputType =
-														field.type || 'text';
-													const fieldValue =
-														leadFormValues[
-															field.key ||
-																fieldKey
-														] || '';
-													const sharedProps = {
-														id: inputId,
-														name:
-															field.key ||
-															fieldKey,
-														required:
-															!!field.required,
-														placeholder:
-															field.placeholder ||
-															undefined,
-														autoComplete:
-															field.autocomplete ||
-															undefined,
-														className:
-															'w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm text-slate-800 shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20',
-														value: fieldValue,
-														onChange: (event) => {
-															setLeadFormTouched(
-																true
-															);
-															setLeadFormValues(
-																(prev) => ({
-																	...prev,
-																	[field.key ||
-																		fieldKey]:
-																		event
-																			.target
-																			.value
-																})
-															);
-														}
-													};
-
-													return (
-														<label
-															key={inputId}
-															htmlFor={inputId}
-															className="block text-sm text-slate-800"
-														>
-															<span className="mb-1 block font-semibold">
-																{label}
-															</span>
-															{inputType ===
-																'textarea' ? (
-																<textarea
-																	{...sharedProps}
-																	rows={
-																		field.rows ||
-																		3
-																	}
-																	className={`${sharedProps.className} min-h-30`}
-																/>
-															) : inputType ===
-																'select' ? (
-																<select
-																	{...sharedProps}
-																>
-																	{field.placeholder && (
-																		<option
-																			value=""
-																			disabled={
-																				!!field.required
-																			}
-																		>
-																			{
-																				field.placeholder
-																			}
-																		</option>
-																	)}
-																	{(field.options ||
-																		[]).map(
-																		(
-																			option,
-																			optionIndex
-																		) => {
-																			const optionValue =
-																				typeof option ===
-																				'string'
-																					? option
-																					: option.value;
-																			const optionLabel =
-																				typeof option ===
-																				'string'
-																					? option
-																					: option.label ||
-																						option.value;
-																			return (
-																				<option
-																					key={`${inputId}-${optionIndex}`}
-																					value={
-																						optionValue
-																					}
-																				>
-																					{
-																						optionLabel
-																					}
-																				</option>
-																			);
-																		}
-																	)}
-																</select>
-															) : (
-																<input
-																	{...sharedProps}
-																	type={
-																		inputType
-																	}
-																/>
-															)}
-															{field.help && (
-																<span className="mt-1 block text-xs text-muted-foreground">
-																	{field.help}
-																</span>
-															)}
-														</label>
-													);
-												})}
-											</div>
-											<div className="flex flex-wrap items-center gap-2 pt-2">
-												<button
-													type="submit"
-													className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-												>
-													{labels.submit ||
-														'Submit'}
-												</button>
-												{typeof onLeadCollectCancel ===
-													'function' && (
-													<button
-														type="button"
-														className="rounded-md border border-border bg-background px-4 py-2 text-sm text-slate-800 shadow-sm transition hover:bg-slate-50"
-														onClick={() => {
-															onLeadCollectCancel();
-														}}
-													>
-														{labels.cancel ||
-															'Cancel'}
-													</button>
-												)}
-											</div>
-											{leadFormTouched &&
-												fields.some(
-													(field) =>
-														field.required &&
-														!String(
-															leadFormValues[
-																field.key
-															] || ''
-														).trim()
-												) && (
-													<div className="text-xs text-red-700">
-														{labels.requiredField ||
-															'Please fill out required fields.'}
-													</div>
-												)}
-										</form>
-										) : null}
-									</div>
-								);
-							}
-
-						return (
-							<>
-				<div
-					dir="auto"
-					ref={contentRef}
-				>
-					<Suspense fallback={<Loader />}>
-							<LazyStreamdown
-								className="docsbot-streamdown"
-								allowedDomains={allowedDomains}
-								linkSafetyEnabled={linkSafetyEnabled}
-								mode={payload.streaming ? undefined : 'static'}
-								isAnimating={Boolean(payload.streaming)}
-							>
-							{preprocessMath(payload.message || '')}
-						</LazyStreamdown>
-					</Suspense>
-				</div>
-
-								{(hasVisibleSources || shouldShowCopyButton) && (
-									<div className="docsbot-copy-button-row">
-										{hasVisibleSources && (
-											<h3 className="docsbot-sources-title">
-												{labels.sources}
-											</h3>
-										)}
-
-										{shouldShowCopyButton && (
-											<button
-												type="button"
-												className={clsx(
-													'docsbot-copy-button',
-													isCopied && 'copied'
-												)}
-												onClick={copyContentToClipboard}
-											>
-												<span className="docsbot-screen-reader-only">
-													{isCopied
-														? labels?.copied || 'Copied!'
-														: labels?.copyResponse ||
-														  'Copy response'}
-												</span>
-												{isCopied ? <CheckIcon /> : <CopyIcon />}
-											</button>
-										)}
-									</div>
-								)}
-
-								{/*
-								 * Show sources if:
-								 * 1. There are sources available (payload.sources?.length > 0)
-								 * 2. AND either:
-								 *    a. hideSources is falsy (sources are not hidden globally)
-								 *    b. OR hideSources is an array AND not all sources are of types that should be hidden
-								 */}
-								{hasVisibleSources && (
-									<div className="docsbot-sources-container">
-										<ul className="docsbot-sources">
-											{payload.sources?.map((source, index) => {
-												return <Source key={index} source={source} />;
-											})}
-										</ul>
-									</div>
-								)}
-                                                        </>
-                                                );
-                                        })()}
+						})()}
 					</div>
 					{payload.type === 'custom_button' &&
 						payload.customButton?.buttonText &&
@@ -1257,7 +1299,7 @@ export const BotChatMessage = ({
 						)}
 					{payload.schedulerEmbed?.path &&
 						!payload.loading &&
-						payload.message &&
+						payload.message && (
 							<div className="docsbot-full-width-row-block">
 								{renderSchedulerEmbed({
 									schedulerEmbed: payload.schedulerEmbed,
@@ -1271,25 +1313,26 @@ export const BotChatMessage = ({
 									onTidyCalBookingEvent:
 										handleTidyCalBookingEvent
 								})}
-							</div>}
+							</div>
+						)}
 					{!payload.schedulerEmbed?.path &&
 						payload.bookingSummary &&
 						!payload.loading &&
 						payload.message && (
 							<div className="docsbot-full-width-row-block">
-									{renderBookingSummaryCard(
-										payload.bookingSummary,
-										labels
-									)}
-								</div>
-							)}
+								{renderBookingSummaryCard(
+									payload.bookingSummary,
+									labels
+								)}
+							</div>
+						)}
 					{payload.stripeBilling && (
 						<div className="docsbot-full-width-row-block">
 							<StripeBilling data={payload.stripeBilling} />
 						</div>
 					)}
 				</div>
-                        </div>
+			</div>
 
 			{/*
 				This section handles feedback for agent-based responses.
@@ -1451,34 +1494,23 @@ export const BotChatMessage = ({
 							<button
 								type="button"
 								disabled={isSupportLoading}
-								onClick={(e) =>
-									{
-										if (
-											payload.voiceAction &&
-											typeof onVoiceEscalationAccept ===
-												'function'
-										) {
-											onVoiceEscalationAccept();
-										}
-										if (
-											leadCollectMode ===
-											'before_escalation'
-										) {
-											const didOpen =
-												typeof onLeadCollectRequest ===
+								onClick={(e) => {
+									if (
+										leadCollectMode === 'before_escalation'
+									) {
+										const didOpen =
+											typeof onLeadCollectRequest ===
 												'function' &&
-												onLeadCollectRequest({
-													history:
-														state.chatHistory || []
-												});
-											if (didOpen) return;
-										}
-										runSupportCallback(
-											e,
-											state.chatHistory || []
-										);
+											onLeadCollectRequest({
+												history: state.chatHistory || []
+											});
+										if (didOpen) return;
 									}
-								}
+									runSupportCallback(
+										e,
+										state.chatHistory || []
+									);
+								}}
 							>
 								{isSupportLoading ? (
 									<Loader />
@@ -1508,15 +1540,7 @@ export const BotChatMessage = ({
 												timestamp: Date.now()
 											}
 										});
-										if (
-											payload.voiceAction &&
-											typeof onVoiceEscalationDecline ===
-												'function'
-										) {
-											onVoiceEscalationDecline(message);
-										} else {
-											fetchAnswer(message);
-										}
+										fetchAnswer(message);
 										// Scroll to bottom and focus input after clicking no
 										scrollToBottom(chatContainerRef);
 										if (inputRef?.current) {
@@ -1618,25 +1642,22 @@ function buildCalendlyBookingMetadata({
 	]);
 	if (endTime) {
 		metadata.booking_end_time = endTime;
-		metadata.booking_end_time_local = formatCalendlyDate(
-			endTime,
-			locale
-		);
+		metadata.booking_end_time_local = formatCalendlyDate(endTime, locale);
 	}
 
 	const eventNameValue =
 		extractCalendlyField(payload, [
-		['event_type', 'name'],
-		['event_type', 'kind'],
-		['event_type', 'slug'],
-		['event_type', 'event_type_name'],
-		['event', 'event_type_name'],
-		['event', 'name'],
-		['event', 'event_type'],
-		['invitee', 'event_type_name'],
-		['invitee', 'name'],
-		['event_name']
-	]) || inferSchedulerTitleFromPath(path || url);
+			['event_type', 'name'],
+			['event_type', 'kind'],
+			['event_type', 'slug'],
+			['event_type', 'event_type_name'],
+			['event', 'event_type_name'],
+			['event', 'name'],
+			['event', 'event_type'],
+			['invitee', 'event_type_name'],
+			['invitee', 'name'],
+			['event_name']
+		]) || inferSchedulerTitleFromPath(path || url);
 	if (eventNameValue) {
 		metadata.booking_title = eventNameValue;
 	}
@@ -1742,10 +1763,7 @@ function buildTidyCalBookingMetadata({ eventName, payload, url, locale }) {
 	]);
 	if (endTime) {
 		metadata.booking_end_time = endTime;
-		metadata.booking_end_time_local = formatCalendlyDate(
-			endTime,
-			locale
-		);
+		metadata.booking_end_time_local = formatCalendlyDate(endTime, locale);
 	}
 
 	return compactSchedulerMetadata(metadata);
@@ -1967,44 +1985,47 @@ function renderBookingSummaryCard(summary, labels) {
 					</span>
 				</div>
 
-					<div className="text-sm text-slate-600 space-y-2">
-						{summary?.title && (
-							<div className="min-w-0">
-								<span className="block text-xs text-slate-400 truncate">
-									{labels?.bookingSummaryEvent || 'Event'}
-								</span>
-								<span className="font-medium text-slate-800 truncate block">
-									{summary.title}
-								</span>
-							</div>
-						)}
-						{(summary?.startTime || summary?.endTime) && (
-							<div className="grid grid-cols-2 gap-2">
-								{summary?.startTime && (
-									<div className="min-w-0">
-										<span className="block text-xs text-slate-400 truncate">
-											{labels?.bookingSummaryStarts || 'Starts'}
-										</span>
-										<span className="font-medium text-slate-800 truncate block">
-											{summary.startTime}
-										</span>
-									</div>
-								)}
-								{summary?.endTime && (
-									<div className="min-w-0">
-										<span className="block text-xs text-slate-400 truncate">
-											{labels?.bookingSummaryEnds || 'Ends'}
-										</span>
-										<span className="truncate block">{summary.endTime}</span>
-									</div>
-								)}
-							</div>
-						)}
-					</div>
+				<div className="text-sm text-slate-600 space-y-2">
+					{summary?.title && (
+						<div className="min-w-0">
+							<span className="block text-xs text-slate-400 truncate">
+								{labels?.bookingSummaryEvent || 'Event'}
+							</span>
+							<span className="font-medium text-slate-800 truncate block">
+								{summary.title}
+							</span>
+						</div>
+					)}
+					{(summary?.startTime || summary?.endTime) && (
+						<div className="grid grid-cols-2 gap-2">
+							{summary?.startTime && (
+								<div className="min-w-0">
+									<span className="block text-xs text-slate-400 truncate">
+										{labels?.bookingSummaryStarts ||
+											'Starts'}
+									</span>
+									<span className="font-medium text-slate-800 truncate block">
+										{summary.startTime}
+									</span>
+								</div>
+							)}
+							{summary?.endTime && (
+								<div className="min-w-0">
+									<span className="block text-xs text-slate-400 truncate">
+										{labels?.bookingSummaryEnds || 'Ends'}
+									</span>
+									<span className="truncate block">
+										{summary.endTime}
+									</span>
+								</div>
+							)}
+						</div>
+					)}
 				</div>
 			</div>
-		);
-	}
+		</div>
+	);
+}
 
 function formatCalendlyDate(value, locale) {
 	if (!value) {

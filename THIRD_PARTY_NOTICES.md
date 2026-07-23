@@ -29,3 +29,23 @@ No endorsement by National Design Studio is implied.
 Rampart reports that its training data includes OpenPII 1.5M, also licensed
 under CC BY 4.0. See the Rampart model card and repository for upstream model
 scope, evaluation details, and limitations.
+
+## thinking-orbs
+
+- Name: thinking-orbs 0.1.1
+- Author: Jakub Antalik
+- Source: https://github.com/Jakubantalik/thinking-orbs
+- License: MIT
+
+DocsBot uses the package's public Canvas 2D frame painters in the voice-call
+view. The integration adapts the presentation for a larger responsive canvas,
+DocsBot voice states, and the widget's brand color while retaining upstream
+reduced-motion and visibility-aware animation behavior.
+
+Copyright (c) 2026 Jakub Antalik. Permission is hereby granted, free of charge,
+to any person obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, subject to inclusion of this
+copyright and permission notice. The Software is provided "AS IS", without
+warranty of any kind.
