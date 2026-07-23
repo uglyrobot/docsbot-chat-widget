@@ -446,7 +446,9 @@
 	z-index: 1;
 	width: 16px;
 	height: 16px;
-	display: block;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	border-radius: 999px;
 	background:
 		radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.92), transparent 24%),
@@ -459,6 +461,36 @@
 		transform 90ms linear,
 		box-shadow 90ms linear;
 	will-change: transform, box-shadow;
+}
+
+.docsbot-live-voice-orb-wave {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	gap: 1px;
+	height: 12px;
+
+	i {
+		width: 1.5px;
+		height: 3px;
+		display: block;
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.94);
+		transition: height 80ms linear;
+	}
+}
+
+.docsbot-live-voice-orb-overlay.is-speaking {
+	.docsbot-live-voice-orb {
+		width: 24px;
+		background:
+			radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.5), transparent 28%),
+			linear-gradient(145deg, #38bdf8 5%, var(--docsbot-input--hover, $color-primary-200) 48%, #6366f1 100%);
+	}
+
+	.docsbot-live-voice-orb-wave {
+		display: flex;
+	}
 }
 
 .docsbot-live-voice-wave {

@@ -18,6 +18,10 @@ export function resolveVoiceApiBase({ localDev, voiceApiBaseUrl } = {}) {
   return localDev ? "http://127.0.0.1:9000" : DEFAULT_DOCSBOT_API_BASE;
 }
 
+export function isVoiceOutputActive(level, callState) {
+  return callState === "connected" && Number(level) >= 0.04;
+}
+
 export function waitForIceGatheringComplete(peerConnection, timeoutMs = 5000) {
   if (peerConnection.iceGatheringState === "complete") {
     return Promise.resolve();

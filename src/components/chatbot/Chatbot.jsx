@@ -75,6 +75,7 @@ import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import {
 	createDocsBotVoiceSession,
+	isVoiceOutputActive,
 	resolveLiveVoiceEnabled
 } from '../../utils/voiceWebRtc.mjs';
 
@@ -332,6 +333,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const [voiceOutputLevel, setVoiceOutputLevel] = useState(0);
 	const [voiceWaveformLevels, setVoiceWaveformLevels] = useState(() =>
 		Array(32).fill(0.04)
+	);
+	const isVoiceAgentSpeaking = isVoiceOutputActive(
+		voiceOutputLevel,
+		voiceCallState
 	);
 	const [streamController, setStreamController] = useState(null);
 	const streamControllerRef = useRef(null);
@@ -3102,7 +3107,11 @@ const removeExistingSchedulerEmbeds = (
 					>
 						{isLiveVoiceBusy && (
 							<div
-								className={`docsbot-live-voice-orb-overlay is-${voiceCallState}`}
+								className={clsx(
+									'docsbot-live-voice-orb-overlay',
+									`is-${voiceCallState}`,
+									isVoiceAgentSpeaking && 'is-speaking'
+								)}
 								aria-hidden="true"
 							>
 								<span
@@ -3111,7 +3120,18 @@ const removeExistingSchedulerEmbeds = (
 										'--docsbot-voice-scale': 1 + voiceOutputLevel * 0.2,
 										'--docsbot-voice-glow': `${7 + voiceOutputLevel * 12}px`
 									}}
-								/>
+								>
+									<span className="docsbot-live-voice-orb-wave">
+										{voiceWaveformLevels.slice(-5).map((level, index) => (
+											<i
+												key={index}
+												style={{
+													height: `${Math.round(3 + level * 10)}px`
+												}}
+											/>
+										))}
+									</span>
+								</span>
 							</div>
 						)}
 						{visibleMessageKeys.map((key, index) => {

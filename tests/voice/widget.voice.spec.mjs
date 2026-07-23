@@ -134,10 +134,18 @@ test("starts, mutes, and ends a real browser WebRTC call through DocsBot SDP", a
     ".docsbot-chat-message-container .docsbot-live-voice-orb",
   );
   await expect(orb).toBeVisible();
+  const orbOverlay = root.locator(".docsbot-live-voice-orb-overlay");
+  const orbWave = root.locator(".docsbot-live-voice-orb-wave");
+  await expect(orbOverlay).not.toHaveClass(/is-speaking/);
+  await expect(orbWave).toBeHidden();
   await expect(root.locator(".docsbot-live-voice-wave")).toBeVisible();
   const orbBox = await orb.boundingBox();
   expect(orbBox.width).toBeLessThanOrEqual(24);
   expect(orbBox.height).toBeLessThanOrEqual(24);
+  await orbOverlay.evaluate((element) => element.classList.add("is-speaking"));
+  await expect(orbWave).toBeVisible();
+  expect((await orb.boundingBox()).width).toBe(24);
+  await orbOverlay.evaluate((element) => element.classList.remove("is-speaking"));
   const messageContainer = root.locator(".docsbot-chat-message-container");
   await messageContainer.evaluate((element) => {
     const spacer = document.createElement("div");

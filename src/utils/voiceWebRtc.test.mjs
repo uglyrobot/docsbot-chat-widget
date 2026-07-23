@@ -2,11 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createDocsBotVoiceSession,
+  isVoiceOutputActive,
   resolveLiveVoiceEnabled,
   resolveVoiceApiBase,
   serializeVoiceMetadata,
   waitForIceGatheringComplete,
 } from "./voiceWebRtc.mjs";
+
+test("marks the model as speaking only for audible connected output", () => {
+  assert.equal(isVoiceOutputActive(0.2, "connected"), true);
+  assert.equal(isVoiceOutputActive(0.01, "connected"), false);
+  assert.equal(isVoiceOutputActive(0.2, "connecting"), false);
+});
 
 test("enables live voice from saved bot config while allowing an embed override", () => {
   assert.equal(resolveLiveVoiceEnabled({ voiceAgent: { enabled: true } }), true);
