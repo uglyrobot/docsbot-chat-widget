@@ -61,6 +61,9 @@ export async function createDocsBotVoiceSession({
   localDev = false,
   voiceApiBaseUrl,
   audioElement,
+  conversationId,
+  onClientAction = () => {},
+  onSession = () => {},
   signal,
   onStateChange = () => {},
   fetchImpl = globalThis.fetch,
@@ -113,6 +116,17 @@ export async function createDocsBotVoiceSession({
     });
     peerConnection = new RTCPeerConnectionCtor();
     eventsDataChannel = peerConnection.createDataChannel("oai-events");
+    eventsDataChannel.addEventListener?.("message", (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        const item = payload?.item;
+        if (item?.type !== "function_call_output" || !item.output) return;
+        const output = JSON.parse(item.output);
+        if (output?.client_action) onClientAction(output.client_action);
+      } catch {
+        // Other Realtime events are not widget actions.
+      }
+    });
 
     stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream));
     peerConnection.ontrack = (event) => {
@@ -141,6 +155,9 @@ export async function createDocsBotVoiceSession({
           "Content-Type": "application/sdp",
           Accept: "application/sdp",
           ...(signature ? { Authorization: `Bearer ${signature}` } : {}),
+          ...(conversationId
+            ? { "X-DocsBot-Conversation-Id": conversationId }
+            : {}),
         },
         body: peerConnection.localDescription?.sdp || offer.sdp,
         signal,
@@ -151,6 +168,11 @@ export async function createDocsBotVoiceSession({
     const answerSdp = await response.text();
     if (!answerSdp.trim()) throw new Error("DocsBot returned an empty voice answer");
     await peerConnection.setRemoteDescription({ type: "answer", sdp: answerSdp });
+    onSession({
+      callId: response.headers?.get?.("X-DocsBot-Voice-Call-Id") || null,
+      conversationId:
+        response.headers?.get?.("X-DocsBot-Conversation-Id") || null,
+    });
 
     return {
       end,

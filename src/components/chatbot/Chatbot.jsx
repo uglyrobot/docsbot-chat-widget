@@ -909,7 +909,72 @@ const removeExistingSchedulerEmbeds = (
 		setVoiceCallState('ended');
 	};
 
+	const handleVoiceClientAction = (action) => {
+		if (!action?.type) return;
+		const id = uuidv4();
+		if (action.type === 'support_escalation') {
+			dispatch({
+				type: 'add_message',
+				payload: {
+					id,
+					variant: 'chatbot',
+					type: 'support_escalation',
+					message: action.message,
+					responses: action.responses,
+					conversationId: getConversationId(),
+					loading: false,
+					timestamp: Date.now()
+				}
+			});
+			return;
+		}
+
+		if (['calendly', 'calcom', 'tidycal'].includes(action.type)) {
+			const schedulerEmbed = buildSchedulerEmbed(action.type, action);
+			removeExistingSchedulerEmbeds(schedulerEmbed);
+			dispatch({
+				type: 'add_message',
+				payload: {
+					id,
+					variant: 'chatbot',
+					type: action.type,
+					message: action.message,
+					schedulerEmbed,
+					conversationId: getConversationId(),
+					loading: false,
+					timestamp: Date.now()
+				}
+			});
+			return;
+		}
+
+		if (action.type === 'custom_button') {
+			dispatch({
+				type: 'add_message',
+				payload: {
+					id,
+					variant: 'chatbot',
+					type: 'custom_button',
+					message: action.message,
+					customButton: action,
+					conversationId: getConversationId(),
+					loading: false,
+					timestamp: Date.now()
+				}
+			});
+		}
+	};
+
 	const startLiveVoiceCall = async () => {
+		if (shouldRequireLeadBeforeSend()) {
+			const leadFormMessage = buildLeadFormMessage('before_response');
+			if (leadFormMessage) {
+				setIsLeadCaptureLocked(true);
+				setPendingLeadCapture({ type: 'before_voice' });
+				dispatch({ type: 'add_message', payload: leadFormMessage });
+			}
+			return;
+		}
 		if (
 			!isLiveVoiceSupported ||
 			isFetching ||
@@ -937,9 +1002,14 @@ const removeExistingSchedulerEmbeds = (
 				signature,
 				localDev,
 				voiceApiBaseUrl,
+				conversationId: getConversationId(),
 				audioElement: liveVoiceAudioRef.current,
 				signal: abortController.signal,
-				onStateChange: setVoiceCallState
+				onStateChange: setVoiceCallState,
+				onClientAction: handleVoiceClientAction,
+				onSession: ({ conversationId }) => {
+					if (conversationId) persistConversationId(conversationId);
+				}
 			});
 			if (abortController.signal.aborted) {
 				session.end();

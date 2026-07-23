@@ -55,6 +55,8 @@ test("posts SDP to DocsBot with widget auth, supports mute, and cleans up", asyn
     getAudioTracks: () => [track],
   };
   const states = [];
+  const clientActions = [];
+  const sessions = [];
   let request;
 
   class MockPeerConnection {
@@ -67,7 +69,14 @@ test("posts SDP to DocsBot with widget auth, supports mute, and cleans up", asyn
       assert.equal(addedStream, stream);
     }
     createDataChannel(label) {
-      this.dataChannel = { label, closed: false, close() { this.closed = true; } };
+      this.dataChannel = {
+        label,
+        closed: false,
+        addEventListener(name, callback) {
+          if (name === "message") this.onMessage = callback;
+        },
+        close() { this.closed = true; },
+      };
       return this.dataChannel;
     }
     async createOffer() { return { type: "offer", sdp: "test-offer" }; }
@@ -80,13 +89,22 @@ test("posts SDP to DocsBot with widget auth, supports mute, and cleans up", asyn
     teamId: "team 1",
     botId: "bot/1",
     signature: "signed-widget-token",
+    conversationId: "conversation-1",
     mediaDevices: { getUserMedia: async () => stream },
     RTCPeerConnectionCtor: MockPeerConnection,
     fetchImpl: async (url, options) => {
       request = { url, options };
-      return new Response("test-answer", { status: 200 });
+      return new Response("test-answer", {
+        status: 200,
+        headers: {
+          "X-DocsBot-Voice-Call-Id": "call-1",
+          "X-DocsBot-Conversation-Id": "conversation-1",
+        },
+      });
     },
     onStateChange: (state) => states.push(state),
+    onClientAction: (action) => clientActions.push(action),
+    onSession: (sessionInfo) => sessions.push(sessionInfo),
   });
 
   assert.equal(
@@ -94,6 +112,10 @@ test("posts SDP to DocsBot with widget auth, supports mute, and cleans up", asyn
     "https://api.docsbot.ai/teams/team%201/bots/bot%2F1/voice/webrtc",
   );
   assert.equal(request.options.headers.Authorization, "Bearer signed-widget-token");
+  assert.equal(
+    request.options.headers["X-DocsBot-Conversation-Id"],
+    "conversation-1",
+  );
   assert.equal(request.options.headers["Content-Type"], "application/sdp");
   assert.equal(request.options.body, "test-offer");
   assert.equal(session.eventsDataChannel.label, "oai-events");
@@ -101,6 +123,25 @@ test("posts SDP to DocsBot with widget auth, supports mute, and cleans up", asyn
     type: "answer",
     sdp: "test-answer",
   });
+  assert.deepEqual(sessions, [
+    { callId: "call-1", conversationId: "conversation-1" },
+  ]);
+  session.eventsDataChannel.onMessage({
+    data: JSON.stringify({
+      item: {
+        type: "function_call_output",
+        output: JSON.stringify({
+          client_action: {
+            type: "custom_button",
+            buttonText: "Open account",
+          },
+        }),
+      },
+    }),
+  });
+  assert.deepEqual(clientActions, [
+    { type: "custom_button", buttonText: "Open account" },
+  ]);
 
   assert.equal(session.setMuted(true), true);
   assert.equal(track.enabled, false);
