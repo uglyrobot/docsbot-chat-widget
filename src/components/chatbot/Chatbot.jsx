@@ -330,6 +330,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const [isVoiceCallMuted, setIsVoiceCallMuted] = useState(false);
 	const [voiceCallError, setVoiceCallError] = useState('');
 	const [voiceOutputLevel, setVoiceOutputLevel] = useState(0);
+	const [voiceWaveformLevels, setVoiceWaveformLevels] = useState(() =>
+		Array(32).fill(0.04)
+	);
 	const [streamController, setStreamController] = useState(null);
 	const streamControllerRef = useRef(null);
 	const requestIdCounterRef = useRef(0);
@@ -908,6 +911,7 @@ const removeExistingSchedulerEmbeds = (
 		liveVoiceSessionRef.current = null;
 		setIsVoiceCallMuted(false);
 		setVoiceOutputLevel(0);
+		setVoiceWaveformLevels(Array(32).fill(0.04));
 		setVoiceCallState('ended');
 	};
 
@@ -997,7 +1001,6 @@ const removeExistingSchedulerEmbeds = (
 		if (
 			!isLiveVoiceSupported ||
 			isFetching ||
-			isPiiRedactionLoading ||
 			isLeadFormVisible ||
 			isRecordingAudio ||
 			isLiveVoiceBusy
@@ -1014,6 +1017,7 @@ const removeExistingSchedulerEmbeds = (
 		setVoiceCallError('');
 		setIsVoiceCallMuted(false);
 		setVoiceOutputLevel(0);
+		setVoiceWaveformLevels(Array(32).fill(0.04));
 
 		try {
 			const session = await createDocsBotVoiceSession({
@@ -1028,7 +1032,13 @@ const removeExistingSchedulerEmbeds = (
 				signal: abortController.signal,
 				onStateChange: setVoiceCallState,
 				onClientAction: handleVoiceClientAction,
-				onOutputLevel: setVoiceOutputLevel,
+				onOutputLevel: (level) => {
+					setVoiceOutputLevel(level);
+					setVoiceWaveformLevels((previous) => [
+						...previous.slice(1),
+						Math.max(0.04, level)
+					]);
+				},
 				onSession: ({ conversationId }) => {
 					if (conversationId) persistConversationId(conversationId);
 				}
@@ -3089,6 +3099,20 @@ const removeExistingSchedulerEmbeds = (
 						aria-busy={isFetching ? 'true' : 'false'}
 						aria-label={chatRegionLabel}
 					>
+						{isLiveVoiceBusy && (
+							<div
+								className={`docsbot-live-voice-orb-overlay is-${voiceCallState}`}
+								aria-hidden="true"
+							>
+								<span
+									className="docsbot-live-voice-orb"
+									style={{
+										'--docsbot-voice-scale': 1 + voiceOutputLevel * 0.2,
+										'--docsbot-voice-glow': `${7 + voiceOutputLevel * 12}px`
+									}}
+								/>
+							</div>
+						)}
 						{visibleMessageKeys.map((key, index) => {
 							const message = state.messages[key];
 							message.isLast =
@@ -3378,7 +3402,7 @@ const removeExistingSchedulerEmbeds = (
 											</span>
 										</div>
 									)}
-									{showPiiRedactionStatus && (
+									{showPiiRedactionStatus && !isLiveVoiceBusy && (
 										<div
 											className={clsx(
 												'docsbot-privacy-protection-status',
@@ -3518,16 +3542,18 @@ const removeExistingSchedulerEmbeds = (
 												role="group"
 												aria-label={voiceCallLabels.connected}
 											>
-												<div className="docsbot-live-voice-orb-wrap" aria-hidden="true">
-													<span
-														className="docsbot-live-voice-orb"
-														style={{
-															'--docsbot-voice-scale': 1 + voiceOutputLevel * 0.3,
-															'--docsbot-voice-glow': `${10 + voiceOutputLevel * 20}px`
-														}}
-													/>
+												<div className="docsbot-live-voice-wave" aria-hidden="true">
+													{voiceWaveformLevels.map((level, index) => (
+														<span
+															key={index}
+															style={{
+																height: `${Math.round(2 + level * 18)}px`,
+																opacity: 0.42 + level * 0.5
+															}}
+														/>
+													))}
 												</div>
-												<span className="docsbot-live-voice-input-label" role="status" aria-live="polite">
+												<span className="docsbot-screen-reader-only" role="status" aria-live="polite">
 													{voiceCallState === 'connecting'
 														? voiceCallLabels.connecting
 														: voiceCallLabels.connected}
@@ -3776,7 +3802,6 @@ const removeExistingSchedulerEmbeds = (
 											className="docsbot-live-voice-btn"
 											disabled={
 												isFetching ||
-												isPiiRedactionLoading ||
 												isLeadFormVisible
 											}
 											aria-label={voiceCallLabels.start}

@@ -125,7 +125,31 @@ test("starts, mutes, and ends a real browser WebRTC call through DocsBot SDP", a
   await root.getByRole("button", { name: "Start voice call" }).click();
   await expect(root.getByText("Voice call active")).toBeVisible();
   await expect(root.locator("textarea")).toBeHidden();
-  await expect(root.locator(".docsbot-live-voice-orb")).toBeVisible();
+  const orb = root.locator(
+    ".docsbot-chat-message-container .docsbot-live-voice-orb",
+  );
+  await expect(orb).toBeVisible();
+  await expect(root.locator(".docsbot-live-voice-wave")).toBeVisible();
+  const orbBox = await orb.boundingBox();
+  expect(orbBox.width).toBeLessThanOrEqual(24);
+  expect(orbBox.height).toBeLessThanOrEqual(24);
+  const messageContainer = root.locator(".docsbot-chat-message-container");
+  await messageContainer.evaluate((element) => {
+    const spacer = document.createElement("div");
+    spacer.setAttribute("aria-hidden", "true");
+    spacer.style.height = "1200px";
+    element.appendChild(spacer);
+    element.scrollTop = 160;
+  });
+  const stickyOrbY = (await orb.boundingBox()).y;
+  await messageContainer.evaluate((element) => {
+    element.scrollTop = 700;
+  });
+  await expect.poll(async () => (await orb.boundingBox()).y).toBeCloseTo(stickyOrbY, 0);
+  const fadeBackground = await root
+    .locator(".docsbot-live-voice-orb-overlay")
+    .evaluate((element) => getComputedStyle(element, "::before").backgroundImage);
+  expect(fadeBackground).toContain("radial-gradient");
 
   const muteButton = root.getByRole("button", { name: "Mute microphone" });
   await muteButton.click();
