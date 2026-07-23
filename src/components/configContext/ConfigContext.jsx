@@ -10,6 +10,7 @@ import {
   resolveExplicitLocaleString,
 } from "../../utils/mergeWidgetLabels.mjs";
 import { resolveEffectivePiiRedactionConfig } from "../../utils/piiRedaction.mjs";
+import { isVoiceAgentCallEnabled } from "../../utils/voiceAgentConfig.mjs";
 
 const ConfigContext = createContext();
 
@@ -183,6 +184,7 @@ export function ConfigProvider(props = {}) {
         });
 
         const textDirection = localeMod.isRTL ? "rtl" : "ltr";
+        const useVoiceAgent = isVoiceAgentCallEnabled(data);
         const piiRedaction = resolveEffectivePiiRedactionConfig(
           data.piiRedaction,
           optionsPiiRedaction,
@@ -198,6 +200,8 @@ export function ConfigProvider(props = {}) {
           identify: identify || {},
           signature,
           ...restOptions,
+          // Server-only capability gate: embed options cannot activate paid Realtime calls.
+          useVoiceAgent,
           piiRedaction,
           labels: mergedLabels,
           textDirection,
