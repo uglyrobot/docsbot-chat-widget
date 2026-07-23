@@ -54,6 +54,21 @@ async function responseError(response) {
   }
 }
 
+export function serializeVoiceMetadata(metadata) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "";
+  const publicMetadata = Object.fromEntries(
+    Object.entries(metadata).filter(
+      ([key]) => typeof key === "string" && !key.startsWith("priv_"),
+    ),
+  );
+  try {
+    const serialized = JSON.stringify(publicMetadata);
+    return serialized.length <= 16_384 ? serialized : "";
+  } catch {
+    return "";
+  }
+}
+
 export async function createDocsBotVoiceSession({
   teamId,
   botId,
@@ -62,13 +77,18 @@ export async function createDocsBotVoiceSession({
   voiceApiBaseUrl,
   audioElement,
   conversationId,
+  metadata,
   onClientAction = () => {},
+  onOutputLevel = () => {},
   onSession = () => {},
   signal,
   onStateChange = () => {},
   fetchImpl = globalThis.fetch,
   mediaDevices = globalThis.navigator?.mediaDevices,
   RTCPeerConnectionCtor = globalThis.RTCPeerConnection,
+  AudioContextCtor = globalThis.AudioContext || globalThis.webkitAudioContext,
+  requestAnimationFrameImpl = globalThis.requestAnimationFrame?.bind(globalThis),
+  cancelAnimationFrameImpl = globalThis.cancelAnimationFrame?.bind(globalThis),
 }) {
   if (!teamId || !botId) throw new Error("DocsBot team and bot IDs are required");
   if (typeof fetchImpl !== "function") throw new Error("Fetch is unavailable");
@@ -83,12 +103,68 @@ export async function createDocsBotVoiceSession({
   let eventsDataChannel;
   let ended = false;
   let muted = false;
+  let outputAudioContext;
+  let outputSource;
+  let outputAnalyser;
+  let outputAnimationFrame;
+
+  const stopOutputAnalysis = () => {
+    if (outputAnimationFrame != null) {
+      cancelAnimationFrameImpl?.(outputAnimationFrame);
+      outputAnimationFrame = null;
+    }
+    outputSource?.disconnect?.();
+    outputAnalyser?.disconnect?.();
+    outputSource = null;
+    outputAnalyser = null;
+    void outputAudioContext?.close?.();
+    outputAudioContext = null;
+    onOutputLevel(0);
+  };
+
+  const startOutputAnalysis = (remoteStream) => {
+    stopOutputAnalysis();
+    if (
+      !remoteStream ||
+      typeof AudioContextCtor !== "function" ||
+      typeof requestAnimationFrameImpl !== "function"
+    ) return;
+    try {
+      outputAudioContext = new AudioContextCtor();
+      outputSource = outputAudioContext.createMediaStreamSource(remoteStream);
+      outputAnalyser = outputAudioContext.createAnalyser();
+      outputAnalyser.fftSize = 256;
+      outputAnalyser.smoothingTimeConstant = 0.72;
+      outputSource.connect(outputAnalyser);
+      void outputAudioContext.resume?.();
+      const samples = new Uint8Array(outputAnalyser.fftSize);
+      let smoothedLevel = 0;
+      const updateLevel = () => {
+        if (ended || !outputAnalyser) return;
+        outputAnalyser.getByteTimeDomainData(samples);
+        let sumSquares = 0;
+        for (const sample of samples) {
+          const normalized = (sample - 128) / 128;
+          sumSquares += normalized * normalized;
+        }
+        const rms = Math.sqrt(sumSquares / samples.length);
+        const target = Math.min(1, rms * 4.5);
+        smoothedLevel = smoothedLevel * 0.68 + target * 0.32;
+        onOutputLevel(smoothedLevel);
+        outputAnimationFrame = requestAnimationFrameImpl(updateLevel);
+      };
+      outputAnimationFrame = requestAnimationFrameImpl(updateLevel);
+    } catch {
+      stopOutputAnalysis();
+    }
+  };
 
   const cleanup = (notify = true) => {
     if (ended) return;
     ended = true;
     signal?.removeEventListener?.("abort", handleAbort);
     stream?.getTracks?.().forEach((track) => track.stop());
+    stopOutputAnalysis();
     eventsDataChannel?.close?.();
     if (peerConnection) {
       peerConnection.ontrack = null;
@@ -130,9 +206,12 @@ export async function createDocsBotVoiceSession({
 
     stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream));
     peerConnection.ontrack = (event) => {
-      if (!audioElement) return;
-      audioElement.srcObject = event.streams?.[0] || new MediaStream([event.track]);
-      void audioElement.play?.().catch(() => {});
+      const remoteStream = event.streams?.[0] || new MediaStream([event.track]);
+      startOutputAnalysis(remoteStream);
+      if (audioElement) {
+        audioElement.srcObject = remoteStream;
+        void audioElement.play?.().catch(() => {});
+      }
     };
     peerConnection.onconnectionstatechange = () => {
       if (ended) return;
@@ -147,6 +226,7 @@ export async function createDocsBotVoiceSession({
     await waitForIceGatheringComplete(peerConnection);
 
     const apiBase = resolveVoiceApiBase({ localDev, voiceApiBaseUrl });
+    const serializedMetadata = serializeVoiceMetadata(metadata);
     const response = await fetchImpl(
       `${apiBase}/teams/${encodeURIComponent(teamId)}/bots/${encodeURIComponent(botId)}/voice/webrtc`,
       {
@@ -157,6 +237,9 @@ export async function createDocsBotVoiceSession({
           ...(signature ? { Authorization: `Bearer ${signature}` } : {}),
           ...(conversationId
             ? { "X-DocsBot-Conversation-Id": conversationId }
+            : {}),
+          ...(serializedMetadata
+            ? { "X-DocsBot-Metadata": serializedMetadata }
             : {}),
         },
         body: peerConnection.localDescription?.sdp || offer.sdp,

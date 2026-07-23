@@ -4,6 +4,7 @@ import {
   createDocsBotVoiceSession,
   resolveLiveVoiceEnabled,
   resolveVoiceApiBase,
+  serializeVoiceMetadata,
   waitForIceGatheringComplete,
 } from "./voiceWebRtc.mjs";
 
@@ -25,6 +26,17 @@ test("resolves production, local, and explicit DocsBot API bases", () => {
   assert.equal(
     resolveVoiceApiBase({ voiceApiBaseUrl: "http://127.0.0.1:4567/" }),
     "http://127.0.0.1:4567",
+  );
+});
+
+test("serializes only public widget metadata for the voice request", () => {
+  assert.equal(
+    serializeVoiceMetadata({
+      account_name: "Acme",
+      plan: "pro",
+      priv_stripe_customer_id: "cus_secret",
+    }),
+    JSON.stringify({ account_name: "Acme", plan: "pro" }),
   );
 });
 
@@ -90,6 +102,10 @@ test("posts SDP to DocsBot with widget auth, supports mute, and cleans up", asyn
     botId: "bot/1",
     signature: "signed-widget-token",
     conversationId: "conversation-1",
+    metadata: {
+      account_name: "Acme",
+      priv_stripe_customer_id: "cus_never_send",
+    },
     mediaDevices: { getUserMedia: async () => stream },
     RTCPeerConnectionCtor: MockPeerConnection,
     fetchImpl: async (url, options) => {
@@ -115,6 +131,10 @@ test("posts SDP to DocsBot with widget auth, supports mute, and cleans up", asyn
   assert.equal(
     request.options.headers["X-DocsBot-Conversation-Id"],
     "conversation-1",
+  );
+  assert.equal(
+    request.options.headers["X-DocsBot-Metadata"],
+    JSON.stringify({ account_name: "Acme" }),
   );
   assert.equal(request.options.headers["Content-Type"], "application/sdp");
   assert.equal(request.options.body, "test-offer");
@@ -149,6 +169,75 @@ test("posts SDP to DocsBot with widget auth, supports mute, and cleans up", asyn
   assert.equal(track.stopped, true);
   assert.equal(session.eventsDataChannel.closed, true);
   assert.deepEqual(states, ["connecting", "ended"]);
+});
+
+test("reports output level from the remote model audio stream", async () => {
+  const micTrack = { stop() {} };
+  const micStream = {
+    getTracks: () => [micTrack],
+    getAudioTracks: () => [micTrack],
+  };
+  const remoteStream = { id: "model-audio" };
+  const levels = [];
+  let animationFrame;
+  let analyserDisconnected = false;
+  let sourceDisconnected = false;
+  let contextClosed = false;
+
+  class MockAudioContext {
+    createMediaStreamSource(stream) {
+      assert.equal(stream, remoteStream);
+      return {
+        connect() {},
+        disconnect() { sourceDisconnected = true; },
+      };
+    }
+    createAnalyser() {
+      return {
+        fftSize: 0,
+        smoothingTimeConstant: 0,
+        getByteTimeDomainData(samples) { samples.fill(160); },
+        disconnect() { analyserDisconnected = true; },
+      };
+    }
+    resume() {}
+    close() { contextClosed = true; }
+  }
+
+  class MockPeerConnection {
+    constructor() { this.iceGatheringState = "complete"; }
+    addTrack() {}
+    createDataChannel() { return { addEventListener() {}, close() {} }; }
+    async createOffer() { return { type: "offer", sdp: "offer" }; }
+    async setLocalDescription(offer) { this.localDescription = offer; }
+    async setRemoteDescription() {}
+    close() {}
+  }
+
+  const session = await createDocsBotVoiceSession({
+    teamId: "team",
+    botId: "bot",
+    mediaDevices: { getUserMedia: async () => micStream },
+    RTCPeerConnectionCtor: MockPeerConnection,
+    AudioContextCtor: MockAudioContext,
+    requestAnimationFrameImpl(callback) {
+      animationFrame = callback;
+      return 1;
+    },
+    cancelAnimationFrameImpl() {},
+    fetchImpl: async () => new Response("answer", { status: 200 }),
+    onOutputLevel: (level) => levels.push(level),
+  });
+
+  session.peerConnection.ontrack({ streams: [remoteStream] });
+  animationFrame();
+  assert.ok(levels.at(-1) > 0);
+
+  session.end();
+  assert.equal(levels.at(-1), 0);
+  assert.equal(sourceDisconnected, true);
+  assert.equal(analyserDisconnected, true);
+  assert.equal(contextClosed, true);
 });
 
 test("cleans up the microphone when DocsBot rejects the call", async () => {

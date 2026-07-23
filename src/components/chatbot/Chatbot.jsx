@@ -329,6 +329,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const [voiceCallState, setVoiceCallState] = useState('idle');
 	const [isVoiceCallMuted, setIsVoiceCallMuted] = useState(false);
 	const [voiceCallError, setVoiceCallError] = useState('');
+	const [voiceOutputLevel, setVoiceOutputLevel] = useState(0);
 	const [streamController, setStreamController] = useState(null);
 	const streamControllerRef = useRef(null);
 	const requestIdCounterRef = useRef(0);
@@ -906,6 +907,7 @@ const removeExistingSchedulerEmbeds = (
 		liveVoiceSessionRef.current?.end();
 		liveVoiceSessionRef.current = null;
 		setIsVoiceCallMuted(false);
+		setVoiceOutputLevel(0);
 		setVoiceCallState('ended');
 	};
 
@@ -962,6 +964,23 @@ const removeExistingSchedulerEmbeds = (
 					timestamp: Date.now()
 				}
 			});
+			return;
+		}
+
+		if (action.type === 'stripe_billing' && action.stripeBilling) {
+			dispatch({
+				type: 'add_message',
+				payload: {
+					id,
+					variant: 'chatbot',
+					type: 'stripe_billing',
+					message: action.message || '',
+					stripeBilling: action.stripeBilling,
+					conversationId: getConversationId(),
+					loading: false,
+					timestamp: Date.now()
+				}
+			});
 		}
 	};
 
@@ -994,6 +1013,7 @@ const removeExistingSchedulerEmbeds = (
 		liveVoiceAbortRef.current = abortController;
 		setVoiceCallError('');
 		setIsVoiceCallMuted(false);
+		setVoiceOutputLevel(0);
 
 		try {
 			const session = await createDocsBotVoiceSession({
@@ -1003,10 +1023,12 @@ const removeExistingSchedulerEmbeds = (
 				localDev,
 				voiceApiBaseUrl,
 				conversationId: getConversationId(),
+				metadata: mergeIdentifyMetadata(identify),
 				audioElement: liveVoiceAudioRef.current,
 				signal: abortController.signal,
 				onStateChange: setVoiceCallState,
 				onClientAction: handleVoiceClientAction,
+				onOutputLevel: setVoiceOutputLevel,
 				onSession: ({ conversationId }) => {
 					if (conversationId) persistConversationId(conversationId);
 				}
@@ -3344,47 +3366,16 @@ const removeExistingSchedulerEmbeds = (
 										autoPlay
 										hidden
 									/>
-									{voiceCallState !== 'idle' && (
+									{voiceCallState === 'error' && (
 										<div
-											className={`docsbot-live-voice-status is-${voiceCallState}`}
-											role={voiceCallState === 'error' ? 'alert' : 'status'}
+											className="docsbot-live-voice-status is-error"
+											role="alert"
 											aria-live="polite"
 										>
 											<span className="docsbot-live-voice-state">
 												<span aria-hidden="true" />
-												{voiceCallState === 'connecting' && voiceCallLabels.connecting}
-												{voiceCallState === 'connected' && voiceCallLabels.connected}
-												{voiceCallState === 'ended' && voiceCallLabels.ended}
-												{voiceCallState === 'error' &&
-													(voiceCallError || voiceCallLabels.error)}
+												{voiceCallError || voiceCallLabels.error}
 											</span>
-											{voiceCallState === 'connected' && (
-												<button
-													type="button"
-													className="docsbot-live-voice-mute"
-													onClick={toggleLiveVoiceMute}
-													aria-pressed={isVoiceCallMuted}
-													aria-label={
-														isVoiceCallMuted
-															? voiceCallLabels.unmute
-															: voiceCallLabels.mute
-													}
-												>
-													<FontAwesomeIcon
-														icon={isVoiceCallMuted ? faMicrophoneSlash : faMicrophone}
-													/>
-												</button>
-											)}
-											{isLiveVoiceBusy && (
-												<button
-													type="button"
-													className="docsbot-live-voice-end"
-													onClick={endLiveVoiceCall}
-													aria-label={voiceCallLabels.end}
-												>
-													<FontAwesomeIcon icon={faPhoneSlash} />
-												</button>
-											)}
 										</div>
 									)}
 									{showPiiRedactionStatus && (
@@ -3430,7 +3421,7 @@ const removeExistingSchedulerEmbeds = (
 										</div>
 									)}
 									<form
-										className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching || isRecordingAudio || isLeadFormVisible ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''} ${showLiveVoiceButton ? 'has-live-voice' : ''}`}
+										className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching || isRecordingAudio || isLeadFormVisible ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''} ${showLiveVoiceButton ? 'has-live-voice' : ''} ${isLiveVoiceBusy ? 'is-live-voice' : ''}`}
 									onSubmit={handleSubmit}
 									onDragEnter={
 										useImageUpload ? handleDragEnter : null
@@ -3517,6 +3508,48 @@ const removeExistingSchedulerEmbeds = (
 													<FontAwesomeIcon
 														icon={faCheck}
 													/>
+												</button>
+											</div>
+										)}
+
+										{isLiveVoiceBusy && (
+											<div
+												className={`docsbot-live-voice-input is-${voiceCallState}`}
+												role="group"
+												aria-label={voiceCallLabels.connected}
+											>
+												<div className="docsbot-live-voice-orb-wrap" aria-hidden="true">
+													<span
+														className="docsbot-live-voice-orb"
+														style={{
+															'--docsbot-voice-scale': 1 + voiceOutputLevel * 0.3,
+															'--docsbot-voice-glow': `${10 + voiceOutputLevel * 20}px`
+														}}
+													/>
+												</div>
+												<span className="docsbot-live-voice-input-label" role="status" aria-live="polite">
+													{voiceCallState === 'connecting'
+														? voiceCallLabels.connecting
+														: voiceCallLabels.connected}
+												</span>
+												{voiceCallState === 'connected' && (
+													<button
+														type="button"
+														className="docsbot-live-voice-mute"
+														onClick={toggleLiveVoiceMute}
+														aria-pressed={isVoiceCallMuted}
+														aria-label={isVoiceCallMuted ? voiceCallLabels.unmute : voiceCallLabels.mute}
+													>
+														<FontAwesomeIcon icon={isVoiceCallMuted ? faMicrophoneSlash : faMicrophone} />
+													</button>
+												)}
+												<button
+													type="button"
+													className="docsbot-live-voice-end"
+													onClick={endLiveVoiceCall}
+													aria-label={voiceCallLabels.end}
+												>
+													<FontAwesomeIcon icon={faPhoneSlash} />
 												</button>
 											</div>
 										)}

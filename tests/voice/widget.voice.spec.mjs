@@ -124,6 +124,8 @@ test("starts, mutes, and ends a real browser WebRTC call through DocsBot SDP", a
 
   await root.getByRole("button", { name: "Start voice call" }).click();
   await expect(root.getByText("Voice call active")).toBeVisible();
+  await expect(root.locator("textarea")).toBeHidden();
+  await expect(root.locator(".docsbot-live-voice-orb")).toBeVisible();
 
   const muteButton = root.getByRole("button", { name: "Mute microphone" });
   await muteButton.click();
@@ -132,7 +134,7 @@ test("starts, mutes, and ends a real browser WebRTC call through DocsBot SDP", a
   ).toHaveAttribute("aria-pressed", "true");
 
   await root.getByRole("button", { name: "End voice call" }).click();
-  await expect(root.getByText("Voice call ended")).toBeVisible();
+  await expect(root.locator("textarea")).toBeVisible();
   await expect(
     root.getByRole("button", { name: "Start voice call" }),
   ).toBeVisible();
@@ -179,5 +181,5 @@ test("opt-in live DocsBot voice target connects", async ({ page }) => {
     timeout: 30_000,
   });
   await root.getByRole("button", { name: "End voice call" }).click();
-  await expect(root.getByText("Voice call ended")).toBeVisible();
+  await expect(root.locator("textarea")).toBeVisible();
 });
