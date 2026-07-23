@@ -66,12 +66,12 @@ data: ${JSON.stringify({
 `;
 }
 
-export async function installWidgetMocks(page) {
-  await page.route("https://docsbot.ai/api/widget/**", async (route) => {
+export async function installWidgetMocks(page, widgetConfig = mockWidgetConfig) {
+  await page.route(/(?:docsbot\.ai\/api|localhost:3000\/api)\/widget\//, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(mockWidgetConfig),
+      body: JSON.stringify(widgetConfig),
     });
   });
 
