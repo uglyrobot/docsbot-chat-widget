@@ -39,8 +39,8 @@ async function installVoiceMocks(page) {
   }
 
   const voiceEndpointPatterns = [
-    "https://api.docsbot.ai/teams/**/voice/webrtc",
-    "http://127.0.0.1:9000/teams/**/voice/webrtc",
+    "https://api.docsbot.ai/teams/**/voice",
+    "http://127.0.0.1:9000/teams/**/voice",
   ];
   for (const pattern of voiceEndpointPatterns) {
     await page.route(pattern, async (route) => {

@@ -232,7 +232,7 @@ export async function createDocsBotVoiceSession({
     const apiBase = resolveVoiceApiBase({ localDev, voiceApiBaseUrl });
     const serializedMetadata = serializeVoiceMetadata(metadata);
     const response = await fetchImpl(
-      `${apiBase}/teams/${encodeURIComponent(teamId)}/bots/${encodeURIComponent(botId)}/voice/webrtc`,
+      `${apiBase}/teams/${encodeURIComponent(teamId)}/bots/${encodeURIComponent(botId)}/voice`,
       {
         method: "POST",
         headers: {

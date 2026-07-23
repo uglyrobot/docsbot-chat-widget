@@ -135,7 +135,7 @@ test("posts SDP to DocsBot with widget auth, supports mute, and cleans up", asyn
 
   assert.equal(
     request.url,
-    "https://api.docsbot.ai/teams/team%201/bots/bot%2F1/voice/webrtc",
+    "https://api.docsbot.ai/teams/team%201/bots/bot%2F1/voice",
   );
   assert.equal(request.options.headers.Authorization, "Bearer signed-widget-token");
   assert.equal(

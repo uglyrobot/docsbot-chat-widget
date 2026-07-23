@@ -14,7 +14,7 @@ Set **`options.inlineMediaSourcePlayer`** to `true` to make YouTube and download
 
 ### Live voice calls
 
-When browser voice is enabled for a bot, the widget creates a browser WebRTC connection by posting its SDP offer to the DocsBot endpoint `/teams/{team_id}/bots/{bot_id}/voice/webrtc`. OpenAI credentials are never sent to the browser. The existing `useAudioUpload` recorded-message control remains separate from live voice.
+When browser voice is enabled for a bot, the widget creates a browser WebRTC connection by posting its SDP offer to the DocsBot endpoint `/teams/{team_id}/bots/{bot_id}/voice`. OpenAI credentials are never sent to the browser. The existing `useAudioUpload` recorded-message control remains separate from live voice.
 
 If the widget is placed inside an iframe, the embedding page must delegate microphone access:
 
