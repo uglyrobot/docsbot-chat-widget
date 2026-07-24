@@ -270,6 +270,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		useTidyCal,
 		keepFooterVisible,
 		localDev,
+		testing,
 		allowedDomains,
 		linkSafetyEnabled,
 		leadCollect,
@@ -1836,6 +1837,7 @@ const removeExistingSchedulerEmbeds = (
 				tidycal: isTidyCalEnabled,
 				full_source: false,
 				metadata,
+				testing: Boolean(testing),
 				conversationId: getConversationId(),
 				context_items: contextItems || 6,
 				autocut: 2,
@@ -2268,6 +2270,7 @@ const removeExistingSchedulerEmbeds = (
 				markdown: true,
 				history,
 				metadata,
+				testing: Boolean(testing),
 				context_items: contextItems || 6,
 				autocut: 2
 			};
