@@ -159,6 +159,7 @@ export function ConfigProvider(props = {}) {
           branding,
           allowedDomains: optionsAllowedDomains,
           piiRedaction: optionsPiiRedaction,
+          testing: optionsTesting,
           ...restOptions
         } = options || {};
 
@@ -198,6 +199,7 @@ export function ConfigProvider(props = {}) {
           identify: identify || {},
           signature,
           ...restOptions,
+          testing: optionsTesting === true,
           piiRedaction,
           labels: mergedLabels,
           textDirection,
