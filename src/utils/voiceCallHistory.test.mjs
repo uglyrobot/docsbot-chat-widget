@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildVoiceCallHistoryItems } from './voiceCallHistory.mjs';
+import {
+	buildVoiceCallHistoryItems,
+	interleaveVoiceLiveItems
+} from './voiceCallHistory.mjs';
 
 test('buildVoiceCallHistoryItems maps prior chat into appendable voice entries', () => {
 	const items = buildVoiceCallHistoryItems({
@@ -72,4 +75,55 @@ test('buildVoiceCallHistoryItems tolerates empty or invalid message maps', () =>
 	assert.deepEqual(buildVoiceCallHistoryItems(null), []);
 	assert.deepEqual(buildVoiceCallHistoryItems([]), []);
 	assert.deepEqual(buildVoiceCallHistoryItems(undefined), []);
+});
+
+test('interleaveVoiceLiveItems keeps tool cards anchored before later transcripts', () => {
+	const transcripts = [
+		{ itemId: 'caller-1', role: 'caller', text: 'Book a demo' },
+		{ itemId: 'agent-1', role: 'agent', text: 'Opening the calendar.' },
+		{ itemId: 'caller-2', role: 'caller', text: 'Tuesday works.' },
+		{ itemId: 'agent-2', role: 'agent', text: 'Sounds good.' }
+	];
+	const actions = [
+		{
+			id: 'voice-action-booking',
+			afterItemId: 'agent-1',
+			message: { id: 'voice-action-booking', type: 'calendly' }
+		}
+	];
+
+	assert.deepEqual(
+		interleaveVoiceLiveItems(transcripts, actions).map((item) =>
+			item.kind === 'transcript'
+				? { kind: item.kind, id: item.id }
+				: { kind: item.kind, id: item.id }
+		),
+		[
+			{ kind: 'transcript', id: 'caller-1' },
+			{ kind: 'transcript', id: 'agent-1' },
+			{ kind: 'action', id: 'voice-action-booking' },
+			{ kind: 'transcript', id: 'caller-2' },
+			{ kind: 'transcript', id: 'agent-2' }
+		]
+	);
+});
+
+test('interleaveVoiceLiveItems places unanchored actions before live transcripts', () => {
+	const items = interleaveVoiceLiveItems(
+		[{ itemId: 'caller-1', role: 'caller', text: 'Hi' }],
+		[
+			{
+				id: 'voice-action-early',
+				afterItemId: null,
+				message: { id: 'voice-action-early', type: 'custom_button' }
+			}
+		]
+	);
+	assert.deepEqual(
+		items.map((item) => ({ kind: item.kind, id: item.id })),
+		[
+			{ kind: 'action', id: 'voice-action-early' },
+			{ kind: 'transcript', id: 'caller-1' }
+		]
+	);
 });

@@ -262,6 +262,49 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 	await expect(root.getByText('Open your account settings.')).toBeVisible();
 	await expect(root.getByText('must-not-render-action')).toHaveCount(0);
 
+	// Later speech must append below the tool card, not above it.
+	await page.evaluate(() => {
+		window.__emitDocsBotVoiceEvent({
+			type: 'conversation.item.input_audio_transcription.completed',
+			item_id: 'caller-after-card',
+			transcript: 'Thanks, I opened it.'
+		});
+		window.__emitDocsBotVoiceEvent({
+			type: 'response.output_audio_transcript.done',
+			item_id: 'agent-after-card',
+			transcript: 'Great — let me know if you need anything else.'
+		});
+	});
+	await expect(root.getByText('Thanks, I opened it.')).toBeVisible();
+	await expect(
+		root.getByText('Great — let me know if you need anything else.')
+	).toBeVisible();
+	const timelineTexts = await root
+		.locator('.docsbot-voice-transcripts-inner')
+		.evaluate((node) =>
+			[
+				...node.querySelectorAll(
+					'.docsbot-voice-transcript, .docsbot-voice-action-message'
+				)
+			]
+				.map((element) =>
+					element.textContent?.replace(/\s+/g, ' ').trim()
+				)
+				.filter(Boolean)
+		);
+	const cardIndex = timelineTexts.findIndex((text) =>
+		text.includes('Open your account settings.')
+	);
+	const laterCallerIndex = timelineTexts.findIndex((text) =>
+		text.includes('Thanks, I opened it.')
+	);
+	const laterAgentIndex = timelineTexts.findIndex((text) =>
+		text.includes('Great — let me know if you need anything else.')
+	);
+	expect(cardIndex).toBeGreaterThanOrEqual(0);
+	expect(laterCallerIndex).toBeGreaterThan(cardIndex);
+	expect(laterAgentIndex).toBeGreaterThan(laterCallerIndex);
+
 	await page.evaluate(() => {
 		window.__emitDocsBotVoiceEvent({
 			type: 'conversation.item.created',

@@ -13,6 +13,7 @@ import {
 	VoiceCallSessionError,
 	buildVoiceWidgetPublicMetadata
 } from '../../utils/voiceCallSession.mjs';
+import { interleaveVoiceLiveItems } from '../../utils/voiceCallHistory.mjs';
 import {
 	VOICE_CALL_STATUS,
 	createVoiceRealtimeState,
@@ -80,10 +81,63 @@ function safeConnectionError(error, labels) {
 	return labels.voiceCallError;
 }
 
-function upsertActionMessage(previous, message) {
+function upsertActionMessage(previous, message, afterItemId) {
 	if (!message?.id) return previous;
-	const without = previous.filter((entry) => entry.id !== message.id);
-	return [...without, message];
+	const existing = previous.find((entry) => entry.id === message.id);
+	if (existing) {
+		return previous.map((entry) =>
+			entry.id === message.id
+				? { ...entry, message }
+				: entry
+		);
+	}
+	return [
+		...previous,
+		{
+			id: message.id,
+			message,
+			afterItemId: afterItemId ?? null
+		}
+	];
+}
+
+function renderLiveTranscript(entry, labels) {
+	return (
+		<div
+			key={entry.itemId}
+			className={`docsbot-voice-transcript is-${entry.role}`}
+		>
+			<span className="docsbot-screen-reader-only">
+				{entry.role === 'caller'
+					? `${labels.voiceCallCaller}: `
+					: `${labels.voiceCallAgent}: `}
+			</span>
+			<span dir="auto">{entry.text}</span>
+		</div>
+	);
+}
+
+function renderLiveActionMessage(
+	message,
+	{
+		fetchAnswer,
+		onSchedulerBookingMetadata,
+		isCalendlyScriptReady,
+		isTidyCalScriptReady
+	}
+) {
+	return (
+		<div key={message.id} className="docsbot-voice-action-message">
+			<BotChatMessage
+				payload={message}
+				messageBoxRef={{ current: null }}
+				fetchAnswer={fetchAnswer || (() => {})}
+				onSchedulerBookingMetadata={onSchedulerBookingMetadata}
+				isCalendlyScriptReady={isCalendlyScriptReady}
+				isTidyCalScriptReady={isTidyCalScriptReady}
+			/>
+		</div>
+	);
 }
 
 export function VoiceCallView({
@@ -112,6 +166,7 @@ export function VoiceCallView({
 	const transcriptContentRef = useRef(null);
 	const stickToBottomRef = useRef(true);
 	const attemptRef = useRef(0);
+	const voiceStateRef = useRef(createVoiceRealtimeState());
 	const [voiceState, setVoiceState] = useState(createVoiceRealtimeState);
 	const [agentActivity, setAgentActivity] = useState(null);
 	const [actionMessages, setActionMessages] = useState([]);
@@ -139,9 +194,11 @@ export function VoiceCallView({
 
 	const handleRealtimeEvent = useCallback(
 		(event) => {
-			setVoiceState((current) =>
-				reduceVoiceRealtimeEvent(current, event)
-			);
+			setVoiceState((current) => {
+				const next = reduceVoiceRealtimeEvent(current, event);
+				voiceStateRef.current = next;
+				return next;
+			});
 			const toolName = voiceToolNameFromEvent(event);
 			if (toolName) {
 				setAgentActivity(
@@ -161,8 +218,13 @@ export function VoiceCallView({
 			if (clientAction) {
 				const message = onClientAction?.(clientAction);
 				if (message) {
+					const transcripts = orderedVoiceTranscripts(
+						voiceStateRef.current
+					);
+					const afterItemId =
+						transcripts[transcripts.length - 1]?.itemId ?? null;
 					setActionMessages((previous) =>
-						upsertActionMessage(previous, message)
+						upsertActionMessage(previous, message, afterItemId)
 					);
 				}
 			}
@@ -176,7 +238,9 @@ export function VoiceCallView({
 	const startCall = useCallback(async () => {
 		cleanupSession();
 		const attempt = ++attemptRef.current;
-		setVoiceState(createVoiceRealtimeState());
+		const initialVoiceState = createVoiceRealtimeState();
+		voiceStateRef.current = initialVoiceState;
+		setVoiceState(initialVoiceState);
 		setAgentActivity(null);
 		setActionMessages([]);
 		setErrorDetail('');
@@ -288,6 +352,7 @@ export function VoiceCallView({
 	}, [historyItems.length, scrollTranscriptsToBottom]);
 
 	const transcripts = orderedVoiceTranscripts(voiceState);
+	const liveItems = interleaveVoiceLiveItems(transcripts, actionMessages);
 	const modelAudioLevel =
 		voiceState.status === VOICE_CALL_STATUS.AGENT_SPEAKING
 			? outputLevel
@@ -300,6 +365,12 @@ export function VoiceCallView({
 	const actionScrollKey = lastAction
 		? `${actionMessages.length}:${lastAction.id}`
 		: '0';
+	const liveActionProps = {
+		fetchAnswer,
+		onSchedulerBookingMetadata,
+		isCalendlyScriptReady,
+		isTidyCalScriptReady
+	};
 
 	useEffect(() => {
 		const list = transcriptListRef.current;
@@ -394,36 +465,14 @@ export function VoiceCallView({
 							renderHistoryTranscript(entry, labels)
 						)
 					)}
-					{transcripts.map((entry) => (
-						<div
-							key={entry.itemId}
-							className={`docsbot-voice-transcript is-${entry.role}`}
-						>
-							<span className="docsbot-screen-reader-only">
-								{entry.role === 'caller'
-									? `${labels.voiceCallCaller}: `
-									: `${labels.voiceCallAgent}: `}
-							</span>
-							<span dir="auto">{entry.text}</span>
-						</div>
-					))}
-					{actionMessages.map((message) => (
-						<div
-							key={message.id}
-							className="docsbot-voice-action-message"
-						>
-							<BotChatMessage
-								payload={message}
-								messageBoxRef={{ current: null }}
-								fetchAnswer={fetchAnswer || (() => {})}
-								onSchedulerBookingMetadata={
-									onSchedulerBookingMetadata
-								}
-								isCalendlyScriptReady={isCalendlyScriptReady}
-								isTidyCalScriptReady={isTidyCalScriptReady}
-							/>
-						</div>
-					))}
+					{liveItems.map((entry) =>
+						entry.kind === 'action'
+							? renderLiveActionMessage(
+									entry.message,
+									liveActionProps
+								)
+							: renderLiveTranscript(entry.transcript, labels)
+					)}
 				</div>
 			</div>
 

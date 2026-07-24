@@ -48,3 +48,60 @@ export function buildVoiceCallHistoryItems(messages) {
 	}
 	return items;
 }
+
+/**
+ * Merge live voice transcripts with tool cards so cards stay anchored to
+ * the turn when the tool ran. Later speech must render after the card.
+ *
+ * Each action entry should include `afterItemId`: the transcript item id
+ * that was latest when the client_action arrived (or null if none yet).
+ */
+export function interleaveVoiceLiveItems(transcripts, actionEntries) {
+	const transcriptList = Array.isArray(transcripts) ? transcripts : [];
+	const actions = Array.isArray(actionEntries)
+		? actionEntries.filter((entry) => entry?.id && entry?.message)
+		: [];
+	if (!actions.length) {
+		return transcriptList.map((entry) => ({
+			kind: 'transcript',
+			id: entry.itemId,
+			transcript: entry
+		}));
+	}
+
+	const remaining = [...actions];
+	const takeAfter = (itemId) => {
+		const matched = [];
+		for (let index = remaining.length - 1; index >= 0; index -= 1) {
+			const anchor = remaining[index].afterItemId ?? null;
+			if (anchor === itemId) {
+				matched.unshift(remaining.splice(index, 1)[0]);
+			}
+		}
+		return matched.map((entry) => ({
+			kind: 'action',
+			id: entry.id,
+			message: entry.message
+		}));
+	};
+
+	const items = [...takeAfter(null)];
+	for (const entry of transcriptList) {
+		items.push({
+			kind: 'transcript',
+			id: entry.itemId,
+			transcript: entry
+		});
+		items.push(...takeAfter(entry.itemId));
+	}
+
+	// Orphaned anchors (rare) still render rather than dropping the card.
+	for (const entry of remaining) {
+		items.push({
+			kind: 'action',
+			id: entry.id,
+			message: entry.message
+		});
+	}
+	return items;
+}
