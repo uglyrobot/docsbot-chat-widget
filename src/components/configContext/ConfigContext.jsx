@@ -10,7 +10,10 @@ import {
   resolveExplicitLocaleString,
 } from "../../utils/mergeWidgetLabels.mjs";
 import { resolveEffectivePiiRedactionConfig } from "../../utils/piiRedaction.mjs";
-import { isVoiceAgentCallEnabled } from "../../utils/voiceAgentConfig.mjs";
+import {
+  isVoiceAgentCallEnabled,
+  resolveEffectiveVoiceAgentCallEnabled,
+} from "../../utils/voiceAgentConfig.mjs";
 
 const ConfigContext = createContext();
 
@@ -160,6 +163,7 @@ export function ConfigProvider(props = {}) {
           branding,
           allowedDomains: optionsAllowedDomains,
           piiRedaction: optionsPiiRedaction,
+          useVoiceAgent: optionsUseVoiceAgent,
           ...restOptions
         } = options || {};
 
@@ -184,7 +188,11 @@ export function ConfigProvider(props = {}) {
         });
 
         const textDirection = localeMod.isRTL ? "rtl" : "ltr";
-        const useVoiceAgent = isVoiceAgentCallEnabled(data);
+        const useVoiceAgent = resolveEffectiveVoiceAgentCallEnabled(
+          isVoiceAgentCallEnabled(data),
+          optionsUseVoiceAgent,
+          { localDev }
+        );
         const piiRedaction = resolveEffectivePiiRedactionConfig(
           data.piiRedaction,
           optionsPiiRedaction,

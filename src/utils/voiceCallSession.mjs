@@ -1,3 +1,5 @@
+import { mergeIdentifyMetadata } from './identity.js';
+
 const MAX_SDP_BYTES = 512 * 1024;
 const MICROPHONE_LEVEL_NOISE_FLOOR = 0.015;
 const MICROPHONE_LEVEL_RANGE = 0.16;
@@ -43,12 +45,49 @@ export class VoiceCallSessionError extends Error {
 	}
 }
 
+async function requestVoiceMicrophone(getUserMedia) {
+	const preferred = {
+		audio: {
+			echoCancellation: true,
+			noiseSuppression: true,
+			autoGainControl: true
+		}
+	};
+	try {
+		return await getUserMedia(preferred);
+	} catch (error) {
+		if (error?.name === 'OverconstrainedError') {
+			return getUserMedia({ audio: true });
+		}
+		throw error;
+	}
+}
+
+/**
+ * Same flattened identify payload chat-agent sends in the request body.
+ * Nested `identify.metadata` is merged to the top level (no nested `metadata` key).
+ */
+export function buildVoiceWidgetPublicMetadata(
+	identify,
+	{ referrer } = {}
+) {
+	const metadata = mergeIdentifyMetadata(identify);
+	if (
+		referrer !== undefined &&
+		!Object.prototype.hasOwnProperty.call(metadata, 'referrer')
+	) {
+		metadata.referrer = referrer;
+	}
+	return metadata;
+}
+
 export function buildVoiceWebrtcRequest({
 	apiBase,
 	teamId,
 	botId,
 	conversationId,
 	authToken,
+	metadata,
 	sdp
 }) {
 	const headers = { 'Content-Type': 'application/sdp' };
@@ -57,6 +96,16 @@ export function buildVoiceWebrtcRequest({
 	}
 	if (authToken) {
 		headers.Authorization = `Bearer ${authToken}`;
+	}
+	if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
+		const publicMetadata = Object.fromEntries(
+			Object.entries(metadata).filter(
+				([key]) => typeof key === 'string' && !key.startsWith('priv_')
+			)
+		);
+		if (Object.keys(publicMetadata).length > 0) {
+			headers['X-DocsBot-Metadata'] = JSON.stringify(publicMetadata);
+		}
 	}
 	return {
 		url: `${apiBase}/teams/${teamId}/bots/${botId}/voice`,
@@ -119,6 +168,10 @@ async function readVoiceError(response) {
 	return 'Could not start voice conversation.';
 }
 
+function defaultFetchImpl(url, options) {
+	return globalThis.fetch(url, options);
+}
+
 export class DocsBotVoiceCallSession {
 	constructor({
 		apiBase,
@@ -126,8 +179,9 @@ export class DocsBotVoiceCallSession {
 		botId,
 		conversationId,
 		authToken,
+		metadata,
 		remoteAudio,
-		fetchImpl = globalThis.fetch,
+		fetchImpl = defaultFetchImpl,
 		RTCPeerConnectionImpl = globalThis.RTCPeerConnection,
 		getUserMedia = (constraints) =>
 			globalThis.navigator.mediaDevices.getUserMedia(constraints),
@@ -138,7 +192,14 @@ export class DocsBotVoiceCallSession {
 		onMicrophoneLevel = () => {},
 		onOutputLevel = () => {}
 	}) {
-		this.config = { apiBase, teamId, botId, conversationId, authToken };
+		this.config = {
+			apiBase,
+			teamId,
+			botId,
+			conversationId,
+			authToken,
+			metadata
+		};
 		this.remoteAudio = remoteAudio;
 		this.fetchImpl = fetchImpl;
 		this.RTCPeerConnectionImpl = RTCPeerConnectionImpl;
@@ -311,13 +372,7 @@ export class DocsBotVoiceCallSession {
 		});
 
 		try {
-			this.microphone = await this.getUserMedia({
-				audio: {
-					echoCancellation: true,
-					noiseSuppression: true,
-					autoGainControl: true
-				}
-			});
+			this.microphone = await requestVoiceMicrophone(this.getUserMedia);
 			if (signal.aborted)
 				throw new DOMException('Cancelled', 'AbortError');
 			this.startMicrophoneLevelMeter();
@@ -361,6 +416,9 @@ export class DocsBotVoiceCallSession {
 			}
 
 			const request = buildVoiceWebrtcRequest({ ...this.config, sdp });
+			if (process.env.NODE_ENV !== 'production') {
+				console.info('DOCSBOT: posting voice SDP offer to', request.url);
+			}
 			const response = await this.fetchImpl(request.url, {
 				...request.options,
 				signal

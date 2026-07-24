@@ -4,6 +4,7 @@ import {
 	DocsBotVoiceCallSession,
 	VoiceCallSessionError,
 	buildVoiceWebrtcRequest,
+	buildVoiceWidgetPublicMetadata,
 	microphoneLevelFromByteTimeDomain,
 	remoteAudioLevelFromByteTimeDomain
 } from './voiceCallSession.mjs';
@@ -151,7 +152,7 @@ function createHarness({ responseOk = true } = {}) {
 	};
 }
 
-test('request builder uses raw SDP, auth, and active conversation headers', () => {
+test('request builder uses raw SDP, auth, conversation, and flattened identify metadata headers', () => {
 	assert.deepEqual(
 		buildVoiceWebrtcRequest({
 			apiBase: 'https://api.docsbot.ai',
@@ -159,6 +160,12 @@ test('request builder uses raw SDP, auth, and active conversation headers', () =
 			botId: 'bot-1',
 			conversationId: 'conversation-1',
 			authToken: 'private-signature',
+			metadata: {
+				name: 'Ada',
+				email: 'ada@example.com',
+				referrer: 'https://example.com/docs',
+				priv_stripe_customer_id: 'cus_untrusted'
+			},
 			sdp: 'v=0'
 		}),
 		{
@@ -168,11 +175,40 @@ test('request builder uses raw SDP, auth, and active conversation headers', () =
 				headers: {
 					'Content-Type': 'application/sdp',
 					'X-DocsBot-Conversation-Id': 'conversation-1',
-					Authorization: 'Bearer private-signature'
+					Authorization: 'Bearer private-signature',
+					'X-DocsBot-Metadata': JSON.stringify({
+						name: 'Ada',
+						email: 'ada@example.com',
+						referrer: 'https://example.com/docs'
+					})
 				},
 				body: 'v=0'
 			}
 		}
+	);
+});
+
+test('voice public metadata flattens identify.metadata like chat-agent', () => {
+	assert.deepEqual(
+		buildVoiceWidgetPublicMetadata(
+			{
+				name: 'Ada',
+				metadata: { plan: 'pro' }
+			},
+			{ referrer: 'https://example.com/page' }
+		),
+		{
+			name: 'Ada',
+			plan: 'pro',
+			referrer: 'https://example.com/page'
+		}
+	);
+	assert.equal(
+		Object.prototype.hasOwnProperty.call(
+			buildVoiceWidgetPublicMetadata({ metadata: { plan: 'pro' } }),
+			'metadata'
+		),
+		false
 	);
 });
 

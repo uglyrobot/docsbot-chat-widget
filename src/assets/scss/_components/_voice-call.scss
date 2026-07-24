@@ -1,24 +1,95 @@
 @use '../_utils/tokens' as *;
 
 .docsbot-voice-call-view {
+	--docsbot-voice-fade-top: 168px;
+	--docsbot-voice-fade-bottom: 72px;
+	--docsbot-voice-pad-top: 176px;
+	--docsbot-voice-pad-bottom: 96px;
+	--docsbot-voice-orb-size: clamp(88px, 22vw, 112px);
+	--docsbot-voice-connecting-offset: 0px;
+	--docsbot-voice-settle-duration: 700ms;
+	--docsbot-voice-settle-ease: cubic-bezier(0.22, 1, 0.36, 1);
+	position: relative;
 	min-height: 0;
 	flex: 1 1 auto;
 	display: flex;
 	flex-direction: column;
+	container-type: size;
+	container-name: docsbot-voice-call;
 	background:
 		radial-gradient(
-			circle at 50% 23%,
+			circle at 50% 18%,
 			rgba(226, 232, 240, 0.48),
-			transparent 38%
+			transparent 32%
 		),
 		#fff;
 	color: $color-neutral-100;
 	font-family: $font-family;
 	overflow: hidden;
+	overscroll-behavior: contain;
 }
 
 .docsbot-voice-remote-audio {
 	display: none;
+}
+
+.docsbot-voice-transcripts {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	overflow-x: hidden;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	-webkit-overflow-scrolling: touch;
+	padding: var(--docsbot-voice-pad-top) $spacing-lg
+		var(--docsbot-voice-pad-bottom);
+	scrollbar-width: thin;
+	opacity: 1;
+	transition: opacity 0.35s ease 0.12s;
+	-webkit-mask-image: linear-gradient(
+		to bottom,
+		transparent 0,
+		#000 var(--docsbot-voice-fade-top),
+		#000 calc(100% - var(--docsbot-voice-fade-bottom)),
+		transparent 100%
+	);
+	mask-image: linear-gradient(
+		to bottom,
+		transparent 0,
+		#000 var(--docsbot-voice-fade-top),
+		#000 calc(100% - var(--docsbot-voice-fade-bottom)),
+		transparent 100%
+	);
+}
+
+.docsbot-voice-transcripts-inner {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-height: min-content;
+}
+
+.docsbot-voice-call-chrome {
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	pointer-events: none;
+}
+
+.docsbot-voice-call-chrome-top {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+}
+
+.docsbot-voice-call-chrome-bottom {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	opacity: 1;
+	transition: opacity 0.35s ease 0.12s;
 }
 
 .docsbot-voice-call-topbar {
@@ -27,6 +98,7 @@
 	align-items: center;
 	min-height: 48px;
 	padding: $spacing-sm $spacing-md 0;
+	background: #fff;
 }
 
 .docsbot-voice-call-back {
@@ -43,6 +115,7 @@
 	font-size: 13px;
 	font-weight: 600;
 	cursor: pointer;
+	pointer-events: auto;
 
 	&:hover {
 		background: rgba(148, 163, 184, 0.12);
@@ -56,28 +129,52 @@
 }
 
 .docsbot-voice-call-stage {
-	min-height: 0;
-	flex: 1 1 auto;
+	position: relative;
+	z-index: 2;
+	flex: 0 0 auto;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
-	gap: 8px;
-	padding: 4px $spacing-lg 8px;
+	justify-content: flex-start;
+	gap: 6px;
+	padding: 0 $spacing-lg 28px;
 	text-align: center;
+	isolation: isolate;
+	transform: translateY(var(--docsbot-voice-connecting-offset));
+	transition:
+		transform var(--docsbot-voice-settle-duration)
+			var(--docsbot-voice-settle-ease),
+		background var(--docsbot-voice-settle-duration) ease;
+	background: linear-gradient(
+		to bottom,
+		#fff 0%,
+		#fff 62%,
+		rgba(255, 255, 255, 0.92) 78%,
+		rgba(255, 255, 255, 0) 100%
+	);
+}
+
+.docsbot-voice-call-orb-block {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: fit-content;
 }
 
 .docsbot-voice-orb-shell {
 	position: relative;
-	width: clamp(126px, 35vw, 184px);
-	height: clamp(126px, 35vw, 184px);
+	width: var(--docsbot-voice-orb-size);
+	height: var(--docsbot-voice-orb-size);
 	flex: 0 0 auto;
 	display: grid;
 	place-items: center;
 	border-radius: 50%;
 	transform: scale(var(--docsbot-voice-orb-scale, 1));
 	transform-origin: center;
-	transition: transform 90ms ease-out;
+	transition:
+		width var(--docsbot-voice-settle-duration) var(--docsbot-voice-settle-ease),
+		height var(--docsbot-voice-settle-duration) var(--docsbot-voice-settle-ease),
+		transform 90ms ease-out;
 
 	&::before,
 	&::after {
@@ -98,6 +195,13 @@
 		animation-delay: -1.1s;
 	}
 
+	&.is-compact {
+		&::before,
+		&::after {
+			animation-duration: 3.2s;
+		}
+	}
+
 	&.is-user_speaking::before,
 	&.is-agent_speaking::before {
 		opacity: 0.16;
@@ -108,7 +212,7 @@
 	&.is-ended::before,
 	&.is-error::after,
 	&.is-ended::after {
-		animation: none;
+		animation-duration: 9s;
 	}
 }
 
@@ -121,10 +225,27 @@
 }
 
 .docsbot-voice-call-status {
+	position: absolute;
+	left: 50%;
+	bottom: 6px;
+	z-index: 2;
 	min-height: 20px;
-	font-size: 14px;
+	max-width: min(100vw - 48px, 28ch);
+	padding: 3px 10px;
+	border-radius: 999px;
+	transform: translateX(-50%);
+	background: rgba(255, 255, 255, 0.52);
+	-webkit-backdrop-filter: blur(7px);
+	backdrop-filter: blur(7px);
+	box-shadow:
+		0 0 12px 6px rgba(255, 255, 255, 0.42),
+		0 0 24px 12px rgba(255, 255, 255, 0.22);
+	color: $color-neutral-100;
+	font-size: 13px;
 	font-weight: 650;
-	line-height: 20px;
+	line-height: 18px;
+	white-space: nowrap;
+	text-shadow: 0 0 8px rgba(255, 255, 255, 0.55);
 }
 
 .docsbot-voice-call-wave {
@@ -161,19 +282,6 @@
 	margin-top: 2px;
 }
 
-.docsbot-voice-transcripts {
-	flex: 0 1 auto;
-	min-height: 64px;
-	max-height: min(26vh, 154px);
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	overflow-y: auto;
-	overscroll-behavior: contain;
-	padding: 8px $spacing-lg;
-	scrollbar-width: thin;
-}
-
 .docsbot-voice-transcript {
 	width: fit-content;
 	max-width: 86%;
@@ -200,12 +308,34 @@
 	}
 }
 
+.docsbot-voice-action-message {
+	align-self: stretch;
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+	pointer-events: auto;
+
+	.docsbot-chat-bot-message {
+		margin: 0;
+	}
+
+	.docsbot-user-chat-message-container {
+		padding-inline: 0;
+	}
+}
+
 .docsbot-voice-call-controls {
 	flex: 0 0 auto;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: 12px $spacing-lg $spacing-lg;
+	padding: 18px $spacing-lg $spacing-lg;
+	background: linear-gradient(
+		to bottom,
+		rgba(255, 255, 255, 0) 0%,
+		rgba(255, 255, 255, 0.82) 28%,
+		#fff 58%
+	);
 }
 
 .docsbot-voice-call-input {
@@ -220,12 +350,15 @@
 	border-radius: 14px;
 	background: #fff;
 	box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+	pointer-events: auto;
 }
 
 .docsbot-voice-call-input .docsbot-voice-call-wave {
 	flex: 1 1 auto;
+	min-width: 0;
 	width: auto;
-	justify-content: flex-start;
+	justify-content: space-between;
+	gap: 0;
 }
 
 .docsbot-voice-control {
@@ -242,6 +375,7 @@
 	font-size: 13px;
 	font-weight: 650;
 	cursor: pointer;
+	pointer-events: auto;
 	transition:
 		background $transition-duration-default ease,
 		transform $transition-duration-short ease,
@@ -300,18 +434,49 @@
 	}
 }
 
-@media (max-height: 610px) {
+// Connecting: large centered orb. Leaving this state animates to the top.
+.docsbot-voice-call-view[data-voice-status='connecting'] {
+	--docsbot-voice-orb-size: clamp(168px, 48vw, 240px);
+	--docsbot-voice-connecting-offset: min(28cqh, 200px);
+
 	.docsbot-voice-call-stage {
-		justify-content: flex-start;
+		transition: none;
+		background: transparent;
 	}
 
 	.docsbot-voice-orb-shell {
-		width: 112px;
-		height: 112px;
+		transition: transform 90ms ease-out;
 	}
 
-	.docsbot-voice-transcripts {
-		max-height: 112px;
+	.docsbot-voice-transcripts,
+	.docsbot-voice-call-chrome-bottom {
+		opacity: 0;
+		transition: none;
+		pointer-events: none;
+	}
+
+	.docsbot-voice-call-status {
+		font-size: 15px;
+		bottom: 10px;
+	}
+}
+
+@media (max-height: 610px) {
+	.docsbot-voice-call-view {
+		--docsbot-voice-pad-top: 148px;
+		--docsbot-voice-pad-bottom: 84px;
+		--docsbot-voice-fade-top: 140px;
+		--docsbot-voice-fade-bottom: 64px;
+		--docsbot-voice-orb-size: 80px;
+	}
+
+	.docsbot-voice-call-view[data-voice-status='connecting'] {
+		--docsbot-voice-orb-size: clamp(132px, 40vw, 180px);
+		--docsbot-voice-connecting-offset: min(22cqh, 120px);
+	}
+
+	.docsbot-voice-call-stage {
+		padding-bottom: 22px;
 	}
 }
 
@@ -330,9 +495,21 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+	.docsbot-voice-call-view {
+		--docsbot-voice-settle-duration: 0ms;
+	}
+
+	.docsbot-voice-call-view[data-voice-status='connecting'] {
+		--docsbot-voice-orb-size: clamp(88px, 22vw, 112px);
+		--docsbot-voice-connecting-offset: 0px;
+	}
+
 	.docsbot-voice-orb-shell::before,
 	.docsbot-voice-orb-shell::after,
 	.docsbot-voice-orb-shell,
+	.docsbot-voice-call-stage,
+	.docsbot-voice-transcripts,
+	.docsbot-voice-call-chrome-bottom,
 	.docsbot-voice-control {
 		animation: none;
 		transition: none;

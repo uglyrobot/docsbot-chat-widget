@@ -16,6 +16,8 @@ Set **`options.inlineMediaSourcePlayer`** to `true` to make YouTube and download
 
 When browser voice is enabled for a bot, the widget creates a browser WebRTC connection by posting its SDP offer to the DocsBot endpoint `/teams/{team_id}/bots/{bot_id}/voice`. OpenAI credentials are never sent to the browser. The existing `useAudioUpload` recorded-message control remains separate from live voice.
 
+The live-call request sends the same flattened public `identify` fields chat-agent uses (plus `referrer` when missing) via the `X-DocsBot-Metadata` header — not a nested `metadata` object. Trusted `priv_*` values still come only from the signed JWT `signature`, never from client identify.
+
 If the widget is placed inside an iframe, the embedding page must delegate microphone access:
 
 ```html

@@ -40,3 +40,90 @@
 		color: $color-secondary-300;
 	}
 }
+
+// Voice start control: replaces send until the user types.
+// 24×24 composing orb on a soft radial disc — gray idle, light brand on hover.
+.docsbot-chat-btn-send.docsbot-chat-btn-voice-orb {
+	width: 24px;
+	height: 24px;
+	right: 14px;
+	bottom: 13px;
+	padding: 0;
+	margin: 0;
+	border-radius: 50%;
+	background: transparent;
+	overflow: visible;
+
+	&:hover:not(:disabled),
+	&:focus:not(:disabled) {
+		background: transparent;
+	}
+
+	&:disabled {
+		background: transparent;
+		opacity: 0.45;
+	}
+
+	// thinking-orbs dots don't fill the full canvas; trim the disc to the orb body.
+	.docsbot-chat-btn-voice-orb-disc {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 18px;
+		height: 18px;
+		margin: 0;
+		padding: 0;
+		border-radius: 50%;
+		background: radial-gradient(
+			circle at center,
+			$color-secondary-400 0%,
+			$color-secondary-400 42%,
+			rgba($color-secondary-400, 0.55) 68%,
+			rgba($color-secondary-400, 0) 100%
+		);
+		transform: translate(-50%, -50%);
+		pointer-events: none;
+		transition: background $transition-duration-default ease;
+	}
+
+	&:hover:not(:disabled) .docsbot-chat-btn-voice-orb-disc,
+	&:focus:not(:disabled) .docsbot-chat-btn-voice-orb-disc {
+		background: radial-gradient(
+			circle at center,
+			color-mix(
+					in srgb,
+					var(--docsbot-submit-button--bg, $color-primary-200) 28%,
+					#fff
+				)
+				0%,
+			color-mix(
+					in srgb,
+					var(--docsbot-submit-button--bg, $color-primary-200) 22%,
+					#fff
+				)
+				42%,
+			color-mix(
+					in srgb,
+					var(--docsbot-submit-button--bg, $color-primary-200) 12%,
+					transparent
+				)
+				68%,
+			transparent 100%
+		);
+	}
+
+	.docsbot-voice-orb-shell {
+		position: relative;
+		z-index: 1;
+		width: 24px;
+		height: 24px;
+		margin: 0;
+		padding: 0;
+		pointer-events: none;
+	}
+
+	.docsbot-voice-orb-shell::before,
+	.docsbot-voice-orb-shell::after {
+		content: none;
+	}
+}

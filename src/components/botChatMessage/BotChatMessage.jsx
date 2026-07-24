@@ -742,15 +742,10 @@ export const BotChatMessage = ({
 	]);
 
 	useEffect(() => {
-		if (payload?.schedulerEmbed && !payload.loading && payload.message) {
+		if (payload?.schedulerEmbed && !payload.loading) {
 			scrollToBottom(chatContainerRef);
 		}
-	}, [
-		payload?.schedulerEmbed,
-		payload.loading,
-		payload.message,
-		chatContainerRef
-	]);
+	}, [payload?.schedulerEmbed, payload.loading, chatContainerRef]);
 
 	// Check if this message has been replied to by looking for the next message
 	const hasNextMessage = () => {
@@ -784,6 +779,16 @@ export const BotChatMessage = ({
 		payload.type !== 'custom_button' &&
 		!isFirstBotMessage() &&
 		(isAgentLookupAnswer || (!isAgent && hasVisibleSources));
+	const hasVisibleMessageText =
+		typeof payload.message === 'string' &&
+		payload.message.trim().length > 0;
+	// Voice booking/Stripe handoffs omit copy (spoken in the transcript) and
+	// only render the embed/items — skip the empty grey bubble.
+	const showMessageBubble =
+		payload.loading ||
+		payload.error ||
+		hasVisibleMessageText ||
+		!(payload.schedulerEmbed?.path || payload.stripeBilling);
 
 	const handleCalendlyBookingScheduled = ({
 		eventName,
@@ -867,6 +872,7 @@ export const BotChatMessage = ({
 								labels={labels}
 							/>
 						)}
+					{showMessageBubble ? (
 					<div
 						className={clsx(
 							'docsbot-chat-bot-message bg-slate-100 text-slate-800'
@@ -1277,6 +1283,7 @@ export const BotChatMessage = ({
 							);
 						})()}
 					</div>
+					) : null}
 					{payload.type === 'custom_button' &&
 						payload.customButton?.buttonText &&
 						!payload.loading && (
@@ -1297,28 +1304,26 @@ export const BotChatMessage = ({
 								</button>
 							</div>
 						)}
-					{payload.schedulerEmbed?.path &&
-						!payload.loading &&
-						payload.message && (
-							<div className="docsbot-full-width-row-block">
-								{renderSchedulerEmbed({
-									schedulerEmbed: payload.schedulerEmbed,
-									messageId: payload.id,
-									isCalendlyScriptReady,
-									isTidyCalScriptReady,
-									onCalendlyBookingScheduled:
-										handleCalendlyBookingScheduled,
-									onCalComBookingSuccessful:
-										handleCalComBookingSuccessful,
-									onTidyCalBookingEvent:
-										handleTidyCalBookingEvent
-								})}
-							</div>
-						)}
+					{payload.schedulerEmbed?.path && !payload.loading && (
+						<div className="docsbot-full-width-row-block">
+							{renderSchedulerEmbed({
+								schedulerEmbed: payload.schedulerEmbed,
+								messageId: payload.id,
+								isCalendlyScriptReady,
+								isTidyCalScriptReady,
+								onCalendlyBookingScheduled:
+									handleCalendlyBookingScheduled,
+								onCalComBookingSuccessful:
+									handleCalComBookingSuccessful,
+								onTidyCalBookingEvent:
+									handleTidyCalBookingEvent
+							})}
+						</div>
+					)}
 					{!payload.schedulerEmbed?.path &&
 						payload.bookingSummary &&
 						!payload.loading &&
-						payload.message && (
+						hasVisibleMessageText && (
 							<div className="docsbot-full-width-row-block">
 								{renderBookingSummaryCard(
 									payload.bookingSummary,

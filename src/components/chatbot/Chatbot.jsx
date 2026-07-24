@@ -26,7 +26,6 @@ import {
 	faChevronDown,
 	faTimes,
 	faMicrophone,
-	faPhone,
 	faCheck
 } from '@fortawesome/free-solid-svg-icons';
 import { faImage } from '@fortawesome/free-regular-svg-icons';
@@ -72,6 +71,9 @@ import { LazyStreamdown } from '../streamdown/LazyStreamdown';
 import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { VoiceCallView } from '../voiceCall/VoiceCallView';
+import { VoiceOrb } from '../voiceCall/VoiceOrb';
+import { buildVoiceCallHistoryItems } from '../../utils/voiceCallHistory.mjs';
+import { VOICE_CALL_STATUS } from '../../utils/voiceRealtimeState.mjs';
 
 // Define error classes for fetchEventSource
 class RetriableError extends Error {}
@@ -312,7 +314,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const [isTidyCalScriptReady, setIsTidyCalScriptReady] = useState(false);
 	const [isRecordingAudio, setIsRecordingAudio] = useState(false);
 	const [isVoiceCallView, setIsVoiceCallView] = useState(false);
+	const [isVoiceOrbHovered, setIsVoiceOrbHovered] = useState(false);
 	const [voiceConversationId, setVoiceConversationId] = useState(null);
+	const [voiceCallHistoryItems, setVoiceCallHistoryItems] = useState([]);
 	const [audioRecordingElapsedMs, setAudioRecordingElapsedMs] = useState(0);
 	const [audioWaveformLevels, setAudioWaveformLevels] = useState(() =>
 		Array(40).fill(0.04)
@@ -415,13 +419,19 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		typeof window.MediaRecorder !== 'undefined';
 	const isVoiceAgentCallAvailable = useVoiceAgent === true;
 	const showAudioRecordButton =
-		!isVoiceAgentCallAvailable &&
-		isAudioUploadEnabled &&
-		!isRecordingAudio &&
-		chatInput === '';
-	const showVoiceCallButton =
+		isAudioUploadEnabled && !isRecordingAudio && chatInput === '';
+	// Voice start control lives in the send slot (orb). Swap to send as soon
+	// as the field has any text — same threshold as the mic record control.
+	const showVoiceCallOrbButton =
 		isVoiceAgentCallAvailable && !isRecordingAudio && chatInput === '';
-	const hasVoiceOrAudioAction = showAudioRecordButton || showVoiceCallButton;
+	const hasVoiceOrAudioAction = showAudioRecordButton;
+	const isComposerSubmitDisabled =
+		chatInput.trim().length < minInputLength ||
+		isFetching ||
+		isRecordingAudio ||
+		isLeadFormVisible;
+	const hasDisabledSubmit =
+		!showVoiceCallOrbButton && isComposerSubmitDisabled;
 	const maxAudioBytes = 25 * 1024 * 1024;
 	const maxAudioRecordingMs = 30 * 1000;
 	const audioMimeType =
@@ -1373,13 +1383,144 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		});
 	};
 
+	const upsertVoiceClientActionMessage = (action) => {
+		if (!action?.callId || !action?.type) return null;
+		const messageId = `voice-action-${action.callId}`;
+		const existing = stateMessagesRef.current?.[messageId];
+		const conversationId =
+			voiceConversationId || getStoredConversationId() || null;
+		const enabledProviders = {
+			calendly: isCalendlyEnabled,
+			calcom: isCalComEnabled,
+			tidycal: isTidyCalEnabled
+		};
+
+		if (action.kind === 'booking') {
+			const schedulerEmbed = resolveSchedulerEmbedForEventType(
+				action.type,
+				{
+					eventPath: action.eventPath,
+					hideEventDetails: action.hideEventDetails,
+					hideCookieBanner: action.hideCookieBanner,
+					hideEventDetail: action.hideEventDetail
+				},
+				enabledProviders
+			);
+			if (!schedulerEmbed) return null;
+			removeExistingSchedulerEmbeds(schedulerEmbed, messageId);
+			// Voice already speaks the handoff; show only the booking UI.
+			const payload = {
+				id: messageId,
+				variant: 'chatbot',
+				type: action.type,
+				message: '',
+				schedulerEmbed,
+				loading: false,
+				streaming: false,
+				voiceCall: true,
+				realtimeItemId: action.callId,
+				conversationId,
+				timestamp: existing?.timestamp || Date.now()
+			};
+			dispatch({
+				type: existing ? 'update_message' : 'add_message',
+				payload
+			});
+			return payload;
+		}
+
+		if (action.kind === 'custom_button') {
+			if (!useCustomButtons) return null;
+			const payload = {
+				id: messageId,
+				variant: 'chatbot',
+				type: 'custom_button',
+				message: action.message,
+				customButton: {
+					url: action.url,
+					functionKey: action.functionKey,
+					buttonText: action.buttonText,
+					message: action.message
+				},
+				loading: false,
+				streaming: false,
+				voiceCall: true,
+				realtimeItemId: action.callId,
+				conversationId,
+				timestamp: existing?.timestamp || Date.now()
+			};
+			dispatch({
+				type: existing ? 'update_message' : 'add_message',
+				payload
+			});
+			return payload;
+		}
+
+		if (action.kind === 'support_escalation') {
+			const payload = {
+				id: messageId,
+				variant: 'chatbot',
+				type: 'support_escalation',
+				message: action.message,
+				responses: action.responses || {},
+				isLast: true,
+				loading: false,
+				streaming: false,
+				voiceCall: true,
+				realtimeItemId: action.callId,
+				conversationId,
+				timestamp: existing?.timestamp || Date.now()
+			};
+			dispatch({
+				type: existing ? 'update_message' : 'add_message',
+				payload
+			});
+			return payload;
+		}
+
+		if (action.kind === 'stripe_billing') {
+			// Voice already speaks the handoff; show only the billing UI.
+			const payload = {
+				id: messageId,
+				variant: 'chatbot',
+				type: 'stripe_billing',
+				message: '',
+				stripeBilling: action.stripeBilling,
+				loading: false,
+				streaming: false,
+				voiceCall: true,
+				realtimeItemId: action.callId,
+				conversationId,
+				timestamp: existing?.timestamp || Date.now()
+			};
+			dispatch({
+				type: existing ? 'update_message' : 'add_message',
+				payload
+			});
+			return payload;
+		}
+
+		return null;
+	};
+
 	const startVoiceCall = () => {
 		if (!isVoiceAgentCallAvailable || isFetching || isLeadFormVisible)
 			return;
 		const conversationId = getConversationId();
 		setVoiceConversationId(conversationId);
+		// API resumes via conversationId; keep the same prior turns on screen
+		// so live voice transcripts append instead of looking like a fresh chat.
+		setVoiceCallHistoryItems(
+			buildVoiceCallHistoryItems(stateMessagesRef.current)
+		);
 		setIsVoiceCallView(true);
 	};
+
+	useEffect(() => {
+		if (!showVoiceCallOrbButton) {
+			setIsVoiceOrbHovered(false);
+		}
+	}, [showVoiceCallOrbButton]);
 
 	const getPiiRedactionSessionKey = (
 		conversationId = getConversationId()
@@ -2915,12 +3056,28 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							botId={botId}
 							conversationId={voiceConversationId}
 							signature={signature}
+							identify={identify}
 							labels={labels}
 							color={color}
 							showAgentActivity={showAgentActivity}
+							historyItems={voiceCallHistoryItems}
 							onConversationId={handleVoiceConversationId}
 							onTranscriptFinal={upsertVoiceTranscriptMessage}
-							onExit={() => setIsVoiceCallView(false)}
+							onClientAction={upsertVoiceClientActionMessage}
+							onSchedulerBookingMetadata={async (metadata) => {
+								if (!metadata || typeof metadata !== 'object') {
+									return;
+								}
+								updateIdentity({ metadata });
+								await updateConversationMetadata(metadata);
+							}}
+							fetchAnswer={fetchAnswer}
+							isCalendlyScriptReady={isCalendlyScriptReady}
+							isTidyCalScriptReady={isTidyCalScriptReady}
+							onExit={() => {
+								setIsVoiceCallView(false);
+								setVoiceCallHistoryItems([]);
+							}}
 						/>
 					) : (
 						<>
@@ -3247,6 +3404,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 											messageBoxRef={
 												messagesRefs.current[message.id]
 											}
+											consecutive={
+												index > 0 &&
+												state.messages[
+													visibleMessageKeys[
+														index - 1
+													]
+												]?.variant === 'user'
+											}
 										/>
 									);
 								})}
@@ -3405,7 +3570,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 											</div>
 										)}
 										<form
-											className={`docsbot-chat-input-form ${chatInput.trim().length < minInputLength || isFetching || isRecordingAudio || isLeadFormVisible ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''}`}
+											className={`docsbot-chat-input-form ${hasDisabledSubmit ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''}`}
 											onSubmit={handleSubmit}
 											onDragEnter={
 												useImageUpload
@@ -3762,11 +3927,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 												</button>
 											)}
 
-											{showVoiceCallButton && (
+											{showVoiceCallOrbButton ? (
 												<button
 													type="button"
 													onClick={startVoiceCall}
-													className="docsbot-audio-record-btn docsbot-voice-call-btn"
+													className="docsbot-chat-btn-send docsbot-chat-btn-voice-orb"
 													disabled={
 														isFetching ||
 														isPiiRedactionLoading ||
@@ -3775,38 +3940,75 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 													aria-label={
 														labels.voiceCallStart
 													}
+													onMouseEnter={() =>
+														setIsVoiceOrbHovered(
+															true
+														)
+													}
+													onMouseLeave={() =>
+														setIsVoiceOrbHovered(
+															false
+														)
+													}
+													onFocus={() =>
+														setIsVoiceOrbHovered(
+															true
+														)
+													}
+													onBlur={() =>
+														setIsVoiceOrbHovered(
+															false
+														)
+													}
+												>
+													<span
+														className="docsbot-chat-btn-voice-orb-disc"
+														aria-hidden="true"
+													/>
+													<VoiceOrb
+														status={
+															VOICE_CALL_STATUS.AGENT_SPEAKING
+														}
+														color={
+															isVoiceOrbHovered
+																? color ||
+																	'#1292ee'
+																: '#a6b3bf'
+														}
+														size={24}
+														compact
+														speed={
+															isVoiceOrbHovered
+																? 1
+																: 0.25
+														}
+													/>
+												</button>
+											) : (
+												<button
+													type="submit"
+													className="docsbot-chat-btn-send"
+													{...([
+														'#ffffff',
+														'#FFFFFF',
+														'rgb(255, 255, 255)'
+													].includes(color) && {
+														style: {
+															fill: 'inherit'
+														}
+													})}
+													disabled={
+														isComposerSubmitDisabled
+													}
+													aria-label={labels.submit}
 												>
 													<FontAwesomeIcon
-														icon={faPhone}
+														icon={faPaperPlane}
+														className="docsbot-chat-btn-send-icon"
+														aria-hidden="true"
 													/>
 												</button>
 											)}
-
-											<button
-												type="submit"
-												className="docsbot-chat-btn-send"
-												{...([
-													'#ffffff',
-													'#FFFFFF',
-													'rgb(255, 255, 255)'
-												].includes(color) && {
-													style: { fill: 'inherit' }
-												})}
-												disabled={
-													chatInput.trim().length <
-														minInputLength ||
-													isFetching ||
-													isRecordingAudio ||
-													isLeadFormVisible
-												}
-												aria-label={labels.submit}
-											>
-												<FontAwesomeIcon
-													icon={faPaperPlane}
-													className="docsbot-chat-btn-send-icon"
-													aria-hidden="true"
-												/>
-											</button>
 										</form>
 									</div>
 

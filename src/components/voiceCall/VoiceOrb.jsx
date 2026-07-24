@@ -4,19 +4,19 @@ import { VOICE_CALL_STATUS } from '../../utils/voiceRealtimeState.mjs';
 
 const ORB_PRESENTATION = {
 	[VOICE_CALL_STATUS.CONNECTING]: { orbState: 'working', speed: 0.68 },
-	[VOICE_CALL_STATUS.LISTENING]: { orbState: 'listening', speed: 0.72 },
-	[VOICE_CALL_STATUS.USER_SPEAKING]: { orbState: 'composing', speed: 1.25 },
+	[VOICE_CALL_STATUS.LISTENING]: { orbState: 'working', speed: 0.72 },
+	[VOICE_CALL_STATUS.USER_SPEAKING]: { orbState: 'listening', speed: 1.25 },
 	[VOICE_CALL_STATUS.THINKING]: { orbState: 'solving', speed: 0.9 },
 	[VOICE_CALL_STATUS.USING_TOOL]: { orbState: 'searching', speed: 1.05 },
-	[VOICE_CALL_STATUS.AGENT_SPEAKING]: { orbState: 'listening', speed: 1.35 },
+	[VOICE_CALL_STATUS.AGENT_SPEAKING]: { orbState: 'composing', speed: 1.35 },
 	[VOICE_CALL_STATUS.ERROR]: {
 		orbState: 'shaping',
-		speed: 0,
+		speed: 0.12,
 		color: '#dc2626'
 	},
 	[VOICE_CALL_STATUS.ENDED]: {
 		orbState: 'shaping',
-		speed: 0,
+		speed: 0.12,
 		color: '#64748b'
 	}
 };
@@ -35,18 +35,33 @@ function usePrefersReducedMotion() {
 }
 
 /**
- * Large, brand-tinted adaptation of Jakub Antalik's MIT-licensed
- * `thinking-orbs` Canvas 2D engine. The package's raw painter API is used so
- * this remains faithful to the source while supporting the widget's larger
- * voice-call presentation and brand palette.
+ * Brand-tinted adaptation of Jakub Antalik's MIT-licensed `thinking-orbs`
+ * Canvas 2D engine. Used for the large call-stage orb and the compact
+ * composer start-call control.
  */
-export function VoiceOrb({ status, color, label, audioLevel = 0 }) {
+export function VoiceOrb({
+	status,
+	color,
+	label,
+	audioLevel = 0,
+	size = 184,
+	compact = false,
+	speed
+}) {
 	const canvasRef = useRef(null);
+	const colorRef = useRef(null);
+	const speedRef = useRef(null);
 	const reducedMotion = usePrefersReducedMotion();
 	const presentation =
 		ORB_PRESENTATION[status] ||
 		ORB_PRESENTATION[VOICE_CALL_STATUS.CONNECTING];
-	const orbColor = presentation.color || color || '#1292ee';
+	const orbColor = color || presentation.color || '#1292ee';
+	// Prefer at least the official 20px small preset density.
+	const paintSize = Math.max(20, Math.round(size));
+	const motionSpeed =
+		typeof speed === 'number' ? speed : presentation.speed;
+	colorRef.current = orbColor;
+	speedRef.current = motionSpeed;
 	const speakingLevel =
 		status === VOICE_CALL_STATUS.USER_SPEAKING ||
 		status === VOICE_CALL_STATUS.AGENT_SPEAKING
@@ -57,29 +72,28 @@ export function VoiceOrb({ status, color, label, audioLevel = 0 }) {
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
-		const size = 184;
 		const dpr = Math.min(2, window.devicePixelRatio || 1);
-		canvas.width = Math.round(size * dpr);
-		canvas.height = Math.round(size * dpr);
+		canvas.width = Math.round(paintSize * dpr);
+		canvas.height = Math.round(paintSize * dpr);
 		const context = canvas.getContext('2d');
 		if (!context) return;
 
-		const preset = resolvePreset(presentation.orbState, 64);
+		// thinking-orbs only ships density presets for 20 and 64.
+		const preset = resolvePreset(presentation.orbState, compact ? 20 : 64);
 		const draw = MODE_DRAWS[preset.mode];
-		const effectiveSpeed = preset.speed * presentation.speed;
 		const paintFrame = (timeSeconds) => {
 			context.setTransform(dpr, 0, 0, dpr, 0, 0);
-			context.clearRect(0, 0, size, size);
-			draw(context, size, timeSeconds, false, preset.opts);
+			context.clearRect(0, 0, paintSize, paintSize);
+			draw(context, paintSize, timeSeconds, false, preset.opts);
 			context.save();
 			context.globalCompositeOperation = 'source-atop';
 			context.globalAlpha = 0.82;
-			context.fillStyle = orbColor;
-			context.fillRect(0, 0, size, size);
+			context.fillStyle = colorRef.current || '#1292ee';
+			context.fillRect(0, 0, paintSize, paintSize);
 			context.restore();
 		};
 
-		if (reducedMotion || presentation.speed === 0) {
+		if (reducedMotion || speedRef.current === 0) {
 			paintFrame(0.6);
 			return;
 		}
@@ -87,14 +101,22 @@ export function VoiceOrb({ status, color, label, audioLevel = 0 }) {
 		let animationFrame = 0;
 		let running = false;
 		let visible = true;
+		let lastFrameMs = performance.now();
+		let elapsedSeconds = 0;
 		const loop = () => {
-			paintFrame((performance.now() / 1000) * effectiveSpeed);
+			const now = performance.now();
+			const deltaSeconds = Math.min(0.05, (now - lastFrameMs) / 1000);
+			lastFrameMs = now;
+			elapsedSeconds +=
+				deltaSeconds * preset.speed * (speedRef.current || 0);
+			paintFrame(elapsedSeconds);
 			if (running) animationFrame = window.requestAnimationFrame(loop);
 		};
 		const start = () => {
 			if (running || !visible || document.visibilityState === 'hidden')
 				return;
 			running = true;
+			lastFrameMs = performance.now();
 			animationFrame = window.requestAnimationFrame(loop);
 		};
 		const stop = () => {
@@ -115,7 +137,7 @@ export function VoiceOrb({ status, color, label, audioLevel = 0 }) {
 			else start();
 		};
 		document.addEventListener('visibilitychange', handleVisibility);
-		paintFrame((performance.now() / 1000) * effectiveSpeed);
+		paintFrame(0.6);
 		if (!observer) start();
 
 		return () => {
@@ -123,14 +145,19 @@ export function VoiceOrb({ status, color, label, audioLevel = 0 }) {
 			observer?.disconnect();
 			document.removeEventListener('visibilitychange', handleVisibility);
 		};
-	}, [orbColor, presentation, reducedMotion]);
+	}, [compact, paintSize, presentation, reducedMotion]);
 
 	return (
 		<div
-			className={`docsbot-voice-orb-shell is-${status}`}
+			className={`docsbot-voice-orb-shell is-${status}${compact ? ' is-compact' : ''}`}
 			style={{
 				'--docsbot-voice-orb-color': orbColor,
-				'--docsbot-voice-orb-scale': amplitudeScale
+				'--docsbot-voice-orb-scale': amplitudeScale,
+				...(compact
+					? {
+							'--docsbot-voice-orb-size': `${paintSize}px`
+						}
+					: null)
 			}}
 		>
 			<canvas
@@ -138,6 +165,7 @@ export function VoiceOrb({ status, color, label, audioLevel = 0 }) {
 				className="docsbot-voice-orb"
 				role="img"
 				aria-label={label}
+				aria-hidden={label ? undefined : true}
 			/>
 		</div>
 	);
