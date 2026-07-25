@@ -15,6 +15,12 @@ export function createVoiceRealtimeState() {
 		transcriptsById: {},
 		transcriptOrder: [],
 		activeToolName: '',
+		// Realtime fires response.done when the model *requests* a tool, not
+		// when execution finishes. Keep call ids here until function_call_output.
+		pendingToolCallIds: [],
+		// WebRTC audio keeps playing after response.done, so track the real
+		// playback window via output_audio_buffer.* instead of transcript end.
+		agentAudioPlaying: false,
 		error: false
 	};
 }
@@ -26,6 +32,68 @@ function cleanText(value) {
 function eventItemId(event) {
 	const value = event?.item_id || event?.item?.id;
 	return typeof value === 'string' && value.trim() ? value.trim() : '';
+}
+
+function pendingToolCallIds(state) {
+	return Array.isArray(state?.pendingToolCallIds)
+		? state.pendingToolCallIds
+		: [];
+}
+
+function functionCallId(item) {
+	if (!item || typeof item !== 'object') return '';
+	const callId =
+		(typeof item.call_id === 'string' && item.call_id.trim()) ||
+		(typeof item.id === 'string' && item.id.trim()) ||
+		'';
+	return callId.length <= 128 ? callId : '';
+}
+
+function withPendingToolCall(state, callId, toolName) {
+	const pending = [...pendingToolCallIds(state)];
+	if (callId && !pending.includes(callId)) {
+		pending.push(callId);
+	}
+	return {
+		...state,
+		pendingToolCallIds: pending,
+		status: VOICE_CALL_STATUS.USING_TOOL,
+		activeToolName: toolName || state.activeToolName || '',
+		error: false
+	};
+}
+
+function withoutPendingToolCall(state, callId) {
+	const current = pendingToolCallIds(state);
+	let pending = callId
+		? current.filter((id) => id !== callId)
+		: [];
+	// If the output's call_id did not match (id vs call_id drift), still leave
+	// tool-wait once we know an output landed.
+	if (callId && pending.length === current.length && current.length > 0) {
+		pending = [];
+	}
+	const stillWaiting = pending.length > 0;
+	return {
+		...state,
+		pendingToolCallIds: pending,
+		status: stillWaiting
+			? VOICE_CALL_STATUS.USING_TOOL
+			: VOICE_CALL_STATUS.THINKING,
+		activeToolName: stillWaiting ? state.activeToolName || '' : '',
+		error: false
+	};
+}
+
+export function isAwaitingVoiceToolResult(state) {
+	return pendingToolCallIds(state).length > 0;
+}
+
+/** Status to settle on once the agent stops speaking. */
+function idleStatusAfterSpeech(state) {
+	return isAwaitingVoiceToolResult(state)
+		? VOICE_CALL_STATUS.USING_TOOL
+		: VOICE_CALL_STATUS.LISTENING;
 }
 
 function upsertTranscript(state, { itemId, role, text, append, isFinal }) {
@@ -316,6 +384,9 @@ export function reduceVoiceRealtimeEvent(state, event) {
 				{
 					...state,
 					status: VOICE_CALL_STATUS.USER_SPEAKING,
+					pendingToolCallIds: [],
+					activeToolName: '',
+					agentAudioPlaying: false,
 					error: false
 				},
 				{
@@ -327,7 +398,21 @@ export function reduceVoiceRealtimeEvent(state, event) {
 				}
 			);
 		case 'input_audio_buffer.speech_stopped':
+			return {
+				...state,
+				status: VOICE_CALL_STATUS.THINKING,
+				error: false
+			};
 		case 'response.created':
+			// A follow-up response after tools should not flash "Thinking…"
+			// while we are still waiting on tool execution.
+			if (isAwaitingVoiceToolResult(state)) {
+				return {
+					...state,
+					status: VOICE_CALL_STATUS.USING_TOOL,
+					error: false
+				};
+			}
 			return {
 				...state,
 				status: VOICE_CALL_STATUS.THINKING,
@@ -338,6 +423,15 @@ export function reduceVoiceRealtimeEvent(state, event) {
 				{
 					...state,
 					status: VOICE_CALL_STATUS.AGENT_SPEAKING,
+					agentAudioPlaying: true,
+					// Long tool waits can include spoken progress updates.
+					// Keep pending tools so we return to USING_TOOL afterward.
+					...(isAwaitingVoiceToolResult(state)
+						? {}
+						: {
+								pendingToolCallIds: [],
+								activeToolName: ''
+							}),
 					error: false
 				},
 				{
@@ -353,6 +447,13 @@ export function reduceVoiceRealtimeEvent(state, event) {
 				{
 					...state,
 					status: VOICE_CALL_STATUS.AGENT_SPEAKING,
+					agentAudioPlaying: true,
+					...(isAwaitingVoiceToolResult(state)
+						? {}
+						: {
+								pendingToolCallIds: [],
+								activeToolName: ''
+							}),
 					error: false
 				},
 				{
@@ -363,6 +464,24 @@ export function reduceVoiceRealtimeEvent(state, event) {
 					isFinal: true
 				}
 			);
+		case 'output_audio_buffer.started':
+			return {
+				...state,
+				status: VOICE_CALL_STATUS.AGENT_SPEAKING,
+				agentAudioPlaying: true,
+				error: false
+			};
+		case 'output_audio_buffer.stopped':
+		case 'output_audio_buffer.cleared':
+			return {
+				...state,
+				agentAudioPlaying: false,
+				status: idleStatusAfterSpeech(state),
+				...(isAwaitingVoiceToolResult(state)
+					? {}
+					: { activeToolName: '' }),
+				error: false
+			};
 		case 'conversation.item.input_audio_transcription.delta':
 			return upsertTranscript(state, {
 				itemId: eventItemId(event),
@@ -379,24 +498,31 @@ export function reduceVoiceRealtimeEvent(state, event) {
 				append: false,
 				isFinal: true
 			});
+		case 'conversation.item.created':
+		case 'conversation.item.done': {
+			const item = event.item;
+			if (item?.type === 'function_call_output') {
+				return withoutPendingToolCall(state, functionCallId(item));
+			}
+			return state;
+		}
 		case 'response.output_item.added':
 		case 'response.output_item.done': {
-			if (event?.item?.type !== 'function_call') {
-				if (event?.item?.type !== 'message') return state;
-				return upsertTranscript(state, {
-					itemId: eventItemId(event),
-					role: 'agent',
-					text: '',
-					append: false,
-					isFinal: false
-				});
+			if (event?.item?.type === 'function_call') {
+				return withPendingToolCall(
+					state,
+					functionCallId(event.item),
+					voiceToolNameFromEvent(event)
+				);
 			}
-			return {
-				...state,
-				status: VOICE_CALL_STATUS.USING_TOOL,
-				activeToolName: voiceToolNameFromEvent(event),
-				error: false
-			};
+			if (event?.item?.type !== 'message') return state;
+			return upsertTranscript(state, {
+				itemId: eventItemId(event),
+				role: 'agent',
+				text: '',
+				append: false,
+				isFinal: false
+			});
 		}
 		case 'response.function_call_arguments.delta':
 		case 'response.function_call_arguments.done':
@@ -406,6 +532,28 @@ export function reduceVoiceRealtimeEvent(state, event) {
 				error: false
 			};
 		case 'response.done':
+			// Keep USING_TOOL across the server-side tool wait. response.done
+			// here only means the model finished *requesting* the tool.
+			if (isAwaitingVoiceToolResult(state)) {
+				return {
+					...state,
+					// Spoken progress may still be draining from the buffer.
+					status: state.agentAudioPlaying
+						? VOICE_CALL_STATUS.AGENT_SPEAKING
+						: VOICE_CALL_STATUS.USING_TOOL,
+					error: false
+				};
+			}
+			// WebRTC audio often continues after response.done; stay on the
+			// speaking orb until output_audio_buffer.stopped.
+			if (state.agentAudioPlaying) {
+				return {
+					...state,
+					status: VOICE_CALL_STATUS.AGENT_SPEAKING,
+					activeToolName: '',
+					error: false
+				};
+			}
 			return {
 				...state,
 				status: VOICE_CALL_STATUS.LISTENING,
@@ -416,7 +564,9 @@ export function reduceVoiceRealtimeEvent(state, event) {
 			return {
 				...state,
 				status: VOICE_CALL_STATUS.ERROR,
+				pendingToolCallIds: [],
 				activeToolName: '',
+				agentAudioPlaying: false,
 				error: true
 			};
 		default:
@@ -429,4 +579,26 @@ export function orderedVoiceTranscripts(state) {
 	return state.transcriptOrder
 		.map((itemId) => state.transcriptsById[itemId])
 		.filter((entry) => entry?.text);
+}
+
+/**
+ * Insert a local (non-Realtime) final transcript, e.g. UI decline replies.
+ */
+export function appendLocalVoiceTranscript(state, { role, text, itemId }) {
+	const trimmed = typeof text === 'string' ? text.trim() : '';
+	const id =
+		typeof itemId === 'string' && itemId.trim()
+			? itemId.trim()
+			: `local-${role || 'caller'}-${Date.now()}`;
+	if (!trimmed || (role !== 'caller' && role !== 'agent')) {
+		return { state, itemId: null };
+	}
+	const next = upsertTranscript(state || createVoiceRealtimeState(), {
+		itemId: id,
+		role,
+		text: trimmed,
+		append: false,
+		isFinal: true
+	});
+	return { state: next, itemId: id };
 }

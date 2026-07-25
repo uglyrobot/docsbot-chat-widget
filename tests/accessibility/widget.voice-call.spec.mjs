@@ -7,7 +7,16 @@ import {
 async function installVoiceBrowserMocks(page) {
 	await page.addInitScript(() => {
 		class MockDataChannel extends EventTarget {
+			constructor() {
+				super();
+				this.readyState = 'connecting';
+				this.sent = [];
+			}
+			send(data) {
+				this.sent.push(data);
+			}
 			close() {
+				this.readyState = 'closed';
 				this.dispatchEvent(new Event('close'));
 			}
 		}
@@ -28,6 +37,7 @@ async function installVoiceBrowserMocks(page) {
 					throw new Error('Unexpected data channel');
 				const channel = new MockDataChannel();
 				window.__docsbotVoiceChannel = channel;
+				window.__docsbotVoiceSentEvents = channel.sent;
 				return channel;
 			}
 			async createOffer() {
@@ -39,6 +49,7 @@ async function installVoiceBrowserMocks(page) {
 			async setRemoteDescription() {
 				this.connectionState = 'connected';
 				this.dispatchEvent(new Event('connectionstatechange'));
+				window.__docsbotVoiceChannel.readyState = 'open';
 				window.__docsbotVoiceChannel.dispatchEvent(new Event('open'));
 			}
 			getSenders() {
@@ -90,6 +101,74 @@ async function installVoiceBrowserMocks(page) {
 		const nativeFetch = window.fetch.bind(window);
 		window.fetch = async (input, init) => {
 			const url = String(input);
+			if (url.includes('/escalate') && init?.method === 'PUT') {
+				window.__docsbotEscalateRequest = { url, method: init.method };
+				return new Response(JSON.stringify({ ok: true }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+			if (url.includes('/chat-agent')) {
+				let question = '';
+				try {
+					const body =
+						typeof init?.body === 'string'
+							? JSON.parse(init.body)
+							: init?.body;
+					question = body?.question || '';
+				} catch {
+					// Ignore malformed bodies and return the default SSE.
+				}
+				const normalized = String(question).trim().toLowerCase();
+				const sse = normalized.includes('support')
+					? `event: stream
+data: I can connect you with support.
+
+event: support_escalation
+data: ${JSON.stringify({
+	answer: 'I can connect you with support.',
+	options: { yes: 'Contact support', no: 'No' },
+	history: [
+		{ role: 'user', message: question },
+		{ role: 'assistant', message: 'I can connect you with support.' }
+	],
+	id: 'answer-support'
+})}
+
+`
+					: `event: stream
+data: Here is a mocked answer with a source.
+
+event: done
+data: ${JSON.stringify({
+	answer: 'Here is a mocked answer with a source.',
+	sources: [
+		{
+			title: 'Example source',
+			url: 'https://example.com/docs/widget-accessibility',
+			type: 'url'
+		}
+	],
+	history: [
+		{ role: 'user', message: question },
+		{
+			role: 'assistant',
+			message: 'Here is a mocked answer with a source.'
+		}
+	],
+	id: 'answer-default'
+})}
+
+`;
+				return new Response(sse, {
+					status: 200,
+					headers: {
+						'Content-Type': 'text/event-stream',
+						'cache-control': 'no-cache',
+						connection: 'keep-alive'
+					}
+				});
+			}
 			if (!url.endsWith('/voice')) return nativeFetch(input, init);
 			window.__docsbotVoiceRequest = {
 				url,
@@ -112,6 +191,7 @@ async function installVoiceBrowserMocks(page) {
 				new MessageEvent('message', { data: JSON.stringify(event) })
 			);
 		};
+		window.open = () => ({ closed: false, location: { href: '' }, close() {} });
 	});
 }
 
@@ -156,6 +236,13 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 	await expect(root.getByText('Listening…', { exact: true })).toHaveCount(0);
 	await expect(root.locator('.docsbot-voice-orb')).toBeVisible();
 	await expect(root.locator('.docsbot-voice-call-wave')).toBeVisible();
+	// Fresh calls must not seed the static chat greeting; the model greets.
+	await expect(
+		root.getByText('Welcome to the accessibility demo.')
+	).toHaveCount(0);
+	await expect(root.locator('.docsbot-voice-transcript.is-history')).toHaveCount(
+		0
+	);
 	const voiceRequest = await page.evaluate(
 		() => window.__docsbotVoiceRequest
 	);
@@ -256,6 +343,17 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 			}
 		});
 	});
+	// Card waits for the post-tool spoken handoff.
+	await expect(
+		root.getByRole('button', { name: 'Open account' })
+	).toHaveCount(0);
+	await page.evaluate(() => {
+		window.__emitDocsBotVoiceEvent({
+			type: 'response.output_audio_transcript.done',
+			item_id: 'agent-handoff',
+			transcript: "I've shown the next step on screen."
+		});
+	});
 	await expect(
 		root.getByRole('button', { name: 'Open account' })
 	).toBeVisible();
@@ -295,13 +393,17 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 	const cardIndex = timelineTexts.findIndex((text) =>
 		text.includes('Open your account settings.')
 	);
+	const handoffIndex = timelineTexts.findIndex((text) =>
+		text.includes("I've shown the next step on screen.")
+	);
 	const laterCallerIndex = timelineTexts.findIndex((text) =>
 		text.includes('Thanks, I opened it.')
 	);
 	const laterAgentIndex = timelineTexts.findIndex((text) =>
 		text.includes('Great — let me know if you need anything else.')
 	);
-	expect(cardIndex).toBeGreaterThanOrEqual(0);
+	expect(handoffIndex).toBeGreaterThanOrEqual(0);
+	expect(cardIndex).toBeGreaterThan(handoffIndex);
 	expect(laterCallerIndex).toBeGreaterThan(cardIndex);
 	expect(laterAgentIndex).toBeGreaterThan(laterCallerIndex);
 
@@ -338,9 +440,17 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 			}
 		});
 	});
+	await expect(root.getByText(/INV-42/)).toHaveCount(0);
+	await page.evaluate(() => {
+		window.__emitDocsBotVoiceEvent({
+			type: 'response.output_audio_transcript.done',
+			item_id: 'agent-stripe-handoff',
+			transcript: 'Here are your recent invoices.'
+		});
+	});
 	await expect(
 		root.getByText('Here are your recent invoices.')
-	).toHaveCount(0);
+	).toBeVisible();
 	await expect(root.getByText(/INV-42/)).toBeVisible();
 	await expect(root.getByText('must-not-render-stripe')).toHaveCount(0);
 
@@ -357,7 +467,7 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 	await expect(root.getByText('Open your account settings.')).toBeVisible();
 	await expect(
 		root.getByText('Here are your recent invoices.')
-	).toHaveCount(0);
+	).toBeVisible();
 	await expect(root.getByText(/INV-42/)).toBeVisible();
 });
 
@@ -378,9 +488,15 @@ test('voice call resuming an existing chat keeps prior history and appends', asy
 
 	await root.locator('textarea').fill('What can you do?');
 	await root.getByRole('button', { name: 'Submit' }).click();
+	const sendWithoutWaiting = root.getByRole('button', {
+		name: 'Send without waiting'
+	});
+	if (await sendWithoutWaiting.isVisible().catch(() => false)) {
+		await sendWithoutWaiting.click();
+	}
 	await expect(
 		root.getByText('Here is a mocked answer with a source.')
-	).toBeVisible();
+	).toBeVisible({ timeout: 30_000 });
 
 	await root.getByRole('button', { name: 'Start voice call' }).click();
 	await expect(root.locator('.docsbot-voice-call-view')).toBeVisible();
@@ -419,4 +535,129 @@ test('voice call resuming an existing chat keeps prior history and appends', asy
 	await expect(
 		root.getByText('Here is a mocked answer with a source.')
 	).toBeVisible();
+});
+
+test('voice support escalation: No stays on call; Yes ends call', async ({
+	page
+}) => {
+	test.setTimeout(120_000);
+	await installVoiceBrowserMocks(page);
+	await installWidgetMocks(page, {
+		...mockWidgetConfig,
+		useVoiceAgent: true,
+		color: '#7c3aed'
+	});
+
+	await page.goto('/');
+	const root = page.locator('#docsbotai-root');
+	await root.getByRole('button', { name: 'Help' }).click();
+	await root.getByRole('button', { name: 'Start voice call' }).click();
+	await expect(root.locator('.docsbot-voice-call-view')).toBeVisible();
+
+	await page.evaluate(() => {
+		window.__emitDocsBotVoiceEvent({
+			type: 'response.output_audio_transcript.done',
+			item_id: 'agent-escalation-ask',
+			transcript: 'Would you like me to connect you with support?'
+		});
+		window.__emitDocsBotVoiceEvent({
+			type: 'conversation.item.created',
+			item: {
+				id: 'escalation-item',
+				call_id: 'call-support',
+				type: 'function_call_output',
+				output: JSON.stringify({
+					status: 'ok',
+					client_action: {
+						type: 'support_escalation',
+						message: 'Would you like support?',
+						responses: { yes: 'Yes, please', no: 'No, thanks' },
+						voice_message: 'Would you like support?'
+					}
+				})
+			}
+		});
+	});
+
+	await expect(
+		root.getByText('Would you like me to connect you with support?')
+	).toBeVisible();
+	// Confirmation copy from the client_action must not appear as a bubble.
+	await expect(root.getByText('Would you like support?')).toHaveCount(0);
+	// Buttons wait for the post-tool spoken reply.
+	await expect(
+		root.getByRole('button', { name: 'Yes, please' })
+	).toHaveCount(0);
+
+	await page.evaluate(() => {
+		window.__emitDocsBotVoiceEvent({
+			type: 'response.output_audio_transcript.done',
+			item_id: 'agent-escalation-reply',
+			transcript: 'I can connect you with a human if you want.'
+		});
+	});
+
+	const yesButton = root.getByRole('button', { name: 'Yes, please' });
+	const noButton = root.getByRole('button', { name: 'No, thanks' });
+	await expect(yesButton).toBeVisible();
+	await expect(noButton).toBeVisible();
+
+	await noButton.click();
+	await expect(root.locator('.docsbot-voice-call-view')).toBeVisible();
+	await expect(yesButton).toHaveCount(0);
+	await expect(noButton).toHaveCount(0);
+	await expect(root.getByText('No, thanks')).toBeVisible();
+
+	const sentEvents = await page.evaluate(() =>
+		(window.__docsbotVoiceSentEvents || []).map((raw) => JSON.parse(raw))
+	);
+	expect(sentEvents).toEqual([
+		{ type: 'response.cancel' },
+		{
+			type: 'conversation.item.create',
+			item: {
+				type: 'message',
+				role: 'user',
+				content: [{ type: 'input_text', text: 'No, thanks' }]
+			}
+		},
+		{ type: 'response.create' }
+	]);
+
+	// Re-show escalation for the Yes path.
+	await page.evaluate(() => {
+		window.__docsbotVoiceSentEvents.length = 0;
+		window.__emitDocsBotVoiceEvent({
+			type: 'conversation.item.created',
+			item: {
+				id: 'escalation-item-2',
+				call_id: 'call-support-yes',
+				type: 'function_call_output',
+				output: JSON.stringify({
+					status: 'ok',
+					client_action: {
+						type: 'support_escalation',
+						message: 'Connect with support?',
+						responses: { yes: 'Yes, please', no: 'No, thanks' },
+						voice_message: 'Connect with support?'
+					}
+				})
+			}
+		});
+		window.__emitDocsBotVoiceEvent({
+			type: 'response.output_audio_transcript.done',
+			item_id: 'agent-escalation-yes-reply',
+			transcript: 'Shall I connect you now?'
+		});
+	});
+	await expect(
+		root.getByRole('button', { name: 'Yes, please' })
+	).toBeVisible();
+	await root.getByRole('button', { name: 'Yes, please' }).click();
+	await expect(root.locator('.docsbot-voice-call-view')).toHaveCount(0);
+	const escalateRequest = await page.evaluate(
+		() => window.__docsbotEscalateRequest
+	);
+	expect(escalateRequest?.method).toBe('PUT');
+	expect(escalateRequest?.url).toContain('/escalate');
 });

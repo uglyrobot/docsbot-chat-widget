@@ -7,26 +7,26 @@ import {
 	faPhoneSlash,
 	faRotateRight
 } from '@fortawesome/free-solid-svg-icons';
-import { agentActivityFromSseEvent } from '../../utils/agentActivityFromSse';
 import {
 	DocsBotVoiceCallSession,
 	VoiceCallSessionError,
 	buildVoiceWidgetPublicMetadata
 } from '../../utils/voiceCallSession.mjs';
-import { interleaveVoiceLiveItems } from '../../utils/voiceCallHistory.mjs';
+import { interleaveVoiceLiveItems, flushPendingVoiceActions, queuePendingVoiceAction } from '../../utils/voiceCallHistory.mjs';
 import {
 	VOICE_CALL_STATUS,
+	appendLocalVoiceTranscript,
 	createVoiceRealtimeState,
 	finalVoiceTranscriptFromEvent,
 	orderedVoiceTranscripts,
 	reduceVoiceRealtimeEvent,
-	voiceClientActionFromEvent,
-	voiceToolNameFromEvent
+	voiceClientActionFromEvent
 } from '../../utils/voiceRealtimeState.mjs';
-import {
-	AgentActivityStatus,
-	BotChatMessage
-} from '../botChatMessage/BotChatMessage';
+import { getSharedVoiceToolWorkingChime } from '../../utils/voiceToolWorkingChime.mjs';
+import voiceToolWorkingSrc from '../../assets/audio/voiceToolWorkingSrc.mjs';
+import voiceToolSearchingSrc from '../../assets/audio/voiceToolSearchingSrc.mjs';
+import { isVoiceSearchToolName } from './voiceOrbPresentation.mjs';
+import { BotChatMessage } from '../botChatMessage/BotChatMessage';
 import { VoiceOrb } from './VoiceOrb';
 
 function renderHistoryTranscript(entry, labels) {
@@ -54,15 +54,18 @@ const STATUS_LABEL_KEYS = {
 	[VOICE_CALL_STATUS.ENDED]: 'voiceCallEnded'
 };
 
-// Idle listening: aria on the orb only. Speaking: no status copy at all.
+// Idle / speaking / tool-wait / thinking: aria on the orb only — no status copy.
 const STATUS_LABEL_VISIBLE_HIDDEN = new Set([
 	VOICE_CALL_STATUS.LISTENING,
 	VOICE_CALL_STATUS.USER_SPEAKING,
-	VOICE_CALL_STATUS.AGENT_SPEAKING
+	VOICE_CALL_STATUS.AGENT_SPEAKING,
+	VOICE_CALL_STATUS.THINKING,
+	VOICE_CALL_STATUS.USING_TOOL
 ]);
 const STATUS_LABEL_ARIA_HIDDEN = new Set([
 	VOICE_CALL_STATUS.USER_SPEAKING,
-	VOICE_CALL_STATUS.AGENT_SPEAKING
+	VOICE_CALL_STATUS.AGENT_SPEAKING,
+	VOICE_CALL_STATUS.THINKING
 ]);
 
 function safeConnectionError(error, labels) {
@@ -79,26 +82,6 @@ function safeConnectionError(error, labels) {
 		return error.message;
 	}
 	return labels.voiceCallError;
-}
-
-function upsertActionMessage(previous, message, afterItemId) {
-	if (!message?.id) return previous;
-	const existing = previous.find((entry) => entry.id === message.id);
-	if (existing) {
-		return previous.map((entry) =>
-			entry.id === message.id
-				? { ...entry, message }
-				: entry
-		);
-	}
-	return [
-		...previous,
-		{
-			id: message.id,
-			message,
-			afterItemId: afterItemId ?? null
-		}
-	];
 }
 
 function renderLiveTranscript(entry, labels) {
@@ -123,7 +106,9 @@ function renderLiveActionMessage(
 		fetchAnswer,
 		onSchedulerBookingMetadata,
 		isCalendlyScriptReady,
-		isTidyCalScriptReady
+		isTidyCalScriptReady,
+		onEndVoiceCall,
+		onSendVoiceUserText
 	}
 ) {
 	return (
@@ -135,6 +120,8 @@ function renderLiveActionMessage(
 				onSchedulerBookingMetadata={onSchedulerBookingMetadata}
 				isCalendlyScriptReady={isCalendlyScriptReady}
 				isTidyCalScriptReady={isTidyCalScriptReady}
+				onEndVoiceCall={onEndVoiceCall}
+				onSendVoiceUserText={onSendVoiceUserText}
 			/>
 		</div>
 	);
@@ -149,7 +136,6 @@ export function VoiceCallView({
 	identify,
 	labels,
 	color,
-	showAgentActivity,
 	historyItems = [],
 	onConversationId,
 	onTranscriptFinal,
@@ -167,11 +153,20 @@ export function VoiceCallView({
 	const stickToBottomRef = useRef(true);
 	const attemptRef = useRef(0);
 	const voiceStateRef = useRef(createVoiceRealtimeState());
+	const pendingActionsRef = useRef([]);
+	const toolWorkingChimeRef = useRef(null);
+	const toolSearchingChimeRef = useRef(null);
+	if (!toolWorkingChimeRef.current) {
+		toolWorkingChimeRef.current =
+			getSharedVoiceToolWorkingChime(voiceToolWorkingSrc);
+		toolSearchingChimeRef.current =
+			getSharedVoiceToolWorkingChime(voiceToolSearchingSrc);
+	}
 	const [voiceState, setVoiceState] = useState(createVoiceRealtimeState);
-	const [agentActivity, setAgentActivity] = useState(null);
 	const [actionMessages, setActionMessages] = useState([]);
 	const [errorDetail, setErrorDetail] = useState('');
 	const [isMuted, setIsMuted] = useState(false);
+	const [micLevel, setMicLevel] = useState(0);
 	const [outputLevel, setOutputLevel] = useState(0);
 	const [waveformLevels, setWaveformLevels] = useState(() =>
 		Array(32).fill(0.04)
@@ -188,8 +183,24 @@ export function VoiceCallView({
 
 	const cleanupSession = useCallback(() => {
 		attemptRef.current += 1;
+		toolWorkingChimeRef.current?.setActive(false);
+		toolSearchingChimeRef.current?.setActive(false);
 		sessionRef.current?.close();
 		sessionRef.current = null;
+	}, []);
+
+	const flushPendingActions = useCallback((afterItemId) => {
+		const pending = pendingActionsRef.current;
+		if (!pending.length) return;
+		pendingActionsRef.current = [];
+		setActionMessages((previous) => {
+			const { actions } = flushPendingVoiceActions(
+				previous,
+				pending,
+				afterItemId
+			);
+			return actions;
+		});
 	}, []);
 
 	const handleRealtimeEvent = useCallback(
@@ -199,40 +210,44 @@ export function VoiceCallView({
 				voiceStateRef.current = next;
 				return next;
 			});
-			const toolName = voiceToolNameFromEvent(event);
-			if (toolName) {
-				setAgentActivity(
-					agentActivityFromSseEvent('tool_call', {
-						name: toolName,
-						params: ''
-					})
-				);
-			} else if (
-				event.type === 'response.done' ||
-				event.type === 'error'
-			) {
-				setAgentActivity(null);
-			}
 
 			const clientAction = voiceClientActionFromEvent(event);
 			if (clientAction) {
 				const message = onClientAction?.(clientAction);
 				if (message) {
-					const transcripts = orderedVoiceTranscripts(
-						voiceStateRef.current
-					);
-					const afterItemId =
-						transcripts[transcripts.length - 1]?.itemId ?? null;
-					setActionMessages((previous) =>
-						upsertActionMessage(previous, message, afterItemId)
+					// Wait for the spoken handoff after the tool before showing
+					// the card, so buttons land under the post-tool reply.
+					pendingActionsRef.current = queuePendingVoiceAction(
+						pendingActionsRef.current,
+						message
 					);
 				}
 			}
 
 			const finalTranscript = finalVoiceTranscriptFromEvent(event);
-			if (finalTranscript) onTranscriptFinal(finalTranscript);
+			if (finalTranscript) {
+				onTranscriptFinal(finalTranscript);
+				if (
+					finalTranscript.role === 'agent' &&
+					pendingActionsRef.current.length
+				) {
+					flushPendingActions(finalTranscript.itemId);
+				}
+			}
+
+			if (
+				event.type === 'response.done' &&
+				pendingActionsRef.current.length
+			) {
+				const transcripts = orderedVoiceTranscripts(
+					voiceStateRef.current
+				);
+				flushPendingActions(
+					transcripts[transcripts.length - 1]?.itemId ?? null
+				);
+			}
 		},
-		[onClientAction, onTranscriptFinal]
+		[flushPendingActions, onClientAction, onTranscriptFinal]
 	);
 
 	const startCall = useCallback(async () => {
@@ -241,10 +256,11 @@ export function VoiceCallView({
 		const initialVoiceState = createVoiceRealtimeState();
 		voiceStateRef.current = initialVoiceState;
 		setVoiceState(initialVoiceState);
-		setAgentActivity(null);
 		setActionMessages([]);
+		pendingActionsRef.current = [];
 		setErrorDetail('');
 		setIsMuted(false);
+		setMicLevel(0);
 		setOutputLevel(0);
 		setWaveformLevels(Array(32).fill(0.04));
 
@@ -263,6 +279,7 @@ export function VoiceCallView({
 			onRealtimeEvent: handleRealtimeEvent,
 			onMicrophoneLevel: (level) => {
 				if (attempt !== attemptRef.current) return;
+				setMicLevel(level);
 				setWaveformLevels((previous) => [
 					...previous.slice(1),
 					Math.max(0.04, level)
@@ -291,7 +308,6 @@ export function VoiceCallView({
 						error: true
 					}));
 				} else if (connectionState === 'closed') {
-					setAgentActivity(null);
 					onExit();
 				}
 			}
@@ -299,6 +315,10 @@ export function VoiceCallView({
 		sessionRef.current = session;
 
 		try {
+			await Promise.all([
+				toolWorkingChimeRef.current?.prime?.(),
+				toolSearchingChimeRef.current?.prime?.()
+			]);
 			const metadata = await session.start();
 			if (attempt !== attemptRef.current) return;
 			if (metadata.conversationId)
@@ -353,10 +373,24 @@ export function VoiceCallView({
 
 	const transcripts = orderedVoiceTranscripts(voiceState);
 	const liveItems = interleaveVoiceLiveItems(transcripts, actionMessages);
-	const modelAudioLevel =
-		voiceState.status === VOICE_CALL_STATUS.AGENT_SPEAKING
-			? outputLevel
-			: 0;
+	// Prefer server VAD, but also promote local mic energy so the listening
+	// orb reacts even when speech_started is late or missing.
+	const micListening =
+		!isMuted &&
+		micLevel >= 0.08 &&
+		!voiceState.agentAudioPlaying &&
+		(voiceState.status === VOICE_CALL_STATUS.LISTENING ||
+			voiceState.status === VOICE_CALL_STATUS.USER_SPEAKING ||
+			voiceState.status === VOICE_CALL_STATUS.THINKING);
+	const orbStatus = micListening
+		? VOICE_CALL_STATUS.USER_SPEAKING
+		: voiceState.status;
+	const orbAudioLevel =
+		orbStatus === VOICE_CALL_STATUS.USER_SPEAKING
+			? micLevel
+			: orbStatus === VOICE_CALL_STATUS.AGENT_SPEAKING
+				? outputLevel
+				: 0;
 	const lastTranscript = transcripts[transcripts.length - 1];
 	const transcriptScrollKey = lastTranscript
 		? `${transcripts.length}:${lastTranscript.itemId}:${lastTranscript.text.length}:${lastTranscript.isFinal ? 1 : 0}`
@@ -365,12 +399,6 @@ export function VoiceCallView({
 	const actionScrollKey = lastAction
 		? `${actionMessages.length}:${lastAction.id}`
 		: '0';
-	const liveActionProps = {
-		fetchAnswer,
-		onSchedulerBookingMetadata,
-		isCalendlyScriptReady,
-		isTidyCalScriptReady
-	};
 
 	useEffect(() => {
 		const list = transcriptListRef.current;
@@ -397,6 +425,26 @@ export function VoiceCallView({
 		return () => observer.disconnect();
 	}, [scrollTranscriptsToBottom]);
 
+	useEffect(() => {
+		// Mic mute only gates the uplink; keep the tool chime audible.
+		const usingTool = voiceState.status === VOICE_CALL_STATUS.USING_TOOL;
+		const searching =
+			usingTool && isVoiceSearchToolName(voiceState.activeToolName);
+		toolSearchingChimeRef.current?.setActive(searching);
+		toolWorkingChimeRef.current?.setActive(usingTool && !searching);
+	}, [voiceState.status, voiceState.activeToolName]);
+
+	useEffect(() => {
+		return () => {
+			// Keep the shared unlock across remounts within the same page;
+			// only stop playback when leaving the voice view.
+			toolWorkingChimeRef.current?.setActive(false);
+			toolSearchingChimeRef.current?.setActive(false);
+			toolWorkingChimeRef.current = null;
+			toolSearchingChimeRef.current = null;
+		};
+	}, []);
+
 	const statusLabelKey = STATUS_LABEL_KEYS[voiceState.status];
 	const statusLabel = statusLabelKey
 		? labels[statusLabelKey]
@@ -408,14 +456,42 @@ export function VoiceCallView({
 		? undefined
 		: statusLabel;
 	const leaveCall = () => {
+		toolWorkingChimeRef.current?.setActive(false);
+		toolSearchingChimeRef.current?.setActive(false);
 		cleanupSession();
-		setAgentActivity(null);
 		onExit();
 	};
+	const sendVoiceUserText = useCallback(
+		(text) => {
+			const trimmed = typeof text === 'string' ? text.trim() : '';
+			if (!trimmed) return false;
+			const sent = sessionRef.current?.sendUserText(trimmed) ?? false;
+			if (!sent) return false;
+			const { state: next, itemId } = appendLocalVoiceTranscript(
+				voiceStateRef.current,
+				{ role: 'caller', text: trimmed }
+			);
+			if (!itemId) return true;
+			voiceStateRef.current = next;
+			setVoiceState(next);
+			onTranscriptFinal?.({ itemId, role: 'caller', text: trimmed });
+			return true;
+		},
+		[onTranscriptFinal]
+	);
 	const toggleMute = () => {
 		const nextMuted = !isMuted;
 		sessionRef.current?.setMuted(nextMuted);
 		setIsMuted(nextMuted);
+	};
+
+	const liveActionProps = {
+		fetchAnswer,
+		onSchedulerBookingMetadata,
+		isCalendlyScriptReady,
+		isTidyCalScriptReady,
+		onEndVoiceCall: leaveCall,
+		onSendVoiceUserText: sendVoiceUserText
 	};
 
 	return (
@@ -459,6 +535,8 @@ export function VoiceCallView({
 										isCalendlyScriptReady
 									}
 									isTidyCalScriptReady={isTidyCalScriptReady}
+									onEndVoiceCall={leaveCall}
+									onSendVoiceUserText={sendVoiceUserText}
 								/>
 							</div>
 						) : (
@@ -492,10 +570,11 @@ export function VoiceCallView({
 				<div className="docsbot-voice-call-stage">
 					<div className="docsbot-voice-call-orb-block">
 						<VoiceOrb
-							status={voiceState.status}
+							status={orbStatus}
+							toolName={voiceState.activeToolName}
 							color={color}
 							label={orbAriaLabel}
-							audioLevel={modelAudioLevel}
+							audioLevel={orbAudioLevel}
 						/>
 						{showStatusLabel ? (
 							<div
@@ -512,12 +591,6 @@ export function VoiceCallView({
 						<p className="docsbot-voice-call-error" role="alert">
 							{errorDetail}
 						</p>
-					) : null}
-					{showAgentActivity !== false && agentActivity ? (
-						<AgentActivityStatus
-							agentActivity={agentActivity}
-							labels={labels}
-						/>
 					) : null}
 				</div>
 			</div>

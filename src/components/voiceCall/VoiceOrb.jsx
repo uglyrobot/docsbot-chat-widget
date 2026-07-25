@@ -1,25 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MODE_DRAWS, resolvePreset } from 'thinking-orbs';
 import { VOICE_CALL_STATUS } from '../../utils/voiceRealtimeState.mjs';
-
-const ORB_PRESENTATION = {
-	[VOICE_CALL_STATUS.CONNECTING]: { orbState: 'working', speed: 0.68 },
-	[VOICE_CALL_STATUS.LISTENING]: { orbState: 'working', speed: 0.72 },
-	[VOICE_CALL_STATUS.USER_SPEAKING]: { orbState: 'listening', speed: 1.25 },
-	[VOICE_CALL_STATUS.THINKING]: { orbState: 'solving', speed: 0.9 },
-	[VOICE_CALL_STATUS.USING_TOOL]: { orbState: 'searching', speed: 1.05 },
-	[VOICE_CALL_STATUS.AGENT_SPEAKING]: { orbState: 'composing', speed: 1.35 },
-	[VOICE_CALL_STATUS.ERROR]: {
-		orbState: 'shaping',
-		speed: 0.12,
-		color: '#dc2626'
-	},
-	[VOICE_CALL_STATUS.ENDED]: {
-		orbState: 'shaping',
-		speed: 0.12,
-		color: '#64748b'
-	}
-};
+import { voiceOrbPresentation } from './voiceOrbPresentation.mjs';
 
 function usePrefersReducedMotion() {
 	const [reduced, setReduced] = useState(false);
@@ -41,6 +23,7 @@ function usePrefersReducedMotion() {
  */
 export function VoiceOrb({
 	status,
+	toolName = '',
 	color,
 	label,
 	audioLevel = 0,
@@ -52,9 +35,7 @@ export function VoiceOrb({
 	const colorRef = useRef(null);
 	const speedRef = useRef(null);
 	const reducedMotion = usePrefersReducedMotion();
-	const presentation =
-		ORB_PRESENTATION[status] ||
-		ORB_PRESENTATION[VOICE_CALL_STATUS.CONNECTING];
+	const presentation = voiceOrbPresentation(status, toolName);
 	const orbColor = color || presentation.color || '#1292ee';
 	// Prefer at least the official 20px small preset density.
 	const paintSize = Math.max(20, Math.round(size));

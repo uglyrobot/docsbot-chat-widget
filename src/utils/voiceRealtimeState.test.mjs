@@ -25,19 +25,36 @@ test('Realtime events map to every visible voice-call state', () => {
 		type: 'response.output_item.added',
 		item: {
 			id: 'tool-1',
+			call_id: 'call-1',
 			type: 'function_call',
 			name: 'search_documentation'
 		}
 	});
 	assert.equal(state.status, VOICE_CALL_STATUS.USING_TOOL);
 	state = reduceVoiceRealtimeEvent(state, {
+		type: 'conversation.item.created',
+		item: {
+			call_id: 'call-1',
+			type: 'function_call_output',
+			output: '{}'
+		}
+	});
+	assert.equal(state.status, VOICE_CALL_STATUS.THINKING);
+	state = reduceVoiceRealtimeEvent(state, {
 		type: 'response.output_audio_transcript.delta',
 		item_id: 'agent-1',
 		delta: 'Hello'
 	});
 	assert.equal(state.status, VOICE_CALL_STATUS.AGENT_SPEAKING);
+	assert.equal(state.agentAudioPlaying, true);
+	// response.done arrives before WebRTC audio finishes draining.
 	state = reduceVoiceRealtimeEvent(state, { type: 'response.done' });
+	assert.equal(state.status, VOICE_CALL_STATUS.AGENT_SPEAKING);
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'output_audio_buffer.stopped'
+	});
 	assert.equal(state.status, VOICE_CALL_STATUS.LISTENING);
+	assert.equal(state.agentAudioPlaying, false);
 	state = reduceVoiceRealtimeEvent(state, { type: 'error' });
 	assert.equal(state.status, VOICE_CALL_STATUS.ERROR);
 });
@@ -119,6 +136,70 @@ test('tool state accepts only a safe name and never retains internals', () => {
 		}),
 		''
 	);
+});
+
+test('USING_TOOL survives response.done until function_call_output', () => {
+	let state = createVoiceRealtimeState();
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'response.output_item.added',
+		item: {
+			id: 'item-tool-1',
+			call_id: 'call-tool-1',
+			type: 'function_call',
+			name: 'search_documentation'
+		}
+	});
+	assert.equal(state.status, VOICE_CALL_STATUS.USING_TOOL);
+	assert.deepEqual(state.pendingToolCallIds, ['call-tool-1']);
+
+	// Model finished requesting the tool — execution may still take tens of seconds.
+	state = reduceVoiceRealtimeEvent(state, { type: 'response.done' });
+	assert.equal(state.status, VOICE_CALL_STATUS.USING_TOOL);
+	assert.equal(state.activeToolName, 'search_documentation');
+
+	state = reduceVoiceRealtimeEvent(state, { type: 'response.created' });
+	assert.equal(state.status, VOICE_CALL_STATUS.USING_TOOL);
+
+	// Spoken progress updates during a long tool must not clear the wait.
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'response.output_audio_transcript.delta',
+		item_id: 'agent-progress-1',
+		delta: 'Still searching…'
+	});
+	assert.equal(state.status, VOICE_CALL_STATUS.AGENT_SPEAKING);
+	assert.deepEqual(state.pendingToolCallIds, ['call-tool-1']);
+	assert.equal(state.activeToolName, 'search_documentation');
+
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'response.output_audio_transcript.done',
+		item_id: 'agent-progress-1',
+		transcript: 'Still searching…'
+	});
+	assert.deepEqual(state.pendingToolCallIds, ['call-tool-1']);
+
+	state = reduceVoiceRealtimeEvent(state, { type: 'response.done' });
+	assert.equal(state.status, VOICE_CALL_STATUS.AGENT_SPEAKING);
+	assert.equal(state.activeToolName, 'search_documentation');
+
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'output_audio_buffer.stopped'
+	});
+	assert.equal(state.status, VOICE_CALL_STATUS.USING_TOOL);
+	assert.equal(state.activeToolName, 'search_documentation');
+	assert.equal(state.agentAudioPlaying, false);
+
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'conversation.item.created',
+		item: {
+			id: 'item-tool-out',
+			call_id: 'call-tool-1',
+			type: 'function_call_output',
+			output: JSON.stringify({ status: 'ok', result: 'docs hit' })
+		}
+	});
+	assert.equal(state.status, VOICE_CALL_STATUS.THINKING);
+	assert.equal(state.activeToolName, '');
+	assert.deepEqual(state.pendingToolCallIds, []);
 });
 
 test('voiceClientActionFromEvent whitelists booking, custom_button, support, and stripe handoffs', () => {

@@ -66,11 +66,17 @@ function createHarness({ responseOk = true } = {}) {
 			this.listeners = new Map();
 			this.dataChannel = {
 				closed: false,
+				readyState: 'connecting',
+				sent: [],
 				listeners: new Map(),
 				addEventListener: (name, listener) =>
 					this.dataChannel.listeners.set(name, listener),
+				send: (data) => {
+					this.dataChannel.sent.push(data);
+				},
 				close: () => {
 					this.dataChannel.closed = true;
+					this.dataChannel.readyState = 'closed';
 				}
 			};
 		}
@@ -247,6 +253,47 @@ test('session negotiates after creating oai-events and cleans every media resour
 	assert.equal(harness.lastPeerConnection.closed, true);
 	assert.equal(harness.remoteAudio.pauseCalls, 1);
 	assert.equal(harness.remoteAudio.srcObject, null);
+});
+
+test('sendUserText cancels in-flight speech then injects a user text turn', async () => {
+	const harness = createHarness();
+	const session = new DocsBotVoiceCallSession({
+		apiBase: 'https://api.docsbot.ai',
+		teamId: 'team-1',
+		botId: 'bot-1',
+		remoteAudio: harness.remoteAudio,
+		fetchImpl: harness.fetchImpl,
+		RTCPeerConnectionImpl: harness.FakePeerConnection,
+		getUserMedia: async () => harness.microphone
+	});
+
+	await session.start();
+	const channel = harness.lastPeerConnection.dataChannel;
+	assert.equal(session.sendUserText('  No, thanks  '), false);
+
+	channel.readyState = 'open';
+	assert.equal(session.sendUserText('  No, thanks  '), true);
+	assert.deepEqual(
+		channel.sent.map((raw) => JSON.parse(raw)),
+		[
+			{ type: 'response.cancel' },
+			{
+				type: 'conversation.item.create',
+				item: {
+					type: 'message',
+					role: 'user',
+					content: [{ type: 'input_text', text: 'No, thanks' }]
+				}
+			},
+			{ type: 'response.create' }
+		]
+	);
+
+	assert.equal(session.sendUserText(''), false);
+	assert.equal(session.sendUserText('   '), false);
+
+	session.close();
+	assert.equal(session.sendUserText('Still here?'), false);
 });
 
 test('safe API errors propagate without leaving a live peer connection', async () => {

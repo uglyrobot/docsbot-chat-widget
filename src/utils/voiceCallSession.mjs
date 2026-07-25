@@ -462,6 +462,45 @@ export class DocsBotVoiceCallSession {
 		if (muted) this.onMicrophoneLevel(0);
 	}
 
+	/**
+	 * Inject a text user turn into the live Realtime session and request a
+	 * response. Used for UI actions (e.g. declining support escalation).
+	 * @returns {boolean} true if events were sent on an open data channel
+	 */
+	sendUserText(text) {
+		const trimmed = typeof text === 'string' ? text.trim() : '';
+		if (!trimmed) return false;
+		if (this.closed) return false;
+		const channel = this.dataChannel;
+		if (!channel || channel.readyState !== 'open') return false;
+		if (typeof channel.send !== 'function') return false;
+
+		const sendEvent = (event) => {
+			channel.send(JSON.stringify(event));
+		};
+
+		try {
+			// Best-effort: stop in-flight agent speech before the decline turn.
+			try {
+				sendEvent({ type: 'response.cancel' });
+			} catch {
+				// Cancel may fail if no response is active; continue.
+			}
+			sendEvent({
+				type: 'conversation.item.create',
+				item: {
+					type: 'message',
+					role: 'user',
+					content: [{ type: 'input_text', text: trimmed }]
+				}
+			});
+			sendEvent({ type: 'response.create' });
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
 	close() {
 		if (this.closed) return;
 		this.closed = true;

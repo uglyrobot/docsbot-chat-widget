@@ -13,12 +13,37 @@ function isInteractiveHistoryMessage(message) {
 	return false;
 }
 
+function hasUserEngagement(messages) {
+	for (const key of Object.keys(messages)) {
+		const message = messages[key];
+		if (!message || typeof message !== 'object') continue;
+		if (message.loading) continue;
+		if (message.variant === 'user') {
+			const text =
+				typeof message.message === 'string'
+					? message.message.trim()
+					: '';
+			if (text) return true;
+		}
+		if (isInteractiveHistoryMessage(message)) return true;
+	}
+	return false;
+}
+
 /**
  * Snapshot chat messages into voice-call history items so a resumed
  * conversation stays visible while live transcripts append below.
+ *
+ * Fresh chats that only have the static widget greeting are omitted so
+ * the realtime model greeting can be the first transcript.
  */
 export function buildVoiceCallHistoryItems(messages) {
 	if (!messages || typeof messages !== 'object' || Array.isArray(messages)) {
+		return [];
+	}
+
+	// No prior user turns yet — don't seed voice with labels.firstMessage.
+	if (!hasUserEngagement(messages)) {
 		return [];
 	}
 
@@ -104,4 +129,59 @@ export function interleaveVoiceLiveItems(transcripts, actionEntries) {
 		});
 	}
 	return items;
+}
+
+/**
+ * Queue a client_action until the next agent transcript (spoken handoff
+ * after the tool) so the card is not inserted between prompt and reply.
+ */
+export function queuePendingVoiceAction(previous, message) {
+	if (!message?.id) return Array.isArray(previous) ? previous : [];
+	const list = Array.isArray(previous) ? previous : [];
+	const existing = list.findIndex((entry) => entry.id === message.id);
+	if (existing >= 0) {
+		const next = [...list];
+		next[existing] = message;
+		return next;
+	}
+	return [...list, message];
+}
+
+/**
+ * Attach queued client_actions after a transcript item id.
+ * Returns `{ actions, pending: [] }` when flushed.
+ */
+export function flushPendingVoiceActions(actionEntries, pendingMessages, afterItemId) {
+	const actions = Array.isArray(actionEntries) ? actionEntries : [];
+	const pending = Array.isArray(pendingMessages) ? pendingMessages : [];
+	if (!pending.length) {
+		return { actions, pending: [] };
+	}
+
+	let next = actions;
+	for (const message of pending) {
+		if (!message?.id) continue;
+		const existing = next.find((entry) => entry.id === message.id);
+		if (existing) {
+			next = next.map((entry) =>
+				entry.id === message.id
+					? {
+							...entry,
+							message,
+							afterItemId: afterItemId ?? entry.afterItemId ?? null
+						}
+					: entry
+			);
+			continue;
+		}
+		next = [
+			...next,
+			{
+				id: message.id,
+				message,
+				afterItemId: afterItemId ?? null
+			}
+		];
+	}
+	return { actions: next, pending: [] };
 }

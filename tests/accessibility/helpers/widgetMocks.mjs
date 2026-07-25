@@ -87,4 +87,17 @@ export async function installWidgetMocks(page, widgetConfig = mockWidgetConfig) 
       body: buildAgentSse(body),
     });
   });
+
+  await page.route("http://127.0.0.1:9000/teams/**/chat-agent", async (route) => {
+    const body = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      headers: {
+        "cache-control": "no-cache",
+        connection: "keep-alive",
+      },
+      body: buildAgentSse(body),
+    });
+  });
 }

@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
 	buildVoiceCallHistoryItems,
-	interleaveVoiceLiveItems
+	flushPendingVoiceActions,
+	interleaveVoiceLiveItems,
+	queuePendingVoiceAction
 } from './voiceCallHistory.mjs';
 
 test('buildVoiceCallHistoryItems maps prior chat into appendable voice entries', () => {
@@ -77,6 +79,35 @@ test('buildVoiceCallHistoryItems tolerates empty or invalid message maps', () =>
 	assert.deepEqual(buildVoiceCallHistoryItems(undefined), []);
 });
 
+test('buildVoiceCallHistoryItems omits greeting-only chats so the model can greet', () => {
+	assert.deepEqual(
+		buildVoiceCallHistoryItems({
+			greet: {
+				id: 'greet',
+				variant: 'chatbot',
+				message: 'What can I help you with?'
+			}
+		}),
+		[]
+	);
+	assert.deepEqual(
+		buildVoiceCallHistoryItems({
+			greet: {
+				id: 'greet',
+				variant: 'chatbot',
+				message: 'What can I help you with?'
+			},
+			loading: {
+				id: 'loading',
+				variant: 'chatbot',
+				message: '',
+				loading: true
+			}
+		}),
+		[]
+	);
+});
+
 test('interleaveVoiceLiveItems keeps tool cards anchored before later transcripts', () => {
 	const transcripts = [
 		{ itemId: 'caller-1', role: 'caller', text: 'Book a demo' },
@@ -124,6 +155,56 @@ test('interleaveVoiceLiveItems places unanchored actions before live transcripts
 		[
 			{ kind: 'action', id: 'voice-action-early' },
 			{ kind: 'transcript', id: 'caller-1' }
+		]
+	);
+});
+
+test('queue and flush pending voice actions after the post-tool agent turn', () => {
+	const pending = queuePendingVoiceAction([], {
+		id: 'voice-action-support',
+		type: 'support_escalation'
+	});
+	assert.equal(pending.length, 1);
+
+	const deduped = queuePendingVoiceAction(pending, {
+		id: 'voice-action-support',
+		type: 'support_escalation',
+		responses: { yes: 'Yes' }
+	});
+	assert.equal(deduped.length, 1);
+	assert.equal(deduped[0].responses.yes, 'Yes');
+
+	const { actions, pending: emptied } = flushPendingVoiceActions(
+		[],
+		deduped,
+		'agent-after-tool'
+	);
+	assert.deepEqual(emptied, []);
+	assert.deepEqual(
+		actions.map((entry) => ({
+			id: entry.id,
+			afterItemId: entry.afterItemId
+		})),
+		[{ id: 'voice-action-support', afterItemId: 'agent-after-tool' }]
+	);
+
+	const interleaved = interleaveVoiceLiveItems(
+		[
+			{ itemId: 'agent-prompt', role: 'agent', text: 'Want support?' },
+			{
+				itemId: 'agent-after-tool',
+				role: 'agent',
+				text: 'I can connect you.'
+			}
+		],
+		actions
+	);
+	assert.deepEqual(
+		interleaved.map((item) => ({ kind: item.kind, id: item.id })),
+		[
+			{ kind: 'transcript', id: 'agent-prompt' },
+			{ kind: 'transcript', id: 'agent-after-tool' },
+			{ kind: 'action', id: 'voice-action-support' }
 		]
 	);
 });

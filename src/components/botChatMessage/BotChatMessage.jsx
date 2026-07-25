@@ -291,7 +291,9 @@ export const BotChatMessage = ({
 	leadCollectMode,
 	pendingLeadCapture,
 	isCalendlyScriptReady,
-	isTidyCalScriptReady
+	isTidyCalScriptReady,
+	onEndVoiceCall,
+	onSendVoiceUserText
 }) => {
 	const [rating, setRating] = useState(payload.rating || 0);
 	const [ratingSubmitted, setRatingSubmitted] = useState(false);
@@ -330,6 +332,8 @@ export const BotChatMessage = ({
 	const [isCopied, setIsCopied] = useState(false);
 	const [leadFormValues, setLeadFormValues] = useState({});
 	const [leadFormTouched, setLeadFormTouched] = useState(false);
+	const [voiceEscalationResolved, setVoiceEscalationResolved] =
+		useState(false);
 	const assistantMessagePrefix = `${botName || 'Assistant'}: `;
 
 	const copyContentToClipboard = async () => {
@@ -782,13 +786,28 @@ export const BotChatMessage = ({
 	const hasVisibleMessageText =
 		typeof payload.message === 'string' &&
 		payload.message.trim().length > 0;
-	// Voice booking/Stripe handoffs omit copy (spoken in the transcript) and
-	// only render the embed/items — skip the empty grey bubble.
+	// Voice booking/Stripe/escalation handoffs omit copy (spoken in the
+	// transcript) and only render the interactive UI — skip the empty bubble.
+	const isUiOnlyVoiceHandoff =
+		Boolean(payload.schedulerEmbed?.path) ||
+		Boolean(payload.stripeBilling) ||
+		payload.type === 'support_escalation';
 	const showMessageBubble =
 		payload.loading ||
 		payload.error ||
 		hasVisibleMessageText ||
-		!(payload.schedulerEmbed?.path || payload.stripeBilling);
+		!isUiOnlyVoiceHandoff;
+	const showMessageChrome =
+		showMessageBubble ||
+		Boolean(payload.schedulerEmbed?.path) ||
+		Boolean(payload.stripeBilling) ||
+		(payload.type === 'custom_button' &&
+			Boolean(payload.customButton?.buttonText)) ||
+		Boolean(
+			isAgent &&
+				showAgentActivity !== false &&
+				payload.agentActivity
+		);
 
 	const handleCalendlyBookingScheduled = ({
 		eventName,
@@ -855,6 +874,7 @@ export const BotChatMessage = ({
 
 	return (
 		<>
+			{showMessageChrome ? (
 			<div
 				className={clsx(
 					'docsbot-chat-bot-message-container',
@@ -1338,6 +1358,7 @@ export const BotChatMessage = ({
 					)}
 				</div>
 			</div>
+			) : null}
 
 			{/*
 				This section handles feedback for agent-based responses.
@@ -1485,6 +1506,7 @@ export const BotChatMessage = ({
 			{useEscalation &&
 				isAgent &&
 				payload.isLast &&
+				!(payload.voiceCall && voiceEscalationResolved) &&
 				payload.type == 'support_escalation' &&
 				(supportLink ||
 					(supportCallback &&
@@ -1500,6 +1522,15 @@ export const BotChatMessage = ({
 								type="button"
 								disabled={isSupportLoading}
 								onClick={(e) => {
+									if (payload.voiceCall) {
+										setVoiceEscalationResolved(true);
+										onEndVoiceCall?.();
+										void runSupportCallback(
+											e,
+											state.chatHistory || []
+										);
+										return;
+									}
 									if (
 										leadCollectMode === 'before_escalation'
 									) {
@@ -1535,6 +1566,18 @@ export const BotChatMessage = ({
 											payload.responses?.no ||
 											labels.feedbackNo ||
 											'👎';
+										if (payload.voiceCall) {
+											onSendVoiceUserText?.(message);
+											setVoiceEscalationResolved(true);
+											dispatch({
+												type: 'update_message',
+												payload: {
+													id: payload.id,
+													isLast: false
+												}
+											});
+											return;
+										}
 										dispatch({
 											type: 'add_message',
 											payload: {

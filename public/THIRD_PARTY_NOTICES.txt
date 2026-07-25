@@ -48,3 +48,18 @@ without limitation the rights to use, copy, modify, merge, publish, distribute,
 sublicense, and/or sell copies of the Software, subject to inclusion of this
 copyright and permission notice. The Software is provided "AS IS", without
 warranty of any kind.
+
+UI SFX
+------
+
+Name: UI SFX (zen / recording, zen / processing)
+Author: Romain Simon / UI SFX
+Source: https://github.com/romainsimon/uisfx
+Assets: sounds/zen/recording.mp3, sounds/zen/processing.mp3
+License: Creative Commons Zero v1.0 Universal (CC0 1.0)
+License text: https://creativecommons.org/publicdomain/zero/1.0/
+
+DocsBot vendors two CC0 loops from the UI SFX zen pack as quiet beds during
+voice tool calls, inlined as data URIs in voiceToolWorkingSrc.mjs (zen /
+recording) and voiceToolSearchingSrc.mjs (zen / processing). No endorsement
+by the UI SFX authors is implied.

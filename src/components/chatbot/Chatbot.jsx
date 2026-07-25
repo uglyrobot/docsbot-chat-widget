@@ -74,6 +74,9 @@ import { VoiceCallView } from '../voiceCall/VoiceCallView';
 import { VoiceOrb } from '../voiceCall/VoiceOrb';
 import { buildVoiceCallHistoryItems } from '../../utils/voiceCallHistory.mjs';
 import { VOICE_CALL_STATUS } from '../../utils/voiceRealtimeState.mjs';
+import { primeSharedVoiceToolWorkingChime } from '../../utils/voiceToolWorkingChime.mjs';
+import voiceToolWorkingSrc from '../../assets/audio/voiceToolWorkingSrc.mjs';
+import voiceToolSearchingSrc from '../../assets/audio/voiceToolSearchingSrc.mjs';
 
 // Define error classes for fetchEventSource
 class RetriableError extends Error {}
@@ -1457,11 +1460,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		}
 
 		if (action.kind === 'support_escalation') {
+			// Voice already speaks the confirmation; show only Yes/No.
 			const payload = {
 				id: messageId,
 				variant: 'chatbot',
 				type: 'support_escalation',
-				message: action.message,
+				message: '',
 				responses: action.responses || {},
 				isLast: true,
 				loading: false,
@@ -1506,6 +1510,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const startVoiceCall = () => {
 		if (!isVoiceAgentCallAvailable || isFetching || isLeadFormVisible)
 			return;
+		// Unlock the tool-working chime under this click; VoiceCallView mounts
+		// later in an effect, which is too late for autoplay policies.
+		void primeSharedVoiceToolWorkingChime([
+			voiceToolWorkingSrc,
+			voiceToolSearchingSrc
+		]);
 		const conversationId = getConversationId();
 		setVoiceConversationId(conversationId);
 		// API resumes via conversationId; keep the same prior turns on screen
@@ -3059,7 +3069,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							identify={identify}
 							labels={labels}
 							color={color}
-							showAgentActivity={showAgentActivity}
 							historyItems={voiceCallHistoryItems}
 							onConversationId={handleVoiceConversationId}
 							onTranscriptFinal={upsertVoiceTranscriptMessage}
@@ -3967,7 +3976,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 													/>
 													<VoiceOrb
 														status={
-															VOICE_CALL_STATUS.AGENT_SPEAKING
+															VOICE_CALL_STATUS.LISTENING
 														}
 														color={
 															isVoiceOrbHovered
