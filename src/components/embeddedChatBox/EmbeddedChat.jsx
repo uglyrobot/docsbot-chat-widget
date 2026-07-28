@@ -13,15 +13,17 @@ import linkListStyles from "!../../assets/css/LinkList.min.css?raw";
 import embeddedChatStyles from "!../../assets/css/embeddedChat.min.css?raw";
 
 const EmbeddedChat = () => {
-  const { customCSS, textDirection, browserLocaleTag } = useConfig();
+  const { customCSS, textDirection, browserLocaleTag, effectiveTheme } = useConfig();
 
   const dir = textDirection === "rtl" ? "rtl" : "ltr";
   return (
     <ReactShadowRoot>
       <div
-        className="docsbot-embedded-locale-root"
+        className={`docsbot-embedded-locale-root docsbot-theme-root${effectiveTheme === "dark" ? " dark" : ""}`}
+        data-docsbot-theme={effectiveTheme}
         dir={dir}
         lang={browserLocaleTag}
+        style={{ colorScheme: effectiveTheme }}
       >
         <style type="text/css">{fontAwesomeStyles}</style>
         <style type="text/css">{katexStyles}</style>

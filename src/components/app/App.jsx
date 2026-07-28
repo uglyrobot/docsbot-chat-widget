@@ -22,7 +22,7 @@ function App() {
   const launcherRef = useRef(null);
   const wasOpenRef = useRef(false);
   const chatPanelId = useId();
-  const { customCSS, textDirection, browserLocaleTag } = useConfig();
+  const { customCSS, textDirection, browserLocaleTag, effectiveTheme } = useConfig();
   useEffect(() => {
     const handleOpen = async () => {
       await setIsOpen(true);
@@ -73,8 +73,11 @@ function App() {
   return (
     <ReactShadowRoot>
       <div
+        className={`docsbot-theme-root${effectiveTheme === "dark" ? " dark" : ""}`}
+        data-docsbot-theme={effectiveTheme}
         dir={dir}
         lang={browserLocaleTag}
+        style={{ colorScheme: effectiveTheme }}
       >
         <style type="text/css">{fontAwesomeStyles}</style>
         <style type="text/css">{katexStyles}</style>

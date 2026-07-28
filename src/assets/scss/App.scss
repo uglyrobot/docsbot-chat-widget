@@ -39,7 +39,7 @@
 }
 
 .docsbot-chat-container {
-	background-color: rgb(249, 250, 250);
+	background-color: var(--docsbot-surface, rgb(249, 250, 250));
 	border-radius: 16px;
 	height: 100%;
 	animation: fadeIn 0.5s;
@@ -50,7 +50,8 @@
 }
 
 .docsbot-chat-bot-message {
-	width: auto;
+	width: fit-content;
+	max-width: 100%;
 	margin-left: 0;
 }
 

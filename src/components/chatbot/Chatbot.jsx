@@ -31,7 +31,11 @@ import {
 import { faImage } from '@fortawesome/free-regular-svg-icons';
 import {
 	Emitter,
+	decideAccessibleTextColor,
+	decideBrandForeground,
 	decideTextColor,
+	deriveDarkBrandSurface,
+	getContrastSafeAccentForSurfaces,
 	scrollToBottom,
 	mergeIdentifyMetadata
 } from '../../utils/utils';
@@ -77,6 +81,14 @@ import { VOICE_CALL_STATUS } from '../../utils/voiceRealtimeState.mjs';
 import { primeSharedVoiceToolWorkingChime } from '../../utils/voiceToolWorkingChime.mjs';
 import voiceToolWorkingSrc from '../../assets/audio/voiceToolWorkingSrc.mjs';
 import voiceToolSearchingSrc from '../../assets/audio/voiceToolSearchingSrc.mjs';
+import {
+	clearPendingStartVoiceCall,
+	takePendingStartVoiceCall
+} from '../../utils/voiceCallJsApi.mjs';
+import {
+	isMicrophoneBlockedByPermissionsPolicy,
+	isMicrophoneDisallowedByEmbeddedPagePolicy
+} from '../../utils/microphonePermissions.mjs';
 
 // Define error classes for fetchEventSource
 class RetriableError extends Error {}
@@ -197,32 +209,6 @@ function isSameSchedulerEmbed(a, provider, path) {
 	return a && a.provider === provider && a.path === path;
 }
 
-/**
- * True when Permissions Policy / legacy Feature Policy disallows microphone in this document
- * (embedding page or iframe — not user denial).
- */
-function isMicrophoneDisallowedByEmbeddedPagePolicy() {
-	if (typeof document === 'undefined') return false;
-	const policy = document.permissionsPolicy || document.featurePolicy;
-	if (!policy || typeof policy.allowsFeature !== 'function') {
-		return false;
-	}
-	try {
-		return policy.allowsFeature('microphone') === false;
-	} catch {
-		return false;
-	}
-}
-
-/** Fallback when {@link document.permissionsPolicy} is missing or unreliable. */
-function errorSuggestsMicrophoneBlockedByPermissionsPolicy(error) {
-	const msg = String(error?.message || '').toLowerCase();
-	return (
-		msg.includes('permissions policy') ||
-		msg.includes('not allowed in this document')
-	);
-}
-
 // Wrapper component to coordinate a 2s loading delay on the bot message
 // before revealing both the lead collect message text and the form together.
 const LeadCollectBlock = ({ message, children }) => {
@@ -278,6 +264,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		useTidyCal,
 		keepFooterVisible,
 		localDev,
+		localApiBase,
+		testing,
 		allowedDomains,
 		linkSafetyEnabled,
 		leadCollect,
@@ -286,7 +274,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		supportLink,
 		browserLocaleTag,
 		browserRequestLanguageTag,
-		piiRedaction
+		piiRedaction,
+		effectiveTheme
 	} = useConfig();
 	const ref = useRef();
 	const inputRef = useRef();
@@ -337,6 +326,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const stateMessagesRef = useRef(state.messages);
 	const hasRestoredConversationRef = useRef(false);
 	const shouldRedactPii = isPiiRedactionEnabled(piiRedaction);
+	const apiBaseUrl =
+		localDev && typeof localApiBase === 'string' && localApiBase.trim()
+			? localApiBase.trim().replace(/\/+$/, '')
+			: localDev
+				? 'http://127.0.0.1:9000'
+				: 'https://api.docsbot.ai';
 	const hasConversationStarted = Object.keys(state.messages).length > 1;
 	const isLeadFormVisible = Object.values(state.messages || {}).some(
 		(message) =>
@@ -859,8 +854,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			setIsRecordingAudio(true);
 		} catch (error) {
 			const policyBlocked =
-				isMicrophoneDisallowedByEmbeddedPagePolicy() ||
-				errorSuggestsMicrophoneBlockedByPermissionsPolicy(error);
+				isMicrophoneBlockedByPermissionsPolicy(error);
 			if (policyBlocked) {
 				console.warn(
 					'DOCSBOT: Microphone blocked by embedding page Permissions-Policy — not user denial; microphone is disallowed for this widget document',
@@ -1031,9 +1025,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
 	const captureLead = async (metadata) => {
 		const conversationId = getConversationId();
-		const apiBase = localDev
-			? `http://127.0.0.1:9000`
-			: `https://api.docsbot.ai`;
+		const apiBase = apiBaseUrl;
 		const apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${conversationId}/lead`;
 
 		try {
@@ -1063,9 +1055,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
 	const updateConversationMetadata = async (metadata) => {
 		const conversationId = getConversationId();
-		const apiBase = localDev
-			? `http://127.0.0.1:9000`
-			: `https://api.docsbot.ai`;
+		const apiBase = apiBaseUrl;
 		const apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${conversationId}`;
 		console.log('Updating Conversation Metadata:', {
 			conversationId,
@@ -1201,9 +1191,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				} else if (paramCount === 3) {
 					await supportCallback(syntheticEvent, history, metadata);
 				} else {
-					const apiBase = localDev
-						? `http://127.0.0.1:9000`
-						: `https://api.docsbot.ai`;
+					const apiBase = apiBaseUrl;
 					if (getConversationId() && isAgent) {
 						let ticket = null;
 						try {
@@ -1246,9 +1234,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			console.warn(`DOCSBOT: Error in support callback: ${err}`);
 		}
 
-		const apiBase = localDev
-			? `http://127.0.0.1:9000`
-			: `https://api.docsbot.ai`;
+		const apiBase = apiBaseUrl;
 		const apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${getConversationId()}/escalate`;
 		fetch(apiUrl, {
 			method: 'PUT',
@@ -1384,6 +1370,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			type: existing ? 'update_message' : 'add_message',
 			payload
 		});
+		dispatch({
+			type: 'upsert_voice_history',
+			payload: { itemId, role, text }
+		});
 	};
 
 	const upsertVoiceClientActionMessage = (action) => {
@@ -1504,12 +1494,41 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			return payload;
 		}
 
+		if (action.kind === 'lookup_answer') {
+			// Spoken answer is already in the transcript; show sources under it.
+			const payload = {
+				id: messageId,
+				variant: 'chatbot',
+				type: 'lookup_answer',
+				message: action.message || '',
+				sources: Array.isArray(action.sources) ? action.sources : [],
+				loading: false,
+				streaming: false,
+				voiceCall: true,
+				realtimeItemId: action.callId,
+				conversationId,
+				timestamp: existing?.timestamp || Date.now()
+			};
+			dispatch({
+				type: existing ? 'update_message' : 'add_message',
+				payload
+			});
+			return payload;
+		}
+
 		return null;
 	};
 
+	const voiceStartRequestedRef = useRef(false);
+
 	const startVoiceCall = () => {
-		if (!isVoiceAgentCallAvailable || isFetching || isLeadFormVisible)
-			return;
+		if (!isVoiceAgentCallAvailable || isFetching || isLeadFormVisible) {
+			return false;
+		}
+		if (isVoiceCallView || voiceStartRequestedRef.current) {
+			return true;
+		}
+		voiceStartRequestedRef.current = true;
 		// Unlock the tool-working chime under this click; VoiceCallView mounts
 		// later in an effect, which is too late for autoplay policies.
 		void primeSharedVoiceToolWorkingChime([
@@ -1518,13 +1537,37 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		]);
 		const conversationId = getConversationId();
 		setVoiceConversationId(conversationId);
+		dispatch({ type: 'start_voice_history' });
 		// API resumes via conversationId; keep the same prior turns on screen
 		// so live voice transcripts append instead of looking like a fresh chat.
 		setVoiceCallHistoryItems(
 			buildVoiceCallHistoryItems(stateMessagesRef.current)
 		);
 		setIsVoiceCallView(true);
+		return true;
 	};
+
+	const startVoiceCallRef = useRef(startVoiceCall);
+	startVoiceCallRef.current = startVoiceCall;
+
+	useEffect(() => {
+		const handleStartVoiceCall = () => {
+			clearPendingStartVoiceCall();
+			const started = startVoiceCallRef.current() === true;
+			Emitter.emit('docsbot_start_voice_call_complete', started);
+		};
+
+		Emitter.on('docsbot_start_voice_call', handleStartVoiceCall);
+		// DocsBotAI.startVoiceCall() may open the widget before Chatbot commits;
+		// consume the pending request once we are mounted.
+		if (takePendingStartVoiceCall()) {
+			handleStartVoiceCall();
+		}
+
+		return () => {
+			Emitter.off('docsbot_start_voice_call', handleStartVoiceCall);
+		};
+	}, []);
 
 	useEffect(() => {
 		if (!showVoiceCallOrbButton) {
@@ -2083,6 +2126,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				tidycal: isTidyCalEnabled,
 				full_source: false,
 				metadata,
+				testing: Boolean(testing),
 				conversationId: requestConversationId,
 				context_items: contextItems || 6,
 				autocut: 2,
@@ -2105,9 +2149,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
 			try {
 				//console.log(sse_req);
-				const apiUrl = localDev
-					? `http://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat-agent`
-					: `https://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat-agent`;
+				const apiUrl = `${apiBaseUrl}/teams/${teamId}/bots/${botId}/chat-agent`;
 				await fetchEventSource(apiUrl, {
 					signal: abortController.signal,
 					// Default false aborts SSE on tab blur and POSTs again on focus — skip that.
@@ -2518,6 +2560,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				markdown: true,
 				history,
 				metadata,
+				testing: Boolean(testing),
 				context_items: contextItems || 6,
 				autocut: 2
 			};
@@ -2525,9 +2568,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				req.auth = signature;
 			}
 
-			const apiUrl = localDev
-				? `ws://127.0.0.1:9000/teams/${teamId}/bots/${botId}/chat`
-				: `wss://api.docsbot.ai/teams/${teamId}/bots/${botId}/chat`;
+			const apiUrl = `${apiBaseUrl.replace(/^http/, 'ws')}/teams/${teamId}/bots/${botId}/chat`;
 			const ws = new WebSocket(apiUrl);
 			setStreamController(ws);
 			streamControllerRef.current = ws;
@@ -2726,72 +2767,60 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		}
 	}
 
-	useEffect(() => {
-		const root = document.documentElement;
-		const defaultColor = '#1292EE';
-		const primaryColor = color || defaultColor;
-		const isWhite = ['#ffffff', '#FFFFFF', 'rgb(255, 255, 255)'].includes(
-			color
-		);
-
-		root.style.setProperty(
-			'--docsbot-color-main',
-			isWhite ? '#314351' : primaryColor
-		);
-
-		root.style.setProperty('--docsbot-header--bg', primaryColor);
-		root.style.setProperty(
-			'--docsbot-header--color',
-			decideTextColor(primaryColor)
-		);
-
-		root.style.setProperty('--docsbot-reset-button--bg', primaryColor);
-		root.style.setProperty(
-			'--docsbot-reset-button--color',
-			decideTextColor(primaryColor)
-		);
-
-		root.style.setProperty(
-			'--docsbot-user--bg',
-			isWhite ? '#314351' : primaryColor
-		);
-		root.style.setProperty(
-			'--docsbot-user--color',
-			decideTextColor(isWhite ? '#314351' : primaryColor)
-		);
-
-		root.style.setProperty(
-			'--docsbot-input--hover',
-			isWhite ? '#314351' : primaryColor
-		);
-
-		root.style.setProperty('--docsbot-submit-button--bg', primaryColor);
-		root.style.setProperty(
-			'--docsbot-submit-button--color',
-			decideTextColor(primaryColor)
-		);
-
-		root.style.setProperty(
-			'--docsbot-logo--color',
-			isWhite ? '#314351' : primaryColor
-		);
-
-		// Add image upload button styles
-		root.style.setProperty(
-			'--docsbot-image-upload-btn--color',
-			isWhite ? '#314351' : primaryColor
-		);
-
-		// Add drag-and-drop zone styles
-		root.style.setProperty(
-			'--docsbot-drag-border-color',
-			isWhite ? '#314351' : primaryColor
-		);
-		root.style.setProperty(
-			'--docsbot-focus-ring',
-			isWhite ? '#314351' : primaryColor
-		);
-	}, [color]);
+	const primaryColor = color || '#1292EE';
+	const isDarkTheme = effectiveTheme === 'dark';
+	const isWhiteBrand = [
+		'#ffffff',
+		'#FFFFFF',
+		'rgb(255, 255, 255)'
+	].includes(color);
+	const lightThemeAccentColor = isWhiteBrand ? '#314351' : primaryColor;
+	const primaryTextColor = isDarkTheme
+		? decideBrandForeground(primaryColor)
+		: decideTextColor(primaryColor);
+	const userBubbleColor =
+		isDarkTheme
+			? deriveDarkBrandSurface(primaryColor, '#111827')
+			: lightThemeAccentColor;
+	const userBubbleTextColor = isDarkTheme
+		? decideAccessibleTextColor(userBubbleColor)
+		: decideTextColor(userBubbleColor);
+	const darkThemeSurfaces = ['#111827', '#1f2937', '#182231', '#263244'];
+	const accentColor = isDarkTheme
+		? getContrastSafeAccentForSurfaces(primaryColor, darkThemeSurfaces, 3)
+		: lightThemeAccentColor;
+	const accentTextColor = isDarkTheme
+		? getContrastSafeAccentForSurfaces(primaryColor, darkThemeSurfaces, 4.5)
+		: lightThemeAccentColor;
+	const accentFillTextColor = decideAccessibleTextColor(accentColor);
+	const shouldInvertDocsBotHeaderLogo =
+		isDarkTheme &&
+		primaryTextColor === '#000000' &&
+		typeof logo === 'string' &&
+		logo.toLowerCase().includes('docsbot-logo-white');
+	const chatThemeStyles = {
+		'--docsbot-color-main': accentColor,
+		'--docsbot-color-main-contrast': accentFillTextColor,
+		'--docsbot-header--bg': primaryColor,
+		'--docsbot-header--color': primaryTextColor,
+		'--docsbot-reset-button--bg': primaryColor,
+		'--docsbot-reset-button--color': primaryTextColor,
+		'--docsbot-user--bg': userBubbleColor,
+		'--docsbot-user--color': userBubbleTextColor,
+		'--docsbot-input--hover': accentColor,
+		'--docsbot-submit-button--bg': primaryColor,
+		'--docsbot-submit-button--color': primaryTextColor,
+		'--docsbot-logo--color': accentColor,
+		'--docsbot-image-upload-btn--color': accentColor,
+		'--docsbot-drag-border-color': accentColor,
+		'--docsbot-focus-ring': accentColor,
+		...(isDarkTheme
+			? {
+					'--docsbot-color-contrast': primaryTextColor,
+					'--docsbot-link-color': accentTextColor
+				}
+			: {})
+	};
 
 	const [parsedFooterText, setParsedFooterText] = useState(null);
 
@@ -3013,10 +3042,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			className={clsx(
 				alignment === 'left' ? 'docsbot-left' : '',
 				'docsbot-wrapper',
-				isEmbeddedBox ? 'docsbot-embedded' : 'docsbot-floating'
+				isEmbeddedBox ? 'docsbot-embedded' : 'docsbot-floating',
+				effectiveTheme === 'dark' && 'dark'
 			)}
-			style={
-				mediaMatch.matches
+			part="wrapper"
+			data-docsbot-theme={effectiveTheme}
+			style={{
+				...(mediaMatch.matches && !isEmbeddedBox
 					? {
 							left:
 								alignment === 'left'
@@ -3028,9 +3060,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 									: 'auto',
 							bottom: verticalMargin ? verticalMargin + 80 : 100
 						}
-					: {}
-			}
-			part="wrapper"
+					: {}),
+				...chatThemeStyles
+			}}
 		>
 			<section
 				className="docsbot-chat-container"
@@ -3057,11 +3089,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 					)}
 					{isVoiceCallView ? (
 						<VoiceCallView
-							apiBase={
-								localDev
-									? 'http://127.0.0.1:9000'
-									: 'https://api.docsbot.ai'
-							}
+							apiBase={apiBaseUrl}
 							teamId={teamId}
 							botId={botId}
 							conversationId={voiceConversationId}
@@ -3084,6 +3112,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							isCalendlyScriptReady={isCalendlyScriptReady}
 							isTidyCalScriptReady={isTidyCalScriptReady}
 							onExit={() => {
+								voiceStartRequestedRef.current = false;
 								setIsVoiceCallView(false);
 								setVoiceCallHistoryItems([]);
 							}}
@@ -3139,6 +3168,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 													<img
 														src={logo}
 														alt={botName}
+														className={
+															shouldInvertDocsBotHeaderLogo
+																? 'docsbot-header-logo-inverted'
+																: undefined
+														}
 													/>
 												</div>
 											) : (

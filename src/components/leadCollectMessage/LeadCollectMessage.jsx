@@ -346,10 +346,12 @@ export const LeadCollectMessage = ({
 								)}
 								<button
 									type="submit"
-									className="rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
+									className="rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
 									style={{
 										backgroundColor:
 											'var(--docsbot-color-main, #1292ee)',
+										color:
+											'var(--docsbot-color-main-contrast, #000000)',
 										opacity: hasMissingRequired ? 0.6 : 1,
 										cursor: hasMissingRequired ? 'not-allowed' : 'pointer'
 									}}

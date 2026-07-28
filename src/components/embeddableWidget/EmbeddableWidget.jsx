@@ -5,6 +5,14 @@ import { ConfigProvider } from "../configContext/ConfigContext";
 import { Emitter } from "../../utils/event-emitter";
 import EmbeddedChat from "../embeddedChatBox/EmbeddedChat";
 import { config as fontAwesomeConfig } from "@fortawesome/fontawesome-svg-core";
+import { primeSharedVoiceToolWorkingChime } from "../../utils/voiceToolWorkingChime.mjs";
+import voiceToolWorkingSrc from "../../assets/audio/voiceToolWorkingSrc.mjs";
+import voiceToolSearchingSrc from "../../assets/audio/voiceToolSearchingSrc.mjs";
+import {
+  clearPendingStartVoiceCall,
+  hasPendingStartVoiceCall,
+  markPendingStartVoiceCall,
+} from "../../utils/voiceCallJsApi.mjs";
 
 fontAwesomeConfig.autoAddCss = false;
 
@@ -37,6 +45,58 @@ export default class EmbeddableWidget {
       this.isChatbotOpen = !this.isChatbotOpen;
       Emitter.emit("docsbot_toggle", { isChatbotOpen: this.isChatbotOpen });
       Emitter.once("docsbot_toggle_complete", resolve);
+    });
+  }
+
+  /**
+   * Open the floating widget (if needed) and enter live voice mode.
+   * Call from a user gesture (e.g. site button click) so mic/audio unlock.
+   * Resolves true when voice UI starts, false if unavailable or not mounted.
+   */
+  static startVoiceCall() {
+    return new Promise(async (resolve) => {
+      if (!this._root) {
+        console.warn("DOCSBOT: EmbeddableWidget is not mounted, mount first");
+        resolve(false);
+        return;
+      }
+
+      // Unlock tool chimes under this click before React mounts VoiceCallView.
+      void primeSharedVoiceToolWorkingChime([
+        voiceToolWorkingSrc,
+        voiceToolSearchingSrc,
+      ]);
+      markPendingStartVoiceCall();
+
+      let settled = false;
+      const finish = (started) => {
+        if (settled) return;
+        settled = true;
+        clearPendingStartVoiceCall();
+        resolve(Boolean(started));
+      };
+
+      Emitter.once("docsbot_start_voice_call_complete", finish);
+
+      if (!this.isChatbotOpen) {
+        await this.open();
+      }
+
+      // Already-open Chatbot listens here. Fresh mounts also consume the
+      // pending flag in their effect (open completes before React commit).
+      if (!settled) {
+        Emitter.emit("docsbot_start_voice_call");
+      }
+
+      window.setTimeout(() => {
+        if (settled) return;
+        if (hasPendingStartVoiceCall()) {
+          console.warn(
+            "DOCSBOT: Unable to start voice call (voice unavailable or widget not ready)"
+          );
+        }
+        finish(false);
+      }, 5000);
     });
   }
 
@@ -143,6 +203,7 @@ export default class EmbeddableWidget {
         resolve(false);
         return;
       }
+      clearPendingStartVoiceCall();
       const div_root = document.getElementById("docsbotai-root");
       if (this._root) {
         this._root.unmount();

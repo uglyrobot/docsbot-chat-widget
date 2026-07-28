@@ -6,7 +6,8 @@ import {
 	buildVoiceWebrtcRequest,
 	buildVoiceWidgetPublicMetadata,
 	microphoneLevelFromByteTimeDomain,
-	remoteAudioLevelFromByteTimeDomain
+	remoteAudioLevelFromByteTimeDomain,
+	waitForIceGatheringComplete
 } from './voiceCallSession.mjs';
 
 test('microphone level ignores silence and maps amplitude into a bounded visual range', () => {
@@ -35,6 +36,25 @@ test('remote audio level maps output amplitude into a bounded visual range', () 
 		remoteAudioLevelFromByteTimeDomain(new Uint8Array(32).fill(255)),
 		1
 	);
+});
+
+test('ICE gathering fails with a safe bounded timeout', async () => {
+	const listeners = new Map();
+	const peerConnection = {
+		iceGatheringState: 'gathering',
+		addEventListener: (name, listener) => listeners.set(name, listener),
+		removeEventListener: (name) => listeners.delete(name)
+	};
+
+	await assert.rejects(
+		waitForIceGatheringComplete(peerConnection, undefined, 5),
+		(error) => {
+			assert.ok(error instanceof VoiceCallSessionError);
+			assert.match(error.message, /timed out/i);
+			return true;
+		}
+	);
+	assert.equal(listeners.size, 0);
 });
 
 function createTrack() {
@@ -312,6 +332,39 @@ test('safe API errors propagate without leaving a live peer connection', async (
 		assert.ok(error instanceof VoiceCallSessionError);
 		assert.equal(error.status, 403);
 		assert.equal(error.message, 'Voice calling is unavailable.');
+		return true;
+	});
+	assert.equal(harness.lastPeerConnection.closed, true);
+	assert.ok(harness.localTrack.stopCalls >= 1);
+});
+
+test('SDP exchange times out and cleans media resources', async () => {
+	const harness = createHarness();
+	const fetchImpl = (_url, options) =>
+		new Promise((_resolve, reject) => {
+			options.signal.addEventListener(
+				'abort',
+				() =>
+					reject(
+						new DOMException('Request was aborted.', 'AbortError')
+					),
+				{ once: true }
+			);
+		});
+	const session = new DocsBotVoiceCallSession({
+		apiBase: 'https://api.docsbot.ai',
+		teamId: 'team-1',
+		botId: 'bot-1',
+		remoteAudio: harness.remoteAudio,
+		fetchImpl,
+		RTCPeerConnectionImpl: harness.FakePeerConnection,
+		getUserMedia: async () => harness.microphone,
+		setupTimeoutMs: 5
+	});
+
+	await assert.rejects(session.start(), (error) => {
+		assert.ok(error instanceof VoiceCallSessionError);
+		assert.match(error.message, /timed out/i);
 		return true;
 	});
 	assert.equal(harness.lastPeerConnection.closed, true);

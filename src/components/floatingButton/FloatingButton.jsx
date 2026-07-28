@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import {
   faComment,
@@ -10,7 +9,7 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons"
 import { useConfig } from "../configContext/ConfigContext"
-import { decideTextColor } from "../../utils/colors"
+import { decideBrandForeground, decideTextColor } from "../../utils/colors"
 import clsx from "clsx"
 
 export const FloatingButton = ({
@@ -19,7 +18,7 @@ export const FloatingButton = ({
   launcherRef,
   chatPanelId,
 }) => {
-  const { color, icon, labels, showButtonLabel, alignment, horizontalMargin, verticalMargin } =
+  const { color, icon, labels, showButtonLabel, alignment, horizontalMargin, verticalMargin, effectiveTheme } =
     useConfig()
 
   //icon can be default, robot, life-ring, or question-circle
@@ -34,14 +33,7 @@ export const FloatingButton = ({
 
   const isIconInList = iconMap.hasOwnProperty(icon) || !icon // if empty string, use default icon
 
-  useEffect(() => {
-	const root = document.documentElement;
-	const primaryColor = color || "#1292EE";
-
-	root.style.setProperty('--docsbot-floating-button--bg', primaryColor);
-	root.style.setProperty('--docsbot-floating-button--color', decideTextColor(primaryColor));
-	root.style.setProperty('--docsbot-floating-button--focus-ring', primaryColor);
-  }, []);
+  const primaryColor = color || "#1292EE";
 
   const buttonLabel = isOpen
     ? labels?.close || "Close"
@@ -68,6 +60,12 @@ export const FloatingButton = ({
         left: alignment === "left" ? horizontalMargin || 20 : "auto",
         right: alignment === "right" ? horizontalMargin || 20 : "auto",
         bottom: verticalMargin || 20,
+        "--docsbot-floating-button--bg": primaryColor,
+        "--docsbot-floating-button--color":
+          effectiveTheme === "dark"
+            ? decideBrandForeground(primaryColor)
+            : decideTextColor(primaryColor),
+        "--docsbot-floating-button--focus-ring": primaryColor,
       }}
       ref={launcherRef}>
         <div className="floating-button-icon" aria-hidden="true">

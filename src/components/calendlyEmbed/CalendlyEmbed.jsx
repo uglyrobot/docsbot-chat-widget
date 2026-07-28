@@ -3,6 +3,7 @@ import { Loader } from '../loader/Loader';
 import { useConfig } from '../configContext/ConfigContext';
 import { buildCalendlyEmbedUrl, resolveCalendlyUrl } from '../../utils/calendly';
 import { mergeIdentifyMetadata } from '../../utils/utils';
+import { getWidgetThemePalette } from '../../utils/widgetTheme.mjs';
 
 const CALENDLY_BOOKED_EVENT = 'calendly.event_scheduled';
 
@@ -13,7 +14,7 @@ export const CalendlyEmbed = ({
 	scriptReady,
 	onBookingScheduled
 }) => {
-	const { color, identify } = useConfig();
+	const { color, identify, effectiveTheme } = useConfig();
 	const containerRef = useRef(null);
 	const lastEventKeyRef = useRef(null);
 	const latestIdentifyRef = useRef(identify);
@@ -22,17 +23,21 @@ export const CalendlyEmbed = ({
 	latestIdentifyRef.current = identify;
 
 	const baseUrl = useMemo(() => resolveCalendlyUrl(path), [path]);
+	const themePalette = useMemo(
+		() => getWidgetThemePalette(effectiveTheme),
+		[effectiveTheme]
+	);
 	const embedUrl = useMemo(
 		() =>
 			buildCalendlyEmbedUrl(path, {
 				primaryColor: color || '#1292EE',
-				backgroundColor: '#ffffff',
-				textColor: '#314351'
+				backgroundColor: themePalette.backgroundColor,
+				textColor: themePalette.textColor
 			}, {
 				hideEventDetails,
 				hideCookieBanner
 			}),
-		[path, color, hideEventDetails, hideCookieBanner]
+		[path, color, hideEventDetails, hideCookieBanner, themePalette]
 	);
 	useEffect(() => {
 		lastEventKeyRef.current = null;

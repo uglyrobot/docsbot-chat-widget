@@ -9,6 +9,7 @@ import { Loader } from '../loader/Loader';
 import { useConfig } from '../configContext/ConfigContext';
 import { resolveCalComLink, resolveCalComUrl } from '../../utils/calcom';
 import { mergeIdentifyMetadata } from '../../utils/utils';
+import { getWidgetThemePalette } from '../../utils/widgetTheme.mjs';
 
 const LazyCal = lazy(() => import('@calcom/embed-react'));
 
@@ -20,7 +21,11 @@ export const CalComEmbed = ({
 }) => {
 	const lastBookingKeyRef = useRef(null);
 	const unsubscribeRef = useRef(null);
-	const { color, identify } = useConfig();
+	const { color, identify, effectiveTheme } = useConfig();
+	const themePalette = useMemo(
+		() => getWidgetThemePalette(effectiveTheme),
+		[effectiveTheme]
+	);
 
 	const calLink = useMemo(() => resolveCalComLink(path), [path]);
 	const calUrl = useMemo(() => resolveCalComUrl(path), [path]);
@@ -96,10 +101,10 @@ export const CalComEmbed = ({
 				};
 
 				runCalInstruction('ui', {
-					theme: 'light',
+					theme: effectiveTheme,
 					hideEventTypeDetails: Boolean(hideEventDetails),
 					cssVarsPerTheme: {
-						light: {
+						[effectiveTheme]: {
 							'cal-brand': brandColor
 						}
 					}
@@ -145,6 +150,7 @@ export const CalComEmbed = ({
 		calLink,
 		calUrl,
 		color,
+		effectiveTheme,
 		hideEventDetails,
 		namespace,
 		onBookingSuccessful
@@ -157,15 +163,15 @@ export const CalComEmbed = ({
 			className="docsbot-scheduler-embed-container"
 			style={{
 				'--cal-brand-color': color || '#1292EE',
-				'--cal-bg': '#ffffff',
-				'--cal-bg-muted': '#f8fafc',
-				'--cal-bg-emphasis': '#f1f5f9',
-				'--cal-border-muted': '#e2e8f0',
-				'--cal-border-subtle': '#cbd5e1',
-				'--cal-text': '#314351',
-				'--cal-text-muted': '#64748b',
-				'--cal-text-subtle': '#475569',
-				'--cal-text-emphasis': '#0f172a'
+				'--cal-bg': themePalette.backgroundColor,
+				'--cal-bg-muted': themePalette.mutedSurfaceColor,
+				'--cal-bg-emphasis': themePalette.surfaceColor,
+				'--cal-border-muted': themePalette.borderColor,
+				'--cal-border-subtle': themePalette.borderColor,
+				'--cal-text': themePalette.textColor,
+				'--cal-text-muted': themePalette.mutedTextColor,
+				'--cal-text-subtle': themePalette.mutedTextColor,
+				'--cal-text-emphasis': themePalette.textColor
 			}}
 		>
 			<div className="docsbot-scheduler-embed-shell docsbot-calcom-embed-shell">

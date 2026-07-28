@@ -346,6 +346,61 @@ test('voiceClientActionFromEvent whitelists booking, custom_button, support, and
 	);
 });
 
+test('voiceClientActionFromEvent whitelists lookup_answer sources without raw content', () => {
+	assert.deepEqual(
+		voiceClientActionFromEvent({
+			type: 'conversation.item.created',
+			item: {
+				call_id: 'call-lookup',
+				type: 'function_call_output',
+				output: JSON.stringify({
+					status: 'ok',
+					result: { documents: ['secret'] },
+					client_action: {
+						type: 'lookup_answer',
+						sources: [
+							{
+								title: 'Webhooks guide',
+								url: 'https://docs.example.com/webhooks',
+								type: 'url',
+								content: 'should-not-leak',
+								page: 2
+							}
+						]
+					}
+				})
+			}
+		}),
+		{
+			kind: 'lookup_answer',
+			callId: 'call-lookup',
+			type: 'lookup_answer',
+			message: '',
+			sources: [
+				{
+					title: 'Webhooks guide',
+					url: 'https://docs.example.com/webhooks',
+					type: 'url',
+					page: 2
+				}
+			]
+		}
+	);
+	assert.equal(
+		voiceClientActionFromEvent({
+			type: 'conversation.item.created',
+			item: {
+				call_id: 'call-lookup-empty',
+				type: 'function_call_output',
+				output: JSON.stringify({
+					client_action: { type: 'lookup_answer', sources: [] }
+				})
+			}
+		}),
+		null
+	);
+});
+
 test('voiceClientActionFromEvent ignores unknown or unsafe handoffs', () => {
 	assert.equal(
 		voiceClientActionFromEvent({
@@ -357,6 +412,49 @@ test('voiceClientActionFromEvent ignores unknown or unsafe handoffs', () => {
 					client_action: {
 						type: 'mystery_widget',
 						payload: { secret: 'nope' }
+					}
+				})
+			}
+		}),
+		null
+	);
+	assert.deepEqual(
+		voiceClientActionFromEvent({
+			type: 'conversation.item.created',
+			item: {
+				call_id: 'call-safe-function-only',
+				type: 'function_call_output',
+				output: JSON.stringify({
+					client_action: {
+						type: 'custom_button',
+						buttonText: 'Continue',
+						url: 'javascript:alert(1)',
+						functionKey: 'continue_safely'
+					}
+				})
+			}
+		}),
+		{
+			kind: 'custom_button',
+			callId: 'call-safe-function-only',
+			type: 'custom_button',
+			message: 'Continue',
+			url: '',
+			functionKey: 'continue_safely',
+			buttonText: 'Continue'
+		}
+	);
+	assert.equal(
+		voiceClientActionFromEvent({
+			type: 'conversation.item.created',
+			item: {
+				call_id: 'call-unsafe-url-only',
+				type: 'function_call_output',
+				output: JSON.stringify({
+					client_action: {
+						type: 'custom_button',
+						buttonText: 'Run',
+						url: 'data:text/html,<script>alert(1)</script>'
 					}
 				})
 			}

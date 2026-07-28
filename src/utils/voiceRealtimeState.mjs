@@ -1,3 +1,5 @@
+import { sanitizeExternalActionUrl } from './externalActionUrl.mjs';
+
 export const VOICE_CALL_STATUS = Object.freeze({
 	CONNECTING: 'connecting',
 	LISTENING: 'listening',
@@ -167,6 +169,9 @@ const MAX_STRIPE_BILLING_GROUPS = 8;
 const MAX_STRIPE_BILLING_ITEMS = 20;
 const MAX_STRIPE_BILLING_DEPTH = 4;
 const MAX_STRIPE_BILLING_KEYS = 40;
+const MAX_LOOKUP_SOURCES = 12;
+const MAX_LOOKUP_SOURCE_TITLE = 300;
+const MAX_LOOKUP_SOURCE_URL = 2048;
 const STRIPE_BILLING_GROUP_TYPES = new Set(['invoices', 'subscriptions']);
 
 function clampClientActionText(value, maxLength) {
@@ -257,7 +262,9 @@ function sanitizeCustomButtonClientAction(action, callId) {
 		action.functionKey,
 		MAX_CLIENT_ACTION_KEY
 	);
-	const url = clampClientActionText(action.url, MAX_CLIENT_ACTION_URL);
+	const url = sanitizeExternalActionUrl(
+		clampClientActionText(action.url, MAX_CLIENT_ACTION_URL)
+	);
 	if (!buttonText || (!url && !functionKey)) return null;
 	const message = clampClientActionText(
 		action.message || action.voice_message || buttonText,
@@ -333,6 +340,47 @@ function sanitizeStripeBillingClientAction(action, callId) {
 	};
 }
 
+function sanitizeLookupSource(source) {
+	if (!source || typeof source !== 'object' || Array.isArray(source)) {
+		return null;
+	}
+	const title = clampClientActionText(source.title, MAX_LOOKUP_SOURCE_TITLE);
+	const url = clampClientActionText(source.url, MAX_LOOKUP_SOURCE_URL);
+	const type = clampClientActionText(source.type, MAX_CLIENT_ACTION_KEY);
+	if (!title && !url) return null;
+	const sanitized = {};
+	if (title) sanitized.title = title;
+	if (url) sanitized.url = url;
+	if (type) sanitized.type = type;
+	if (source.page != null && Number.isFinite(Number(source.page))) {
+		sanitized.page = Number(source.page);
+	}
+	return sanitized;
+}
+
+function sanitizeLookupAnswerClientAction(action, callId) {
+	if (!Array.isArray(action.sources) || !action.sources.length) {
+		return null;
+	}
+	const sources = [];
+	for (const source of action.sources.slice(0, MAX_LOOKUP_SOURCES)) {
+		const sanitized = sanitizeLookupSource(source);
+		if (sanitized) sources.push(sanitized);
+	}
+	if (!sources.length) return null;
+	const message = clampClientActionText(
+		action.message || action.voice_message,
+		MAX_CLIENT_ACTION_TEXT
+	);
+	return {
+		kind: 'lookup_answer',
+		callId,
+		type: 'lookup_answer',
+		message,
+		sources
+	};
+}
+
 /**
  * Whitelist-parse DocsBot widget visual handoffs from Realtime
  * `function_call_output` items. Raw tool output is never retained.
@@ -371,6 +419,9 @@ export function voiceClientActionFromEvent(event) {
 	}
 	if (type === 'stripe_billing') {
 		return sanitizeStripeBillingClientAction(action, callId);
+	}
+	if (type === 'lookup_answer') {
+		return sanitizeLookupAnswerClientAction(action, callId);
 	}
 	return null;
 }

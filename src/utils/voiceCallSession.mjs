@@ -1,6 +1,7 @@
 import { mergeIdentifyMetadata } from './identity.js';
 
 const MAX_SDP_BYTES = 512 * 1024;
+const SETUP_TIMEOUT_MS = 15 * 1000;
 const MICROPHONE_LEVEL_NOISE_FLOOR = 0.015;
 const MICROPHONE_LEVEL_RANGE = 0.16;
 
@@ -120,13 +121,22 @@ export function sdpByteLength(sdp) {
 	return new Blob([sdp]).size;
 }
 
-export function waitForIceGatheringComplete(peerConnection, signal) {
+export function waitForIceGatheringComplete(
+	peerConnection,
+	signal,
+	timeoutMs = SETUP_TIMEOUT_MS
+) {
 	if (peerConnection.iceGatheringState === 'complete') {
 		return Promise.resolve();
 	}
 
 	return new Promise((resolve, reject) => {
+		let timeoutId = null;
 		const cleanup = () => {
+			if (timeoutId !== null) {
+				globalThis.clearTimeout(timeoutId);
+				timeoutId = null;
+			}
 			peerConnection.removeEventListener(
 				'icegatheringstatechange',
 				handleStateChange
@@ -147,13 +157,62 @@ export function waitForIceGatheringComplete(peerConnection, signal) {
 				)
 			);
 		};
+		const handleTimeout = () => {
+			cleanup();
+			reject(
+				new VoiceCallSessionError(
+					'Voice call setup timed out. Please try again.'
+				)
+			);
+		};
 
 		peerConnection.addEventListener(
 			'icegatheringstatechange',
 			handleStateChange
 		);
 		signal?.addEventListener('abort', handleAbort, { once: true });
+		timeoutId = globalThis.setTimeout(
+			handleTimeout,
+			Math.max(1, timeoutMs)
+		);
 	});
+}
+
+async function fetchVoiceAnswerWithTimeout(
+	fetchImpl,
+	url,
+	options,
+	{ signal, timeoutMs = SETUP_TIMEOUT_MS } = {}
+) {
+	if (signal?.aborted) {
+		throw new DOMException('Voice call setup was cancelled.', 'AbortError');
+	}
+
+	const controller = new AbortController();
+	let timedOut = false;
+	const handleAbort = () => controller.abort();
+	signal?.addEventListener('abort', handleAbort, { once: true });
+	const timeoutId = globalThis.setTimeout(() => {
+		timedOut = true;
+		controller.abort();
+	}, Math.max(1, timeoutMs));
+
+	try {
+		return await fetchImpl(url, {
+			...options,
+			signal: controller.signal
+		});
+	} catch (error) {
+		if (timedOut && !signal?.aborted) {
+			throw new VoiceCallSessionError(
+				'Voice call setup timed out. Please try again.'
+			);
+		}
+		throw error;
+	} finally {
+		globalThis.clearTimeout(timeoutId);
+		signal?.removeEventListener('abort', handleAbort);
+	}
 }
 
 async function readVoiceError(response) {
@@ -187,6 +246,7 @@ export class DocsBotVoiceCallSession {
 			globalThis.navigator.mediaDevices.getUserMedia(constraints),
 		AudioContextImpl = globalThis.AudioContext ||
 			globalThis.webkitAudioContext,
+		setupTimeoutMs = SETUP_TIMEOUT_MS,
 		onRealtimeEvent = () => {},
 		onConnectionState = () => {},
 		onMicrophoneLevel = () => {},
@@ -205,6 +265,7 @@ export class DocsBotVoiceCallSession {
 		this.RTCPeerConnectionImpl = RTCPeerConnectionImpl;
 		this.getUserMedia = getUserMedia;
 		this.AudioContextImpl = AudioContextImpl;
+		this.setupTimeoutMs = setupTimeoutMs;
 		this.onRealtimeEvent = onRealtimeEvent;
 		this.onConnectionState = onConnectionState;
 		this.onMicrophoneLevel = onMicrophoneLevel;
@@ -402,7 +463,11 @@ export class DocsBotVoiceCallSession {
 
 			const offer = await pc.createOffer();
 			await pc.setLocalDescription(offer);
-			await waitForIceGatheringComplete(pc, signal);
+			await waitForIceGatheringComplete(
+				pc,
+				signal,
+				this.setupTimeoutMs
+			);
 			const sdp = pc.localDescription?.sdp || '';
 			if (!sdp) {
 				throw new VoiceCallSessionError(
@@ -419,10 +484,12 @@ export class DocsBotVoiceCallSession {
 			if (process.env.NODE_ENV !== 'production') {
 				console.info('DOCSBOT: posting voice SDP offer to', request.url);
 			}
-			const response = await this.fetchImpl(request.url, {
-				...request.options,
-				signal
-			});
+			const response = await fetchVoiceAnswerWithTimeout(
+				this.fetchImpl,
+				request.url,
+				request.options,
+				{ signal, timeoutMs: this.setupTimeoutMs }
+			);
 			if (!response.ok) {
 				throw new VoiceCallSessionError(
 					await readVoiceError(response),
@@ -547,3 +614,4 @@ export class DocsBotVoiceCallSession {
 }
 
 export const VOICE_MAX_SDP_BYTES = MAX_SDP_BYTES;
+export const VOICE_SETUP_TIMEOUT_MS = SETUP_TIMEOUT_MS;

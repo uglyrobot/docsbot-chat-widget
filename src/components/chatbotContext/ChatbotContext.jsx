@@ -1,5 +1,6 @@
 import React from "react"
 import { v4 as uuidv4 } from "uuid"
+import { upsertVoiceTranscriptHistory } from "../../utils/voiceCallHistory.mjs"
 
 const ChatbotContext = React.createContext()
 
@@ -9,7 +10,25 @@ function chatbotReducer(state, action) {
       return {
         ...state,
         chatHistory: action.payload.chatHistory,
+        voiceHistoryItemIndices: {},
       }
+    case "start_voice_history":
+      return {
+        ...state,
+        voiceHistoryItemIndices: {},
+      }
+    case "upsert_voice_history": {
+      const nextVoiceHistory = upsertVoiceTranscriptHistory(
+        state.chatHistory,
+        state.voiceHistoryItemIndices,
+        action.payload
+      )
+      return {
+        ...state,
+        chatHistory: nextVoiceHistory.history,
+        voiceHistoryItemIndices: nextVoiceHistory.itemIndices,
+      }
+    }
     case "add_message":
       const id = action.payload.id || uuidv4()
       return {
@@ -49,11 +68,13 @@ function chatbotReducer(state, action) {
     case "load_conversation":
       return {
         messages: action.payload.savedConversation || [],
+        voiceHistoryItemIndices: {},
       }
     case "clear_messages":
       return {
         messages: [],
-        chatHistory: []
+        chatHistory: [],
+        voiceHistoryItemIndices: {},
       }
 
     default: {
@@ -67,6 +88,8 @@ export function ChatbotProvider({ children }) {
     messages: [],
     suggestions: [],
     chatInput: "",
+    chatHistory: [],
+    voiceHistoryItemIndices: {},
     lastMessage: Date.now(),
   })
   const value = { state, dispatch }

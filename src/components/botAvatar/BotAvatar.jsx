@@ -2,13 +2,20 @@ import React from "react"
 import { useConfig } from "../configContext/ConfigContext"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faComment, faRobot, faLifeRing, faInfo, faBook } from "@fortawesome/free-solid-svg-icons"
-import { decideTextColor, getLighterColor } from "../../utils/colors"
+import {
+  decideBrandForeground,
+  decideTextColor,
+  getLighterColor,
+} from "../../utils/colors"
 
 export const BotAvatar = () => {
-  const { botIcon, color } = useConfig()
+  const { botIcon, color, effectiveTheme } = useConfig()
 
   const bgColor = getLighterColor(color || "#1292EE", 0.6)
-  const fontColor = decideTextColor(bgColor)
+  const fontColor =
+    effectiveTheme === "dark"
+      ? decideBrandForeground(bgColor)
+      : decideTextColor(bgColor)
 
   //icon can be default, robot, life-ring, or question-circle
   const iconMap = {

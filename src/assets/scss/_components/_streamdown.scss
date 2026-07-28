@@ -1,6 +1,25 @@
 // Streamdown code block styling
 [data-streamdown='code-block'] {
 	background-color: #fff;
+
+	pre {
+		scrollbar-width: thin;
+		scrollbar-color: var(--docsbot-text-subtle) var(--docsbot-surface-subtle);
+
+		&::-webkit-scrollbar {
+			height: 8px;
+		}
+
+		&::-webkit-scrollbar-track {
+			background: var(--docsbot-surface-subtle);
+		}
+
+		&::-webkit-scrollbar-thumb {
+			border: 2px solid var(--docsbot-surface-subtle);
+			border-radius: 999px;
+			background: var(--docsbot-text-subtle);
+		}
+	}
 }
 
 // Streamdown table styling

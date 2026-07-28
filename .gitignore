@@ -140,3 +140,4 @@ build
 test-results/
 playwright-report/
 blob-report/
+output/

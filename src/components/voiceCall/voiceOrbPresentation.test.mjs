@@ -50,4 +50,12 @@ test('USING_TOOL orb is searching for retrieval and solving for skills', () => {
 		voiceOrbPresentation(VOICE_CALL_STATUS.CONNECTING).orbState,
 		'working'
 	);
+	assert.equal(
+		voiceOrbPresentation(VOICE_CALL_STATUS.ERROR).orbState,
+		'shaping'
+	);
+	assert.equal(
+		voiceOrbPresentation(VOICE_CALL_STATUS.ENDED).orbState,
+		'shaping'
+	);
 });

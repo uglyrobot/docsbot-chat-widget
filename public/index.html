@@ -50,6 +50,7 @@
       <button id="open-btn">Open</button>
       <button id="close-btn">Close</button>
       <button id="toggle-btn">Toggle</button>
+      <button id="start-voice-btn">Start Voice Call</button>
       <button id="destroy-btn">Destroy</button>
       <button id="reinit-btn">Reinitialize</button>
       <button id="clear-history-btn">Clear Chat History</button>
@@ -96,6 +97,7 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
     <script>
 (function () {
   var textEnc = new TextEncoder();
+  var previewParams = new URLSearchParams(window.location.search);
 
   function b64urlFromBytes(bytes) {
     var binary = "";
@@ -200,20 +202,25 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
         options: {
           // Widget config: http://localhost:3000/api/... | Chat agent: http://127.0.0.1:9000/...
           localDev: true,
+          localApiBase: previewParams.has('visual') ? 'http://127.0.0.1:9100' : undefined,
+          theme: previewParams.get('theme') || 'auto',
           // Local dev can force-enable live voice calls here. Production uses the API useVoiceAgent flag.
           useVoiceAgent: true,
-          alignment: 'left',
+          alignment: previewParams.get('alignment') || 'left',
           horizontalMargin: 20,
           verticalMargin: 20,
-          showCopyButton: false,
+          showCopyButton: previewParams.has('visual'),
           inlineMediaSourcePlayer: true, // Inline playback for timestamped YouTube/media sources.
           // Local dev can force-enable PII redaction here. Production can only disable API-enabled PII redaction.
-          piiRedaction: true,
-          //useCalendly: "uglyrobot/30min",
+          piiRedaction: previewParams.has('visual') ? false : true,
+          useCalendly:
+            previewParams.get("scheduler") === "calendly"
+              ? "uglyrobot/30min"
+              : undefined,
           //useCalCom: false,
           //useTidyCal: "docsbot/onboarding",
           //hideSources: ['qa'],
-          //color: "#0891b8",
+          color: previewParams.get('brand') || undefined,
           //botIcon: "https://webstockreview.net/images/user-icon-png-4.png",
           //icon: "http://clipart-library.com/new_gallery/150581_white-question-mark-png.png",
           //suggestedQuestions: 4, // override number of random suggested questions (default 3)
@@ -325,6 +332,13 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
           DocsBotAI.toggle();
         });
 
+        const startVoiceBtn = document.getElementById("start-voice-btn");
+        startVoiceBtn.addEventListener("click", () => {
+          DocsBotAI.startVoiceCall().then(function (started) {
+            console.log("DocsBotAI.startVoiceCall:", started);
+          });
+        });
+
         const destroyBtn = document.getElementById("destroy-btn");
         destroyBtn.addEventListener("click", () => {
           console.log("%cDocsBotAI", "color:cyan; ", DocsBotAI.unmount);
@@ -390,9 +404,26 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
       quis, accumsan porttitor, facilisis luctus, metus
     </p>
 
-    <!-- Change the id to test the different embeddable widget -->
-    <div id="1docsbot-widget-embed" style="max-width:600px;height:650px;margin: 20px auto;border: none;">
+    <div id="docsbot-embed-slot" style="display:none;max-width:600px;height:650px;margin:20px auto;border:none;">
     </div>
+    <script>
+      if (new URLSearchParams(window.location.search).get('embedded') === '1') {
+        var docsbotEmbedSlot = document.getElementById('docsbot-embed-slot');
+        docsbotEmbedSlot.id = 'docsbot-widget-embed';
+        docsbotEmbedSlot.style.display = 'block';
+        if (new URLSearchParams(window.location.search).has('visual')) {
+          Object.assign(docsbotEmbedSlot.style, {
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            width: '600px',
+            margin: '0',
+            transform: 'translateX(-50%)',
+            zIndex: '1000'
+          });
+        }
+      }
+    </script>
 
     <h1>HTML Ipsum Presents</h1>
 

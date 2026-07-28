@@ -9,9 +9,10 @@ import { CopyIcon } from '../icons/CopyIcon';
 import { useChatbot } from '../chatbotContext/ChatbotContext';
 import { scrollToBottom, mergeIdentifyMetadata } from '../../utils/utils';
 import { shouldShowErrorSupportButton } from '../../utils/chatbotMessageState.mjs';
+import { sanitizeExternalActionUrl } from '../../utils/externalActionUrl.mjs';
 import clsx from 'clsx';
 import { LazyStreamdown } from '../streamdown/LazyStreamdown';
-import { preprocessMath } from '../../utils/markdown';
+import { preprocessStreamdownMarkdown } from '../../utils/markdown';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
 	faBrain,
@@ -545,8 +546,8 @@ export const BotChatMessage = ({
 
 	const runCustomButtonClick = async (reactEvent, history) => {
 		let cancelled = false;
-		const url = payload.customButton?.url;
-		const hasUrl = typeof url === 'string' && url.trim();
+		const url = sanitizeExternalActionUrl(payload.customButton?.url);
+		const hasUrl = Boolean(url);
 		const reservedWindow =
 			reactEvent && hasUrl ? window.open('', '_blank') : null;
 		const syntheticEvent = reactEvent
@@ -895,14 +896,9 @@ export const BotChatMessage = ({
 					{showMessageBubble ? (
 					<div
 						className={clsx(
-							'docsbot-chat-bot-message bg-slate-100 text-slate-800'
+							'docsbot-chat-bot-message bg-slate-100 text-slate-800',
+							payload.error && 'docsbot-message-error'
 						)}
-						{...(payload.error && {
-							style: {
-								backgroundColor: '#FEFCE8',
-								color: '#713F12'
-							}
-						})}
 						role={payload.error ? 'alert' : undefined}
 						ref={messageBoxRef}
 					>
@@ -936,7 +932,7 @@ export const BotChatMessage = ({
 														payload.streaming
 													)}
 												>
-													{preprocessMath(
+													{preprocessStreamdownMarkdown(
 														payload.message || ''
 													)}
 												</LazyStreamdown>
@@ -1232,7 +1228,7 @@ export const BotChatMessage = ({
 													payload.streaming
 												)}
 											>
-												{preprocessMath(
+												{preprocessStreamdownMarkdown(
 													payload.message || ''
 												)}
 											</LazyStreamdown>
@@ -1567,16 +1563,23 @@ export const BotChatMessage = ({
 											labels.feedbackNo ||
 											'👎';
 										if (payload.voiceCall) {
-											onSendVoiceUserText?.(message);
-											setVoiceEscalationResolved(true);
-											dispatch({
-												type: 'update_message',
-												payload: {
-													id: payload.id,
-													isLast: false
-												}
-											});
-											return;
+											if (
+												typeof onSendVoiceUserText ===
+												'function'
+											) {
+												const sent =
+													onSendVoiceUserText(message);
+												if (!sent) return;
+												setVoiceEscalationResolved(true);
+												dispatch({
+													type: 'update_message',
+													payload: {
+														id: payload.id,
+														isLast: false
+													}
+												});
+												return;
+											}
 										}
 										dispatch({
 											type: 'add_message',

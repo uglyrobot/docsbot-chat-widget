@@ -65,7 +65,7 @@
 .docsbot-voice-transcripts-inner {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: $spacing-md;
 	min-height: min-content;
 }
 
@@ -282,46 +282,12 @@
 	margin-top: 2px;
 }
 
-.docsbot-voice-transcript {
-	width: fit-content;
-	max-width: 86%;
-	padding: 9px 12px;
-	border-radius: 14px;
-	box-sizing: border-box;
-	font-size: 13px;
-	line-height: 18px;
-	text-align: start;
-	overflow-wrap: anywhere;
-
-	&.is-caller {
-		align-self: flex-end;
-		border-bottom-right-radius: 5px;
-		background: var(--docsbot-color-main, #1292ee);
-		color: var(--docsbot-color-contrast, #fff);
-	}
-
-	&.is-agent {
-		align-self: flex-start;
-		border-bottom-left-radius: 5px;
-		background: #f1f5f9;
-		color: #1e293b;
-	}
-}
-
-.docsbot-voice-action-message {
+.docsbot-voice-conversation-message {
 	align-self: stretch;
 	width: 100%;
 	max-width: 100%;
 	box-sizing: border-box;
 	pointer-events: auto;
-
-	.docsbot-chat-bot-message {
-		margin: 0;
-	}
-
-	.docsbot-user-chat-message-container {
-		padding-inline: 0;
-	}
 }
 
 .docsbot-voice-call-controls {

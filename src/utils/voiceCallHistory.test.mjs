@@ -4,8 +4,80 @@ import {
 	buildVoiceCallHistoryItems,
 	flushPendingVoiceActions,
 	interleaveVoiceLiveItems,
-	queuePendingVoiceAction
+	queuePendingVoiceAction,
+	upsertVoiceTranscriptHistory
 } from './voiceCallHistory.mjs';
+
+test('upsertVoiceTranscriptHistory appends canonical callback history in voice order', () => {
+	const initial = [
+		{ role: 'user', message: 'Prior text question' },
+		{ role: 'assistant', message: 'Prior text answer' }
+	];
+	const caller = upsertVoiceTranscriptHistory(initial, {}, {
+		itemId: 'caller-1',
+		role: 'caller',
+		text: 'Voice question'
+	});
+	const agent = upsertVoiceTranscriptHistory(
+		caller.history,
+		caller.itemIndices,
+		{
+			itemId: 'agent-1',
+			role: 'agent',
+			text: 'Voice answer'
+		}
+	);
+
+	assert.deepEqual(agent.history, [
+		{ role: 'user', message: 'Prior text question' },
+		{ role: 'assistant', message: 'Prior text answer' },
+		{ role: 'user', message: 'Voice question' },
+		{ role: 'assistant', message: 'Voice answer' }
+	]);
+	assert.deepEqual(agent.itemIndices, {
+		'caller-1': 2,
+		'agent-1': 3
+	});
+	assert.deepEqual(initial, [
+		{ role: 'user', message: 'Prior text question' },
+		{ role: 'assistant', message: 'Prior text answer' }
+	]);
+});
+
+test('upsertVoiceTranscriptHistory reconciles repeated final transcript events', () => {
+	const first = upsertVoiceTranscriptHistory([], {}, {
+		itemId: 'agent-1',
+		role: 'agent',
+		text: 'Partial final'
+	});
+	const corrected = upsertVoiceTranscriptHistory(
+		first.history,
+		first.itemIndices,
+		{
+			itemId: 'agent-1',
+			role: 'agent',
+			text: 'Corrected final transcript'
+		}
+	);
+
+	assert.deepEqual(corrected.history, [
+		{ role: 'assistant', message: 'Corrected final transcript' }
+	]);
+	assert.deepEqual(corrected.itemIndices, { 'agent-1': 0 });
+});
+
+test('upsertVoiceTranscriptHistory ignores invalid transcript payloads', () => {
+	const history = [{ role: 'user', message: 'Existing' }];
+	const indices = { existing: 0 };
+	const result = upsertVoiceTranscriptHistory(history, indices, {
+		itemId: '',
+		role: 'caller',
+		text: 'Ignored'
+	});
+
+	assert.equal(result.history, history);
+	assert.equal(result.itemIndices, indices);
+});
 
 test('buildVoiceCallHistoryItems maps prior chat into appendable voice entries', () => {
 	const items = buildVoiceCallHistoryItems({
@@ -70,6 +142,12 @@ test('buildVoiceCallHistoryItems maps prior chat into appendable voice entries',
 			},
 			{ kind: 'action', id: 'button', type: 'custom_button' }
 		]
+	);
+	assert.equal(items[0].message.message, 'Welcome');
+	assert.equal(items[1].message.variant, 'user');
+	assert.equal(
+		items[2].message.message,
+		'DocsBot answers from your docs.'
 	);
 });
 

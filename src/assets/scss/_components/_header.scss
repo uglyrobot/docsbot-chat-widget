@@ -140,6 +140,10 @@
 			height: auto;
 			max-height: 36px;
 		}
+
+		.docsbot-header-logo-inverted {
+			filter: brightness(0);
+		}
 	}
 
 	// Element: .docsbot-chat-header-background-wrapper

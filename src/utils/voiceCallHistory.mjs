@@ -4,6 +4,68 @@ const INTERACTIVE_VOICE_HISTORY_TYPES = new Set([
 	'support_escalation'
 ]);
 
+/**
+ * Add a finalized Realtime transcript to the same canonical history used by
+ * text-chat callbacks and persistence. Repeated final events for the same
+ * Realtime item update the existing turn rather than duplicating it.
+ */
+export function upsertVoiceTranscriptHistory(
+	history,
+	itemIndices,
+	transcript
+) {
+	const currentHistory = Array.isArray(history) ? history : [];
+	const currentIndices =
+		itemIndices &&
+		typeof itemIndices === 'object' &&
+		!Array.isArray(itemIndices)
+			? itemIndices
+			: {};
+	const itemId =
+		typeof transcript?.itemId === 'string'
+			? transcript.itemId.trim()
+			: '';
+	const text =
+		typeof transcript?.text === 'string' ? transcript.text : '';
+	const role =
+		transcript?.role === 'caller'
+			? 'user'
+			: transcript?.role === 'agent'
+				? 'assistant'
+				: null;
+
+	if (!itemId || !text.trim() || !role) {
+		return {
+			history: currentHistory,
+			itemIndices: currentIndices
+		};
+	}
+
+	const entry = { role, message: text };
+	const existingIndex = currentIndices[itemId];
+	if (
+		Number.isInteger(existingIndex) &&
+		existingIndex >= 0 &&
+		existingIndex < currentHistory.length
+	) {
+		const nextHistory = [...currentHistory];
+		nextHistory[existingIndex] = entry;
+		return {
+			history: nextHistory,
+			itemIndices: currentIndices
+		};
+	}
+
+	const nextIndex = currentHistory.length;
+	return {
+		history: [...currentHistory, entry],
+		itemIndices: {
+			...currentIndices,
+			[itemId]: nextIndex
+		}
+	};
+}
+
 function isInteractiveHistoryMessage(message) {
 	if (!message || typeof message !== 'object') return false;
 	if (INTERACTIVE_VOICE_HISTORY_TYPES.has(message.type)) return true;
@@ -68,7 +130,8 @@ export function buildVoiceCallHistoryItems(messages) {
 			kind: 'transcript',
 			id,
 			role: message.variant === 'user' ? 'caller' : 'agent',
-			text: message.message
+			text: message.message,
+			message
 		});
 	}
 	return items;

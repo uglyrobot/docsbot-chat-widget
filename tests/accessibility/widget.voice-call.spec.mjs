@@ -4,6 +4,17 @@ import {
 	mockWidgetConfig
 } from './helpers/widgetMocks.mjs';
 
+async function readPersistedCallbackHistory(page) {
+	return page.evaluate(() => {
+		const key = Object.keys(localStorage).find((entry) =>
+			entry.endsWith('_localChatHistory')
+		);
+		if (!key) return null;
+		const value = localStorage.getItem(key);
+		return value ? JSON.parse(value) : null;
+	});
+}
+
 async function installVoiceBrowserMocks(page) {
 	await page.addInitScript(() => {
 		class MockDataChannel extends EventTarget {
@@ -108,6 +119,18 @@ async function installVoiceBrowserMocks(page) {
 					headers: { 'Content-Type': 'application/json' }
 				});
 			}
+			if (url.includes('/ticket')) {
+				return new Response(
+					JSON.stringify({
+						subject: 'Voice escalation',
+						message: 'Caller requested human support.'
+					}),
+					{
+						status: 200,
+						headers: { 'Content-Type': 'application/json' }
+					}
+				);
+			}
 			if (url.includes('/chat-agent')) {
 				let question = '';
 				try {
@@ -195,6 +218,41 @@ data: ${JSON.stringify({
 	});
 }
 
+async function remountWithVoiceCallbackSpies(page) {
+	await page.evaluate(async () => {
+		window.DocsBotAI.unmount();
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+		await window.DocsBotAI.mount({
+			id: 'nG4F5A3BFSBzdYc5TZIX/uy8srweloFNgRadNtwvf',
+			customButtonCallback(event, key, button, history, metadata) {
+				event.preventDefault();
+				window.__docsbotVoiceCustomCallback = {
+					key,
+					button,
+					history,
+					metadata
+				};
+			},
+			supportCallback(event, history, metadata, ticket) {
+				event.preventDefault();
+				window.__docsbotVoiceSupportCallback = {
+					history,
+					metadata,
+					ticket
+				};
+			},
+			options: {
+				localDev: true,
+				isAgent: true,
+				useVoiceAgent: true,
+				useCustomButtons: true,
+				useEscalation: true,
+				supportLink: 'https://example.com/support'
+			}
+		});
+	});
+}
+
 test('server-gated composer orb switches to a stateful call view and back', async ({
 	page
 }) => {
@@ -240,9 +298,9 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 	await expect(
 		root.getByText('Welcome to the accessibility demo.')
 	).toHaveCount(0);
-	await expect(root.locator('.docsbot-voice-transcript.is-history')).toHaveCount(
-		0
-	);
+	await expect(
+		root.locator('.docsbot-voice-conversation-message.is-history')
+	).toHaveCount(0);
 	const voiceRequest = await page.evaluate(
 		() => window.__docsbotVoiceRequest
 	);
@@ -287,7 +345,10 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 			}
 		});
 	});
-	await expect(root.getByText('Searching documentation…')).toBeVisible();
+	await expect(
+		root.getByText('Searching documentation…', { exact: true })
+	).toHaveCount(0);
+	await expect(root.getByRole('img', { name: 'Working…' })).toBeVisible();
 	await expect(root.getByText('must-not-render')).toHaveCount(0);
 
 	await page.evaluate(() => {
@@ -377,12 +438,27 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 	await expect(
 		root.getByText('Great — let me know if you need anything else.')
 	).toBeVisible();
+	await expect
+		.poll(() => readPersistedCallbackHistory(page))
+		.toEqual([
+			{ role: 'user', message: 'What is the answer?' },
+			{ role: 'assistant', message: 'Here is the answer.' },
+			{
+				role: 'assistant',
+				message: "I've shown the next step on screen."
+			},
+			{ role: 'user', message: 'Thanks, I opened it.' },
+			{
+				role: 'assistant',
+				message: 'Great — let me know if you need anything else.'
+			}
+		]);
 	const timelineTexts = await root
 		.locator('.docsbot-voice-transcripts-inner')
 		.evaluate((node) =>
 			[
 				...node.querySelectorAll(
-					'.docsbot-voice-transcript, .docsbot-voice-action-message'
+					'.docsbot-voice-conversation-message'
 				)
 			]
 				.map((element) =>
@@ -507,9 +583,20 @@ test('voice call resuming an existing chat keeps prior history and appends', asy
 	await expect(
 		root.getByText('Here is a mocked answer with a source.')
 	).toBeVisible();
-	await expect(root.locator('.docsbot-voice-transcript.is-history')).toHaveCount(
-		3
-	);
+	await expect(
+		root.locator('.docsbot-voice-conversation-message.is-history')
+	).toHaveCount(3);
+	await expect(
+		root.locator(
+			'.docsbot-voice-conversation-message.is-history .docsbot-chat-bot-message'
+		)
+	).toHaveCount(2);
+	await expect(
+		root.locator(
+			'.docsbot-voice-conversation-message.is-history .docsbot-user-chat-message'
+		)
+	).toHaveCount(1);
+	await expect(root.locator('.docsbot-voice-transcript')).toHaveCount(0);
 
 	const voiceRequest = await page.evaluate(
 		() => window.__docsbotVoiceRequest
@@ -535,6 +622,171 @@ test('voice call resuming an existing chat keeps prior history and appends', asy
 	await expect(
 		root.getByText('Here is a mocked answer with a source.')
 	).toBeVisible();
+});
+
+test('voice custom and support callbacks receive complete canonical history', async ({
+	page
+}) => {
+	test.setTimeout(120_000);
+	await installVoiceBrowserMocks(page);
+	await installWidgetMocks(page, {
+		...mockWidgetConfig,
+		useVoiceAgent: true,
+		useCustomButtons: true,
+		useEscalation: true,
+		color: '#7c3aed'
+	});
+
+	await page.goto('/');
+	await remountWithVoiceCallbackSpies(page);
+	const root = page.locator('#docsbotai-root');
+	await root.getByRole('button', { name: 'Help' }).click();
+	await root.getByRole('button', { name: 'Start voice call' }).click();
+	await expect(root.locator('.docsbot-voice-call-view')).toBeVisible();
+
+	await page.evaluate(() => {
+		window.__emitDocsBotVoiceEvent({
+			type: 'conversation.item.input_audio_transcription.completed',
+			item_id: 'callback-caller',
+			transcript: 'Show my account options.'
+		});
+		window.__emitDocsBotVoiceEvent({
+			type: 'response.output_audio_transcript.done',
+			item_id: 'callback-agent',
+			transcript: 'I found your account options.'
+		});
+		window.__emitDocsBotVoiceEvent({
+			type: 'conversation.item.created',
+			item: {
+				id: 'callback-action-item',
+				call_id: 'callback-action',
+				type: 'function_call_output',
+				output: JSON.stringify({
+					client_action: {
+						type: 'custom_button',
+						message: 'Open account settings.',
+						buttonText: 'Open account',
+						functionKey: 'account_settings'
+					}
+				})
+			}
+		});
+		window.__emitDocsBotVoiceEvent({
+			type: 'response.output_audio_transcript.done',
+			item_id: 'callback-agent-handoff',
+			transcript: 'Use the account button on screen.'
+		});
+	});
+
+	const customActionButton = root.getByRole('button', {
+		name: 'Open account'
+	});
+	const customActionColumn = root
+		.locator('.docsbot-chat-bot-message-column')
+		.filter({ hasText: 'Open account settings.' });
+	const customActionWrapper = root
+		.locator('.docsbot-voice-conversation-message')
+		.filter({ hasText: 'Open account settings.' });
+	const customActionBubble = customActionColumn.locator(
+		':scope > .docsbot-chat-bot-message'
+	);
+	const customActionRow = customActionColumn.locator(
+		':scope > .docsbot-custom-button-cta-row'
+	);
+	await expect(customActionBubble).toHaveCSS(
+		'border-top-left-radius',
+		'4px'
+	);
+	await expect(customActionBubble).toHaveCSS(
+		'border-top-right-radius',
+		'12px'
+	);
+	await expect(customActionWrapper).toHaveCSS(
+		'background-color',
+		'rgba(0, 0, 0, 0)'
+	);
+	const [columnBox, bubbleBox, actionRowBox] = await Promise.all([
+		customActionColumn.boundingBox(),
+		customActionBubble.boundingBox(),
+		customActionRow.boundingBox()
+	]);
+	expect(columnBox).not.toBeNull();
+	expect(bubbleBox).not.toBeNull();
+	expect(actionRowBox).not.toBeNull();
+	expect(bubbleBox.width).toBeLessThan(columnBox.width);
+	expect(actionRowBox.y - (bubbleBox.y + bubbleBox.height)).toBeGreaterThanOrEqual(
+		3
+	);
+
+	await customActionButton.click();
+	await expect
+		.poll(() =>
+			page.evaluate(() => window.__docsbotVoiceCustomCallback || null)
+		)
+		.toMatchObject({
+			key: 'account_settings',
+			history: [
+				{ role: 'user', message: 'Show my account options.' },
+				{
+					role: 'assistant',
+					message: 'I found your account options.'
+				},
+				{
+					role: 'assistant',
+					message: 'Use the account button on screen.'
+				}
+			]
+		});
+
+	await page.evaluate(() => {
+		window.__emitDocsBotVoiceEvent({
+			type: 'conversation.item.created',
+			item: {
+				id: 'callback-support-item',
+				call_id: 'callback-support',
+				type: 'function_call_output',
+				output: JSON.stringify({
+					client_action: {
+						type: 'support_escalation',
+						message: 'Would you like human support?',
+						responses: { yes: 'Yes, please', no: 'No, thanks' }
+					}
+				})
+			}
+		});
+		window.__emitDocsBotVoiceEvent({
+			type: 'response.output_audio_transcript.done',
+			item_id: 'callback-support-handoff',
+			transcript: 'I can connect you with a person now.'
+		});
+	});
+
+	await root.getByRole('button', { name: 'Yes, please' }).click();
+	await expect
+		.poll(() =>
+			page.evaluate(() => window.__docsbotVoiceSupportCallback || null)
+		)
+		.toMatchObject({
+			history: [
+				{ role: 'user', message: 'Show my account options.' },
+				{
+					role: 'assistant',
+					message: 'I found your account options.'
+				},
+				{
+					role: 'assistant',
+					message: 'Use the account button on screen.'
+				},
+				{
+					role: 'assistant',
+					message: 'I can connect you with a person now.'
+				}
+			],
+			ticket: {
+				subject: 'Voice escalation',
+				message: 'Caller requested human support.'
+			}
+		});
 });
 
 test('voice support escalation: No stays on call; Yes ends call', async ({
@@ -653,6 +905,20 @@ test('voice support escalation: No stays on call; Yes ends call', async ({
 	await expect(
 		root.getByRole('button', { name: 'Yes, please' })
 	).toBeVisible();
+	await expect
+		.poll(() => readPersistedCallbackHistory(page))
+		.toEqual([
+			{
+				role: 'assistant',
+				message: 'Would you like me to connect you with support?'
+			},
+			{
+				role: 'assistant',
+				message: 'I can connect you with a human if you want.'
+			},
+			{ role: 'user', message: 'No, thanks' },
+			{ role: 'assistant', message: 'Shall I connect you now?' }
+		]);
 	await root.getByRole('button', { name: 'Yes, please' }).click();
 	await expect(root.locator('.docsbot-voice-call-view')).toHaveCount(0);
 	const escalateRequest = await page.evaluate(
@@ -660,4 +926,31 @@ test('voice support escalation: No stays on call; Yes ends call', async ({
 	);
 	expect(escalateRequest?.method).toBe('PUT');
 	expect(escalateRequest?.url).toContain('/escalate');
+});
+
+test('DocsBotAI.startVoiceCall opens the widget into live voice mode', async ({
+	page
+}) => {
+	test.setTimeout(120_000);
+	await installVoiceBrowserMocks(page);
+	await installWidgetMocks(page, {
+		...mockWidgetConfig,
+		useVoiceAgent: true,
+		color: '#7c3aed'
+	});
+
+	await page.goto('/');
+	const root = page.locator('#docsbotai-root');
+	await expect(root.getByRole('button', { name: 'Help' })).toBeVisible();
+
+	const started = await page.evaluate(() => DocsBotAI.startVoiceCall());
+	expect(started).toBe(true);
+
+	await expect(root.getByRole('button', { name: 'Mute' })).toBeVisible();
+	await expect(root.getByRole('button', { name: 'End call' })).toBeVisible();
+	await expect(root.locator('.docsbot-voice-orb')).toBeVisible();
+	const voiceRequest = await page.evaluate(
+		() => window.__docsbotVoiceRequest
+	);
+	expect(voiceRequest?.body).toContain('playwright-offer');
 });

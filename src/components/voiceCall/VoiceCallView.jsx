@@ -27,23 +27,10 @@ import voiceToolWorkingSrc from '../../assets/audio/voiceToolWorkingSrc.mjs';
 import voiceToolSearchingSrc from '../../assets/audio/voiceToolSearchingSrc.mjs';
 import { isVoiceSearchToolName } from './voiceOrbPresentation.mjs';
 import { BotChatMessage } from '../botChatMessage/BotChatMessage';
+import { Options } from '../options/Options';
+import { UserChatMessage } from '../userChatMessage/UserChatMessage';
 import { VoiceOrb } from './VoiceOrb';
-
-function renderHistoryTranscript(entry, labels) {
-	return (
-		<div
-			key={`history-${entry.id}`}
-			className={`docsbot-voice-transcript is-${entry.role} is-history`}
-		>
-			<span className="docsbot-screen-reader-only">
-				{entry.role === 'caller'
-					? `${labels.voiceCallCaller}: `
-					: `${labels.voiceCallAgent}: `}
-			</span>
-			<span dir="auto">{entry.text}</span>
-		</div>
-	);
-}
+import { isMicrophoneBlockedByPermissionsPolicy } from '../../utils/microphonePermissions.mjs';
 
 const STATUS_LABEL_KEYS = {
 	[VOICE_CALL_STATUS.CONNECTING]: 'voiceCallConnecting',
@@ -60,7 +47,8 @@ const STATUS_LABEL_VISIBLE_HIDDEN = new Set([
 	VOICE_CALL_STATUS.USER_SPEAKING,
 	VOICE_CALL_STATUS.AGENT_SPEAKING,
 	VOICE_CALL_STATUS.THINKING,
-	VOICE_CALL_STATUS.USING_TOOL
+	VOICE_CALL_STATUS.USING_TOOL,
+	VOICE_CALL_STATUS.ERROR
 ]);
 const STATUS_LABEL_ARIA_HIDDEN = new Set([
 	VOICE_CALL_STATUS.USER_SPEAKING,
@@ -69,6 +57,9 @@ const STATUS_LABEL_ARIA_HIDDEN = new Set([
 ]);
 
 function safeConnectionError(error, labels) {
+	if (isMicrophoneBlockedByPermissionsPolicy(error)) {
+		return labels.audioMicrophonePolicyError;
+	}
 	if (
 		error?.name === 'NotAllowedError' ||
 		error?.name === 'SecurityError' ||
@@ -84,23 +75,7 @@ function safeConnectionError(error, labels) {
 	return labels.voiceCallError;
 }
 
-function renderLiveTranscript(entry, labels) {
-	return (
-		<div
-			key={entry.itemId}
-			className={`docsbot-voice-transcript is-${entry.role}`}
-		>
-			<span className="docsbot-screen-reader-only">
-				{entry.role === 'caller'
-					? `${labels.voiceCallCaller}: `
-					: `${labels.voiceCallAgent}: `}
-			</span>
-			<span dir="auto">{entry.text}</span>
-		</div>
-	);
-}
-
-function renderLiveActionMessage(
+function renderConversationMessage(
 	message,
 	{
 		fetchAnswer,
@@ -109,10 +84,29 @@ function renderLiveActionMessage(
 		isTidyCalScriptReady,
 		onEndVoiceCall,
 		onSendVoiceUserText
-	}
+	},
+	{ key = message.id, isHistory = false } = {}
 ) {
+	const wrapperClass = `docsbot-voice-conversation-message${
+		isHistory ? ' is-history' : ''
+	}`;
+	if (message.variant === 'user') {
+		return (
+			<div key={key} className={wrapperClass}>
+				<UserChatMessage
+					loading={Boolean(message.loading)}
+					message={message.message}
+					imageUrls={message.imageUrls}
+					audio={message.audio}
+					messageBoxRef={{ current: null }}
+					consecutive={false}
+				/>
+			</div>
+		);
+	}
+
 	return (
-		<div key={message.id} className="docsbot-voice-action-message">
+		<div key={key} className={wrapperClass}>
 			<BotChatMessage
 				payload={message}
 				messageBoxRef={{ current: null }}
@@ -123,8 +117,33 @@ function renderLiveActionMessage(
 				onEndVoiceCall={onEndVoiceCall}
 				onSendVoiceUserText={onSendVoiceUserText}
 			/>
+			{message.options ? <Options options={message.options} /> : null}
 		</div>
 	);
+}
+
+function historyEntryMessage(entry) {
+	if (entry.message) return entry.message;
+	return {
+		id: entry.id,
+		variant: entry.role === 'caller' ? 'user' : 'chatbot',
+		message: entry.text,
+		loading: false,
+		streaming: false,
+		voiceCall: true
+	};
+}
+
+function liveTranscriptMessage(entry) {
+	return {
+		id: `voice-${entry.itemId}`,
+		variant: entry.role === 'caller' ? 'user' : 'chatbot',
+		message: entry.text,
+		loading: false,
+		streaming: entry.role === 'agent' && !entry.isFinal,
+		voiceCall: true,
+		realtimeItemId: entry.itemId
+	};
 }
 
 export function VoiceCallView({
@@ -519,37 +538,25 @@ export function VoiceCallView({
 					className="docsbot-voice-transcripts-inner"
 				>
 					{historyItems.map((entry) =>
-						entry.kind === 'action' ? (
-							<div
-								key={`history-action-${entry.id}`}
-								className="docsbot-voice-action-message is-history"
-							>
-								<BotChatMessage
-									payload={entry.message}
-									messageBoxRef={{ current: null }}
-									fetchAnswer={fetchAnswer || (() => {})}
-									onSchedulerBookingMetadata={
-										onSchedulerBookingMetadata
-									}
-									isCalendlyScriptReady={
-										isCalendlyScriptReady
-									}
-									isTidyCalScriptReady={isTidyCalScriptReady}
-									onEndVoiceCall={leaveCall}
-									onSendVoiceUserText={sendVoiceUserText}
-								/>
-							</div>
-						) : (
-							renderHistoryTranscript(entry, labels)
+						renderConversationMessage(
+							historyEntryMessage(entry),
+							liveActionProps,
+							{
+								key: `history-${entry.id}`,
+								isHistory: true
+							}
 						)
 					)}
 					{liveItems.map((entry) =>
 						entry.kind === 'action'
-							? renderLiveActionMessage(
+							? renderConversationMessage(
 									entry.message,
 									liveActionProps
 								)
-							: renderLiveTranscript(entry.transcript, labels)
+							: renderConversationMessage(
+									liveTranscriptMessage(entry.transcript),
+									liveActionProps
+								)
 					)}
 				</div>
 			</div>

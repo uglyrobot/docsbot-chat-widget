@@ -14,6 +14,10 @@ import {
   isVoiceAgentCallEnabled,
   resolveEffectiveVoiceAgentCallEnabled,
 } from "../../utils/voiceAgentConfig.mjs";
+import {
+  resolveWidgetTheme,
+  resolveWidgetThemePreference,
+} from "../../utils/widgetTheme.mjs";
 
 const ConfigContext = createContext();
 
@@ -89,6 +93,12 @@ function resolveEffectiveBrowserLocale(options) {
 export function ConfigProvider(props = {}) {
   const { id, supportCallback, customButtonCallback, identify, options, signature, children } = props;
   const [config, setConfig] = useState(null);
+  const [systemPrefersDark, setSystemPrefersDark] = useState(() =>
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches
+      : false
+  );
 
   const updateIdentity = (data) => {
     setConfig((prevConfig) => {
@@ -115,6 +125,32 @@ export function ConfigProvider(props = {}) {
   };
 
   const localDev = options?.localDev;
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
+      return undefined;
+    }
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const updateSystemTheme = (event) => setSystemPrefersDark(event.matches);
+    setSystemPrefersDark(media.matches);
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", updateSystemTheme);
+    } else {
+      media.addListener?.(updateSystemTheme);
+    }
+
+    return () => {
+      if (typeof media.removeEventListener === "function") {
+        media.removeEventListener("change", updateSystemTheme);
+      } else {
+        media.removeListener?.(updateSystemTheme);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!id || config) return;
@@ -163,6 +199,7 @@ export function ConfigProvider(props = {}) {
           branding,
           allowedDomains: optionsAllowedDomains,
           piiRedaction: optionsPiiRedaction,
+          testing: optionsTesting,
           useVoiceAgent: optionsUseVoiceAgent,
           ...restOptions
         } = options || {};
@@ -208,6 +245,7 @@ export function ConfigProvider(props = {}) {
           identify: identify || {},
           signature,
           ...restOptions,
+          testing: optionsTesting === true,
           // Server-only capability gate: embed options cannot activate paid Realtime calls.
           useVoiceAgent,
           piiRedaction,
@@ -216,6 +254,7 @@ export function ConfigProvider(props = {}) {
           browserLocale,
           browserLocaleTag,
           browserRequestLanguageTag,
+          theme: resolveWidgetThemePreference(data.theme, restOptions.theme),
         });
       })
       .catch((e) => {
@@ -229,8 +268,10 @@ export function ConfigProvider(props = {}) {
 
   if (!config) return null;
 
+  const effectiveTheme = resolveWidgetTheme(config.theme, systemPrefersDark);
+
   return (
-    <ConfigContext.Provider value={{ ...config, updateIdentity }}>
+    <ConfigContext.Provider value={{ ...config, effectiveTheme, updateIdentity }}>
       {children}
     </ConfigContext.Provider>
   );
