@@ -156,6 +156,14 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
     console.log("Tool call received:", event.detail.name, event.detail.data);
   });
 
+  document.addEventListener("docsbot_voice_call_start", function (event) {
+    console.log("Voice call started:", event.detail);
+  });
+
+  document.addEventListener("docsbot_voice_call_end", function (event) {
+    console.log("Voice call ended:", event.detail);
+  });
+
   function buildTestSignature() {
     if (!DOCSBOT_TEST_SIGNATURE_KEY) {
       return Promise.resolve("");

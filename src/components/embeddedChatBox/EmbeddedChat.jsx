@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Chatbot } from "../chatbot/Chatbot";
 import { ChatbotProvider } from "../chatbotContext/ChatbotContext";
 import { useConfig } from "../configContext/ConfigContext";
+import { Emitter } from "../../utils/event-emitter";
 import ReactShadowRoot from "react-shadow-root";
 import fontAwesomeStyles from "!raw-loader!@fortawesome/fontawesome-svg-core/styles.css";
 import reactTailwindStyles from "!../../assets/css/docsbot-tw.min.css?raw";
@@ -14,6 +15,13 @@ import embeddedChatStyles from "!../../assets/css/embeddedChat.min.css?raw";
 
 const EmbeddedChat = () => {
   const { customCSS, textDirection, browserLocaleTag, effectiveTheme } = useConfig();
+
+  useEffect(() => {
+    Emitter.emit("docsbot_mount_complete");
+    return () => {
+      Emitter.emit("docsbot_unmount_complete");
+    };
+  }, []);
 
   const dir = textDirection === "rtl" ? "rtl" : "ltr";
   return (

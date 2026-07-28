@@ -284,7 +284,36 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 
 	await root.locator('textarea').fill('');
 	await expect(voiceOrbStart).toBeVisible();
+	await page.evaluate(() => {
+		window.__docsbotVoiceEvents = [];
+		const push = (name) => (event) => {
+			window.__docsbotVoiceEvents.push({
+				name,
+				detail: event.detail ? { ...event.detail } : null
+			});
+		};
+		document.addEventListener(
+			'docsbot_voice_call_start',
+			push('docsbot_voice_call_start')
+		);
+		document.addEventListener(
+			'docsbot_voice_call_end',
+			push('docsbot_voice_call_end')
+		);
+	});
 	await voiceOrbStart.click();
+
+	await expect
+		.poll(async () =>
+			page.evaluate(() =>
+				window.__docsbotVoiceEvents.map((event) => event.name)
+			)
+		)
+		.toEqual(['docsbot_voice_call_start']);
+	const startDetail = await page.evaluate(
+		() => window.__docsbotVoiceEvents[0]?.detail
+	);
+	expect(startDetail?.conversationId).toBeTruthy();
 
 	await expect(root.getByRole('button', { name: 'Mute' })).toBeVisible();
 	await expect(root.getByRole('button', { name: 'End call' })).toBeVisible();
@@ -320,15 +349,9 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 			item_id: 'caller-item'
 		});
 	});
-	await expect(
-		root.getByText('You’re speaking…', { exact: true })
-	).toHaveCount(0);
-	await expect(
-		root.getByText('Agent is speaking…', { exact: true })
-	).toHaveCount(0);
-	await expect(
-		root.getByRole('img', { name: 'You’re speaking…' })
-	).toHaveCount(0);
+	// Speaking states keep status copy hidden (orb-only; no speaking labels).
+	await expect(root.locator('.docsbot-voice-call-status')).toHaveCount(0);
+	await expect(root.getByRole('img', { name: 'Listening…' })).toHaveCount(0);
 
 	await page.evaluate(() => {
 		window.__emitDocsBotVoiceEvent({
@@ -532,6 +555,17 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 
 	await root.getByRole('button', { name: 'End call' }).click();
 	await expect(root.locator('.docsbot-voice-call-view')).toHaveCount(0);
+	await expect
+		.poll(async () =>
+			page.evaluate(() =>
+				window.__docsbotVoiceEvents.map((event) => event.name)
+			)
+		)
+		.toEqual(['docsbot_voice_call_start', 'docsbot_voice_call_end']);
+	const endDetail = await page.evaluate(
+		() => window.__docsbotVoiceEvents[1]?.detail
+	);
+	expect(endDetail?.conversationId).toBe(startDetail.conversationId);
 	await expect(
 		root.getByText('Welcome to the accessibility demo.')
 	).toBeVisible();
@@ -942,6 +976,33 @@ test('DocsBotAI.startVoiceCall opens the widget into live voice mode', async ({
 	await page.goto('/');
 	const root = page.locator('#docsbotai-root');
 	await expect(root.getByRole('button', { name: 'Help' })).toBeVisible();
+
+	const started = await page.evaluate(() => DocsBotAI.startVoiceCall());
+	expect(started).toBe(true);
+
+	await expect(root.getByRole('button', { name: 'Mute' })).toBeVisible();
+	await expect(root.getByRole('button', { name: 'End call' })).toBeVisible();
+	await expect(root.locator('.docsbot-voice-orb')).toBeVisible();
+	const voiceRequest = await page.evaluate(
+		() => window.__docsbotVoiceRequest
+	);
+	expect(voiceRequest?.body).toContain('playwright-offer');
+});
+
+test('DocsBotAI.startVoiceCall works in #docsbot-widget-embed', async ({
+	page
+}) => {
+	test.setTimeout(120_000);
+	await installVoiceBrowserMocks(page);
+	await installWidgetMocks(page, {
+		...mockWidgetConfig,
+		useVoiceAgent: true,
+		color: '#7c3aed'
+	});
+
+	await page.goto('/?embedded=1');
+	const root = page.locator('#docsbot-widget-embed');
+	await expect(root.locator('textarea')).toBeVisible();
 
 	const started = await page.evaluate(() => DocsBotAI.startVoiceCall());
 	expect(started).toBe(true);

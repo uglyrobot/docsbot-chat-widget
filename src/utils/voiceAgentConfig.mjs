@@ -1,10 +1,9 @@
 /**
- * Voice calls are a paid, server-configured capability. Keep this check narrow so
- * legacy `useAudioUpload` and client-side widget overrides cannot enable Realtime
- * in production. Local dev may override via `options.useVoiceAgent` (see
- * resolveEffectiveVoiceAgentCallEnabled).
+ * Voice calls are a paid, server-configured capability by default.
+ * Legacy `useAudioUpload` must not enable Realtime.
  *
- * Expected public widget API field: `useVoiceAgent: true`.
+ * Expected public widget API / embed option field: `useVoiceAgent: true`.
+ * When `options.useVoiceAgent` is explicitly set, it overrides the bot config.
  */
 export function isVoiceAgentCallEnabled(widgetApiConfig) {
 	return widgetApiConfig?.useVoiceAgent === true;
@@ -12,10 +11,9 @@ export function isVoiceAgentCallEnabled(widgetApiConfig) {
 
 export function resolveEffectiveVoiceAgentCallEnabled(
 	apiEnabled,
-	embedOption,
-	{ localDev = false } = {}
+	embedOption
 ) {
-	if (localDev && embedOption !== undefined) {
+	if (embedOption !== undefined) {
 		return embedOption === true;
 	}
 

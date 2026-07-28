@@ -1,6 +1,7 @@
 /**
- * Pending flag so DocsBotAI.startVoiceCall() can open the floating widget
- * and still start voice after Chatbot mounts (open completes before React commit).
+ * Pending flag so DocsBotAI.startVoiceCall() can open the floating panel
+ * (or target an always-mounted embed Chatbot) and still start voice after
+ * Chatbot mounts — open completes before React commit on the floating path.
  */
 
 let pendingStartVoiceCall = false;

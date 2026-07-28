@@ -1520,6 +1520,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	};
 
 	const voiceStartRequestedRef = useRef(false);
+	/** Guards public start/end DOM events against duplicate exits. */
+	const voiceCallActiveRef = useRef(false);
 
 	const startVoiceCall = () => {
 		if (!isVoiceAgentCallAvailable || isFetching || isLeadFormVisible) {
@@ -1529,6 +1531,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			return true;
 		}
 		voiceStartRequestedRef.current = true;
+		voiceCallActiveRef.current = true;
 		// Unlock the tool-working chime under this click; VoiceCallView mounts
 		// later in an effect, which is too late for autoplay policies.
 		void primeSharedVoiceToolWorkingChime([
@@ -1543,8 +1546,28 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		setVoiceCallHistoryItems(
 			buildVoiceCallHistoryItems(stateMessagesRef.current)
 		);
+		document.dispatchEvent(
+			new CustomEvent('docsbot_voice_call_start', {
+				detail: { conversationId }
+			})
+		);
 		setIsVoiceCallView(true);
 		return true;
+	};
+
+	const endVoiceCallView = () => {
+		if (!voiceCallActiveRef.current) return;
+		voiceCallActiveRef.current = false;
+		voiceStartRequestedRef.current = false;
+		const conversationId =
+			conversationIdRef.current || getStoredConversationId() || null;
+		document.dispatchEvent(
+			new CustomEvent('docsbot_voice_call_end', {
+				detail: { conversationId }
+			})
+		);
+		setIsVoiceCallView(false);
+		setVoiceCallHistoryItems([]);
 	};
 
 	const startVoiceCallRef = useRef(startVoiceCall);
@@ -3111,11 +3134,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							fetchAnswer={fetchAnswer}
 							isCalendlyScriptReady={isCalendlyScriptReady}
 							isTidyCalScriptReady={isTidyCalScriptReady}
-							onExit={() => {
-								voiceStartRequestedRef.current = false;
-								setIsVoiceCallView(false);
-								setVoiceCallHistoryItems([]);
-							}}
+							onExit={endVoiceCallView}
 						/>
 					) : (
 						<>

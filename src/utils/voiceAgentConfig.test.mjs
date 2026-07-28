@@ -17,21 +17,10 @@ test('voice-agent calling is enabled only by the exact server capability flag', 
 	assert.equal(isVoiceAgentCallEnabled(null), false);
 });
 
-test('local dev can override voice-agent calling from embed options', () => {
-	assert.equal(
-		resolveEffectiveVoiceAgentCallEnabled(false, true, { localDev: true }),
-		true
-	);
-	assert.equal(
-		resolveEffectiveVoiceAgentCallEnabled(true, false, { localDev: true }),
-		false
-	);
-	assert.equal(
-		resolveEffectiveVoiceAgentCallEnabled(false, true, { localDev: false }),
-		false
-	);
-	assert.equal(
-		resolveEffectiveVoiceAgentCallEnabled(true, undefined, { localDev: true }),
-		true
-	);
+test('embed options.useVoiceAgent overrides server capability when set', () => {
+	assert.equal(resolveEffectiveVoiceAgentCallEnabled(false, true), true);
+	assert.equal(resolveEffectiveVoiceAgentCallEnabled(true, false), false);
+	assert.equal(resolveEffectiveVoiceAgentCallEnabled(false, 'true'), false);
+	assert.equal(resolveEffectiveVoiceAgentCallEnabled(true, undefined), true);
+	assert.equal(resolveEffectiveVoiceAgentCallEnabled(false, undefined), false);
 });

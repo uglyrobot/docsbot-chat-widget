@@ -26,15 +26,31 @@ If the widget is placed inside an iframe, the embedding page must delegate micro
 
 The embedding page's `Permissions-Policy` response header must also allow the framed origin when a restrictive policy is used, for example `Permissions-Policy: microphone=(self "https://example.com")`. Without both permissions, browsers may block the microphone without showing a permission prompt; the widget reports that distinction to the caller.
 
-For local or integration testing, `options.useVoiceAgent` can explicitly enable or disable the live-call control. Voice uses the same API base as chat: the local API when `options.localDev` is true and `https://api.docsbot.ai` in production.
+Set `options.useVoiceAgent` to `true` or `false` to override the bot’s server `useVoiceAgent` flag for the live-call control. When omitted, the widget uses the bot config. Voice uses the same API base as chat: the local API when `options.localDev` is true and `https://api.docsbot.ai` in production.
 
-After the widget is mounted, call **`DocsBotAI.startVoiceCall()`** from a user gesture (for example a site button) to open the floating widget and enter live voice mode. It returns a Promise that resolves `true` when voice UI starts, or `false` if the widget is not mounted or voice is unavailable.
+After the widget is mounted, call **`DocsBotAI.startVoiceCall()`** from a user gesture (for example a site button) to enter live voice mode. On the floating launcher it opens the panel if needed; in `#docsbot-widget-embed` it starts voice in the always-visible chat. It returns a Promise that resolves `true` when voice UI starts, or `false` if the widget is not mounted or voice is unavailable.
 
 ```js
 document.getElementById('talk-btn').addEventListener('click', () => {
   DocsBotAI.startVoiceCall();
 });
 ```
+
+Public DOM events fire on `document` when live voice UI starts and ends:
+
+```js
+document.addEventListener('docsbot_voice_call_start', (event) => {
+  console.log('voice started', event.detail.conversationId);
+});
+document.addEventListener('docsbot_voice_call_end', (event) => {
+  console.log('voice ended', event.detail.conversationId);
+});
+```
+
+| Event | When | `detail` |
+|-------|------|----------|
+| `docsbot_voice_call_start` | Voice call view starts (orb, `startVoiceCall()`, etc.) | `{ conversationId: string }` |
+| `docsbot_voice_call_end` | Caller leaves voice (End call, Back, remote close, etc.) | `{ conversationId: string \| null }` |
 
 Finalized caller and agent transcripts are appended to the same canonical
 conversation history as text-chat turns. Voice-mode `customButtonCallback` and

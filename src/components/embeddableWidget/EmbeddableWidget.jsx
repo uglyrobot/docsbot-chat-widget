@@ -23,9 +23,17 @@ export default class EmbeddableWidget {
   static botId;
 
   static isChatbotOpen = false;
+  /** True when mounted into `#docsbot-widget-embed` (always-visible chat). */
+  static isEmbeddedMount = false;
 
   static open() {
     return new Promise((resolve) => {
+      // Embedded chat is always mounted/visible — no panel to open.
+      if (this.isEmbeddedMount) {
+        this.isChatbotOpen = true;
+        resolve();
+        return;
+      }
       this.isChatbotOpen = true;
       Emitter.emit("docsbot_open");
       Emitter.once("docsbot_open_complete", resolve);
@@ -34,6 +42,10 @@ export default class EmbeddableWidget {
 
   static close() {
     return new Promise((resolve) => {
+      if (this.isEmbeddedMount) {
+        resolve();
+        return;
+      }
       this.isChatbotOpen = false;
       Emitter.emit("docsbot_close");
       Emitter.once("docsbot_close_complete", resolve);
@@ -42,6 +54,11 @@ export default class EmbeddableWidget {
 
   static toggle() {
     return new Promise((resolve) => {
+      if (this.isEmbeddedMount) {
+        this.isChatbotOpen = true;
+        resolve();
+        return;
+      }
       this.isChatbotOpen = !this.isChatbotOpen;
       Emitter.emit("docsbot_toggle", { isChatbotOpen: this.isChatbotOpen });
       Emitter.once("docsbot_toggle_complete", resolve);
@@ -49,7 +66,8 @@ export default class EmbeddableWidget {
   }
 
   /**
-   * Open the floating widget (if needed) and enter live voice mode.
+   * Enter live voice mode (floating or `#docsbot-widget-embed`).
+   * Floating: opens the panel if needed. Embed: starts in the always-on chat.
    * Call from a user gesture (e.g. site button click) so mic/audio unlock.
    * Resolves true when voice UI starts, false if unavailable or not mounted.
    */
@@ -78,12 +96,14 @@ export default class EmbeddableWidget {
 
       Emitter.once("docsbot_start_voice_call_complete", finish);
 
+      // Floating needs the panel open (Chatbot mounts on open). Embed Chatbot
+      // is already mounted; open() is a no-op resolve there.
       if (!this.isChatbotOpen) {
         await this.open();
       }
 
-      // Already-open Chatbot listens here. Fresh mounts also consume the
-      // pending flag in their effect (open completes before React commit).
+      // Already-mounted Chatbot listens here. Fresh floating mounts also
+      // consume the pending flag in their effect (open completes before commit).
       if (!settled) {
         Emitter.emit("docsbot_start_voice_call");
       }
@@ -142,6 +162,11 @@ export default class EmbeddableWidget {
       const embeddedChatElement = document.getElementById(
         "docsbot-widget-embed"
       );
+      this.isEmbeddedMount = Boolean(embeddedChatElement);
+      // Embed surface is always visible; treat as open for JS helpers.
+      if (this.isEmbeddedMount) {
+        this.isChatbotOpen = true;
+      }
       const component = (
         <ConfigProvider {...props}>
           {embeddedChatElement ? (
@@ -212,6 +237,9 @@ export default class EmbeddableWidget {
         div_root.remove();
       }
       EmbeddableWidget.el = null;
+      this._root = null;
+      this.isEmbeddedMount = false;
+      this.isChatbotOpen = false;
 
       Emitter.emit("docsbot_unmount");
       Emitter.once("docsbot_unmount_complete", resolve);

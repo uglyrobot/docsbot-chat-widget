@@ -227,8 +227,7 @@ export function ConfigProvider(props = {}) {
         const textDirection = localeMod.isRTL ? "rtl" : "ltr";
         const useVoiceAgent = resolveEffectiveVoiceAgentCallEnabled(
           isVoiceAgentCallEnabled(data),
-          optionsUseVoiceAgent,
-          { localDev }
+          optionsUseVoiceAgent
         );
         const piiRedaction = resolveEffectivePiiRedactionConfig(
           data.piiRedaction,
@@ -246,7 +245,7 @@ export function ConfigProvider(props = {}) {
           signature,
           ...restOptions,
           testing: optionsTesting === true,
-          // Server-only capability gate: embed options cannot activate paid Realtime calls.
+          // Bot config by default; options.useVoiceAgent overrides when set.
           useVoiceAgent,
           piiRedaction,
           labels: mergedLabels,
