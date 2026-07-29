@@ -20,7 +20,8 @@ import {
 	finalVoiceTranscriptFromEvent,
 	orderedVoiceTranscripts,
 	reduceVoiceRealtimeEvent,
-	voiceClientActionFromEvent
+	voiceClientActionFromEvent,
+	voiceToolCallFromEvent
 } from '../../utils/voiceRealtimeState.mjs';
 import { getSharedVoiceToolWorkingChime } from '../../utils/voiceToolWorkingChime.mjs';
 import voiceToolWorkingSrc from '../../assets/audio/voiceToolWorkingSrc.mjs';
@@ -173,6 +174,8 @@ export function VoiceCallView({
 	const attemptRef = useRef(0);
 	const voiceStateRef = useRef(createVoiceRealtimeState());
 	const pendingActionsRef = useRef([]);
+	/** Dedupes public docsbot_tool_call DOM events by Realtime call id. */
+	const emittedToolCallIdsRef = useRef(new Set());
 	const toolWorkingChimeRef = useRef(null);
 	const toolSearchingChimeRef = useRef(null);
 	if (!toolWorkingChimeRef.current) {
@@ -230,6 +233,23 @@ export function VoiceCallView({
 				return next;
 			});
 
+			// Same public DOM event as chat-agent SSE tool_call.
+			const toolCall = voiceToolCallFromEvent(event);
+			if (
+				toolCall &&
+				!emittedToolCallIdsRef.current.has(toolCall.callId)
+			) {
+				emittedToolCallIdsRef.current.add(toolCall.callId);
+				document.dispatchEvent(
+					new CustomEvent('docsbot_tool_call', {
+						detail: {
+							name: toolCall.name,
+							data: toolCall.data
+						}
+					})
+				);
+			}
+
 			const clientAction = voiceClientActionFromEvent(event);
 			if (clientAction) {
 				const message = onClientAction?.(clientAction);
@@ -277,6 +297,7 @@ export function VoiceCallView({
 		setVoiceState(initialVoiceState);
 		setActionMessages([]);
 		pendingActionsRef.current = [];
+		emittedToolCallIdsRef.current = new Set();
 		setErrorDetail('');
 		setIsMuted(false);
 		setMicLevel(0);

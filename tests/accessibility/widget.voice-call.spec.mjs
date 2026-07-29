@@ -286,6 +286,7 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 	await expect(voiceOrbStart).toBeVisible();
 	await page.evaluate(() => {
 		window.__docsbotVoiceEvents = [];
+		window.__docsbotToolCalls = [];
 		const push = (name) => (event) => {
 			window.__docsbotVoiceEvents.push({
 				name,
@@ -300,6 +301,11 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 			'docsbot_voice_call_end',
 			push('docsbot_voice_call_end')
 		);
+		document.addEventListener('docsbot_tool_call', (event) => {
+			window.__docsbotToolCalls.push(
+				event.detail ? { ...event.detail } : null
+			);
+		});
 	});
 	await voiceOrbStart.click();
 
@@ -373,6 +379,14 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 	).toHaveCount(0);
 	await expect(root.getByRole('img', { name: 'Working…' })).toBeVisible();
 	await expect(root.getByText('must-not-render')).toHaveCount(0);
+	await expect
+		.poll(async () => page.evaluate(() => window.__docsbotToolCalls))
+		.toEqual([
+			{
+				name: 'search_documentation',
+				data: { credential: 'must-not-render' }
+			}
+		]);
 
 	await page.evaluate(() => {
 		window.__emitDocsBotVoiceEvent({

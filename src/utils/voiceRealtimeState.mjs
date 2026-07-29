@@ -122,18 +122,84 @@ function upsertTranscript(state, { itemId, role, text, append, isFinal }) {
 	};
 }
 
+function sanitizeVoiceToolName(name) {
+	const trimmed = typeof name === 'string' ? name.trim() : '';
+	if (!trimmed || trimmed.length > 128 || !/^[a-zA-Z0-9_.:-]+$/.test(trimmed)) {
+		return '';
+	}
+	return trimmed;
+}
+
+/** Match text-chat `docsbot_tool_call` detail.data parsing. */
+function parseVoiceToolCallData(params) {
+	if (params == null) return null;
+	if (typeof params === 'string') {
+		try {
+			return JSON.parse(params);
+		} catch {
+			return params;
+		}
+	}
+	return typeof params === 'object' ? params : null;
+}
+
 export function voiceToolNameFromEvent(event) {
 	const isToolItem =
 		(event?.type === 'response.output_item.added' ||
 			event?.type === 'response.output_item.done') &&
 		event?.item?.type === 'function_call';
 	if (!isToolItem) return '';
-	const name =
-		typeof event.item.name === 'string' ? event.item.name.trim() : '';
-	if (!name || name.length > 128 || !/^[a-zA-Z0-9_.:-]+$/.test(name)) {
-		return '';
+	return sanitizeVoiceToolName(event.item.name);
+}
+
+/**
+ * Public-equivalent of chat-agent SSE `tool_call` for Realtime voice.
+ * Returns `{ callId, name, data }` when a tool invocation is ready to expose,
+ * or null. Callers should dedupe by `callId`.
+ *
+ * Prefers complete args: fires on `output_item.done`, on `output_item.added`
+ * only when `arguments` is already present, and on `function_call_arguments.done`
+ * when a safe tool name is available.
+ */
+export function voiceToolCallFromEvent(event) {
+	if (!event || typeof event.type !== 'string') return null;
+
+	if (
+		(event.type === 'response.output_item.added' ||
+			event.type === 'response.output_item.done') &&
+		event.item?.type === 'function_call'
+	) {
+		const name = sanitizeVoiceToolName(event.item.name);
+		if (!name) return null;
+		const argsRaw = event.item.arguments;
+		const hasArgs = typeof argsRaw === 'string';
+		// Wait for streamed args unless the item already carries them (or is done).
+		if (event.type === 'response.output_item.added' && !hasArgs) {
+			return null;
+		}
+		const callId = functionCallId(event.item) || name;
+		return {
+			callId,
+			name,
+			data: hasArgs ? parseVoiceToolCallData(argsRaw) : null
+		};
 	}
-	return name;
+
+	if (event.type === 'response.function_call_arguments.done') {
+		const name = sanitizeVoiceToolName(event.name);
+		if (!name) return null;
+		const callId =
+			(typeof event.call_id === 'string' && event.call_id.trim()) ||
+			(typeof event.item_id === 'string' && event.item_id.trim()) ||
+			name;
+		return {
+			callId: callId.length <= 128 ? callId : name,
+			name,
+			data: parseVoiceToolCallData(event.arguments)
+		};
+	}
+
+	return null;
 }
 
 export function finalVoiceTranscriptFromEvent(event) {

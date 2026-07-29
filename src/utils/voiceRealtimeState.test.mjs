@@ -7,6 +7,7 @@ import {
 	orderedVoiceTranscripts,
 	reduceVoiceRealtimeEvent,
 	voiceClientActionFromEvent,
+	voiceToolCallFromEvent,
 	voiceToolNameFromEvent
 } from './voiceRealtimeState.mjs';
 
@@ -135,6 +136,92 @@ test('tool state accepts only a safe name and never retains internals', () => {
 			item: { ...event.item, name: 'unsafe function name!' }
 		}),
 		''
+	);
+});
+
+test('voiceToolCallFromEvent mirrors chat-agent docsbot_tool_call detail shape', () => {
+	assert.equal(
+		voiceToolCallFromEvent({
+			type: 'response.output_item.added',
+			item: {
+				id: 'tool-pending',
+				call_id: 'call-pending',
+				type: 'function_call',
+				name: 'search_documentation'
+			}
+		}),
+		null,
+		'added without arguments waits for streamed args'
+	);
+
+	assert.deepEqual(
+		voiceToolCallFromEvent({
+			type: 'response.output_item.added',
+			item: {
+				id: 'tool-1',
+				call_id: 'call-1',
+				type: 'function_call',
+				name: 'search_documentation',
+				arguments: '{"query":"billing"}'
+			}
+		}),
+		{
+			callId: 'call-1',
+			name: 'search_documentation',
+			data: { query: 'billing' }
+		}
+	);
+
+	assert.deepEqual(
+		voiceToolCallFromEvent({
+			type: 'response.output_item.done',
+			item: {
+				id: 'tool-2',
+				call_id: 'call-2',
+				type: 'function_call',
+				name: 'lookup_answer',
+				arguments: '{}'
+			}
+		}),
+		{
+			callId: 'call-2',
+			name: 'lookup_answer',
+			data: {}
+		}
+	);
+
+	assert.deepEqual(
+		voiceToolCallFromEvent({
+			type: 'response.function_call_arguments.done',
+			call_id: 'call-3',
+			item_id: 'tool-3',
+			name: 'stripe_recent_invoices',
+			arguments: '{"limit":3}'
+		}),
+		{
+			callId: 'call-3',
+			name: 'stripe_recent_invoices',
+			data: { limit: 3 }
+		}
+	);
+
+	assert.equal(
+		voiceToolCallFromEvent({
+			type: 'response.function_call_arguments.done',
+			call_id: 'call-bad',
+			name: 'unsafe name!',
+			arguments: '{}'
+		}),
+		null
+	);
+
+	assert.equal(
+		voiceToolCallFromEvent({
+			type: 'conversation.item.created',
+			item: { type: 'function_call_output', call_id: 'call-1' }
+		}),
+		null,
+		'outputs are not tool invocations'
 	);
 });
 
