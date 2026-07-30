@@ -263,9 +263,11 @@ const SubscriptionItem = ({ subscription, labels }) => {
 
 				<div className="grid grid-cols-2 gap-3 text-sm text-slate-600 mb-3">
 					{periodText && (
-						<div className="col-span-2 sm:col-span-1 min-w-0">
+						<div className="col-span-2 min-w-0">
 							<span className="block text-xs text-slate-400 truncate">{labels.stripeCurrentPeriod}</span>
-							<span className="font-medium text-slate-800 truncate block">{periodText}</span>
+							<span className="font-medium text-slate-800 text-xs sm:text-sm leading-snug break-words block">
+								{periodText}
+							</span>
 						</div>
 					)}
 					{subscription.trialEndAt && (

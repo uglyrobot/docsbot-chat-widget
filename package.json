@@ -1,6 +1,7 @@
 {
   "scripts": {
     "test:labels": "node --test src/utils/mergeWidgetLabels.test.mjs src/utils/localeLabelCompleteness.test.mjs src/utils/chatbotMessageState.test.mjs src/utils/chatHistoryTransforms.test.mjs",
+    "test:voice": "node --test src/utils/voiceAgentConfig.test.mjs src/utils/voiceRealtimeState.test.mjs src/utils/voiceCallSession.test.mjs src/utils/voiceCallHistory.test.mjs src/utils/voiceToolWorkingChime.test.mjs src/utils/externalActionUrl.test.mjs src/utils/microphonePermissions.test.mjs src/utils/voiceCallJsApi.test.mjs src/components/voiceCall/voiceOrbPresentation.test.mjs",
     "a11y": "npm-run-all a11y:lint a11y:axe",
     "a11y:axe": "PLAYWRIGHT_JSON_OUTPUT_FILE=artifacts/accessibility/playwright-axe-report.json playwright test tests/accessibility/widget.a11y.spec.mjs --reporter=list,json",
     "a11y:lint": "eslint src/**/*.{js,jsx}",
@@ -74,6 +75,7 @@
     "remark-external-links": "^9.0.1",
     "streamdown": "^2.1.0",
     "tailwind-merge": "^3.4.0",
+    "thinking-orbs": "0.1.1",
     "tw-animate-css": "^1.4.0",
     "uuid": "^9.0.0"
   }

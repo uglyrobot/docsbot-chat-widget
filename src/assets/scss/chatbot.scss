@@ -13,6 +13,8 @@
 @forward './_components/input';
 @forward './_components/submit-button';
 @forward './_components/credits';
+@forward './_components/voice-call';
+@forward './_components/theme';
 
 .docsbot-screen-reader-only {
 	width: 1px;
@@ -137,7 +139,7 @@
 
 .docsbot-chat-inner-container {
 	height: 100%;
-	background-color: #fff;
+	background-color: var(--docsbot-surface, #fff);
 	border-radius: 16px;
 	display: flex;
 	flex-direction: column;

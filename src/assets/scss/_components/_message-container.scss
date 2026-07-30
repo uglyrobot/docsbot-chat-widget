@@ -10,7 +10,9 @@
 		margin-top: $spacing-md;
 	}
 
-	> div:has(.consecutive-bot-message) {
+	> div:has(.consecutive-bot-message),
+	> div.consecutive-user-message,
+	> div:has(.consecutive-user-message) {
 		margin-top: $spacing-sm;
 	}
 

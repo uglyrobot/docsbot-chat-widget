@@ -231,7 +231,8 @@
 
 // Media action buttons
 .docsbot-image-upload-btn,
-.docsbot-audio-record-btn {
+.docsbot-audio-record-btn,
+.docsbot-live-voice-btn {
 	cursor: pointer;
 	width: 32px;
 	height: 40px;
@@ -282,6 +283,44 @@
 	right: 42px;
 }
 
+.docsbot-live-voice-btn {
+	right: 42px;
+}
+
+.docsbot-chat-input-form:has(.docsbot-image-upload-btn)
+	.docsbot-live-voice-btn,
+.docsbot-chat-input-form:has(.docsbot-audio-record-btn)
+	.docsbot-live-voice-btn {
+	right: 74px;
+}
+
+.docsbot-chat-input-form:has(.docsbot-image-upload-btn):has(
+		.docsbot-audio-record-btn
+	)
+	.docsbot-live-voice-btn {
+	right: 106px;
+}
+
+.docsbot-chat-input-form:has(.docsbot-live-voice-btn)
+	.docsbot-chat-input {
+	padding-right: 88px;
+}
+
+.docsbot-chat-input-form:has(.docsbot-live-voice-btn):has(
+		.docsbot-image-upload-btn,
+		.docsbot-audio-record-btn
+	)
+	.docsbot-chat-input {
+	padding-right: 120px;
+}
+
+.docsbot-chat-input-form:has(.docsbot-live-voice-btn):has(
+		.docsbot-image-upload-btn
+	):has(.docsbot-audio-record-btn)
+	.docsbot-chat-input {
+	padding-right: 152px;
+}
+
 .docsbot-chat-input-form:has(.docsbot-image-upload-btn)
 	.docsbot-audio-record-btn {
 	right: 42px;
@@ -298,7 +337,7 @@
 		:has(.docsbot-audio-record-btn)
 	)
 	.docsbot-image-upload-btn {
-	right: 35px;
+	right: 40px;
 	z-index: 2;
 }
 
@@ -323,6 +362,213 @@
 	border: 0;
 	border-radius: #{$spacing-md - 1px};
 	background: $color-neutral-300;
+}
+
+.docsbot-live-voice-status {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 42px;
+	margin-bottom: 8px;
+	padding: 6px 7px 6px 11px;
+	border: 1px solid rgba(166, 179, 191, 0.52);
+	border-radius: 10px;
+	background: $color-neutral-300;
+	color: $color-neutral-100;
+	font-family: $font-family;
+	font-size: 12px;
+	line-height: 16px;
+
+	&.is-connected {
+		border-color: color-mix(
+			in srgb,
+			var(--docsbot-input--hover, $color-primary-200) 45%,
+			transparent
+		);
+	}
+
+	&.is-error {
+		border-color: rgba(185, 28, 28, 0.35);
+		background: #fff7f7;
+		color: #991b1b;
+	}
+}
+
+.docsbot-chat-input-form.is-live-voice {
+	> .docsbot-chat-input-wrapper,
+	> .docsbot-image-upload-btn,
+	> .docsbot-audio-record-btn,
+	> .docsbot-live-voice-btn,
+	> .docsbot-chat-btn-send {
+		display: none;
+	}
+}
+
+.docsbot-live-voice-input {
+	min-height: 50px;
+	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 5px;
+	color: $color-neutral-100;
+	font-family: $font-family;
+}
+
+.docsbot-live-voice-orb-overlay {
+	position: sticky;
+	top: 6px;
+	z-index: 20;
+	height: 0;
+	display: flex;
+	justify-content: center;
+	pointer-events: none;
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: -14px;
+		width: 132px;
+		height: 54px;
+		background: radial-gradient(
+			ellipse at center,
+			rgba(255, 255, 255, 1) 0%,
+			rgba(255, 255, 255, 0.92) 34%,
+			rgba(255, 255, 255, 0) 76%
+		);
+	}
+
+	&.is-connecting .docsbot-live-voice-orb {
+		animation: docsbot-voice-orb-connecting 1.25s ease-in-out infinite;
+	}
+}
+
+.docsbot-live-voice-orb {
+	--docsbot-voice-scale: 1;
+	--docsbot-voice-glow: 7px;
+	position: relative;
+	z-index: 1;
+	width: 16px;
+	height: 16px;
+	display: block;
+	border-radius: 999px;
+	background:
+		radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.92), transparent 24%),
+		linear-gradient(145deg, #38bdf8 5%, var(--docsbot-input--hover, $color-primary-200) 48%, #6366f1 100%);
+	box-shadow:
+		0 0 var(--docsbot-voice-glow) color-mix(in srgb, var(--docsbot-input--hover, $color-primary-200) 48%, transparent),
+		inset 0 -3px 7px rgba(15, 23, 42, 0.2);
+	transform: scale(var(--docsbot-voice-scale));
+	transition:
+		transform 90ms linear,
+		box-shadow 90ms linear;
+	will-change: transform, box-shadow;
+}
+
+.docsbot-live-voice-wave {
+	min-width: 0;
+	flex: 1 1 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	height: 24px;
+	overflow: hidden;
+
+	span {
+		flex: 0 0 2px;
+		width: 2px;
+		height: 2px;
+		border-radius: 999px;
+		background: var(--docsbot-text-muted, $color-secondary-100);
+		transition:
+			height 80ms linear,
+			opacity 80ms linear;
+	}
+}
+
+.docsbot-live-voice-state {
+	min-width: 0;
+	flex: 1 1 auto;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 600;
+
+	> span {
+		width: 8px;
+		height: 8px;
+		flex: 0 0 auto;
+		border-radius: 999px;
+		background: $color-secondary-200;
+	}
+
+	.is-connected & > span {
+		background: #16a34a;
+		box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+	}
+
+	.is-connecting & > span {
+		background: var(--docsbot-input--hover, $color-primary-200);
+		animation: docsbot-voice-pulse 1.2s ease-in-out infinite;
+	}
+
+	.is-error & > span {
+		background: #dc2626;
+	}
+}
+
+.docsbot-live-voice-mute,
+.docsbot-live-voice-end {
+	width: 30px;
+	height: 30px;
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: 1px solid rgba(166, 179, 191, 0.45);
+	border-radius: 9px;
+	background: transparent;
+	color: $color-secondary-100;
+	cursor: pointer;
+
+	&:hover {
+		background: rgba(166, 179, 191, 0.12);
+		color: $color-neutral-100;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--docsbot-focus-ring, #1292ee);
+		outline-offset: 2px;
+	}
+}
+
+.docsbot-live-voice-mute[aria-pressed='true'],
+.docsbot-live-voice-end {
+	color: #b91c1c;
+}
+
+@keyframes docsbot-voice-pulse {
+	0%,
+	100% {
+		opacity: 0.45;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+@keyframes docsbot-voice-orb-connecting {
+	0%,
+	100% {
+		transform: scale(0.92);
+		opacity: 0.72;
+	}
+	50% {
+		transform: scale(1.08);
+		opacity: 1;
+	}
 }
 
 .docsbot-audio-recorder-cancel,
@@ -407,7 +653,7 @@
 		width: 2px;
 		height: 2px;
 		border-radius: 999px;
-		background: $color-secondary-100;
+		background: var(--docsbot-text-muted, $color-secondary-100);
 		transition:
 			height 80ms linear,
 			opacity 80ms linear;

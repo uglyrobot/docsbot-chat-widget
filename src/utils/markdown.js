@@ -71,3 +71,40 @@ export function preprocessMath(text) {
 
 	return result;
 }
+
+/**
+ * Normalize fenced Mermaid emitted on one line so Streamdown recognizes it as
+ * a diagram block. Models occasionally return:
+ *
+ * ```mermaid flowchart TD A[Start] --> B[Done] ```
+ *
+ * CommonMark requires a line break after the fence info string. Flowchart
+ * statements also need separators, so split the compact node-edge sequence
+ * without changing already well-formed multiline Mermaid.
+ */
+export function normalizeMermaidMarkdown(text) {
+	if (!text || typeof text !== 'string') return text;
+
+	return text.replace(
+		/```mermaid[ \t]+([\s\S]*?)[ \t]*```/gi,
+		(_match, source) => {
+			let diagram = source.trim();
+			if (!diagram.includes('\n')) {
+				diagram = diagram
+					.replace(
+						/^((?:flowchart|graph)\s+(?:TB|TD|BT|RL|LR))\s+/i,
+						'$1\n'
+					)
+					.replace(
+						/([)\]}])\s+([A-Za-z][\w-]*)\s+(?=(?:-->|---|-\.->|==>|~~~|--o|--x|<-->))/g,
+						'$1\n$2 '
+					);
+			}
+			return `\`\`\`mermaid\n${diagram}\n\`\`\``;
+		}
+	);
+}
+
+export function preprocessStreamdownMarkdown(text) {
+	return preprocessMath(normalizeMermaidMarkdown(text));
+}

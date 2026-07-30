@@ -1,4 +1,5 @@
-import React, { lazy } from 'react';
+import React, { lazy, useMemo } from 'react';
+import { useConfig } from '../configContext/ConfigContext';
 
 /** Hosts always treated as safe when link safety is on (apex + subdomains via isAllowedHost). */
 const LINK_SAFETY_ALWAYS_ALLOWED_HOSTS = ['stripe.com'];
@@ -65,7 +66,7 @@ export const LazyStreamdown = lazy(async () => {
 		remarkExternalLinksModule.default || remarkExternalLinksModule;
 	const { harden } = hardenModule;
 	const code = codeModule.code || codeModule.default;
-	const mermaid = mermaidModule.mermaid || mermaidModule.default;
+	const createMermaidPlugin = mermaidModule.createMermaidPlugin;
 	const math = mathModule.math || mathModule.default;
 	const cjk = cjkModule.cjk || cjkModule.default;
 
@@ -106,6 +107,16 @@ export const LazyStreamdown = lazy(async () => {
 		linkSafetyEnabled = false,
 		...props
 	}) => {
+		const { effectiveTheme } = useConfig();
+		const mermaid = useMemo(
+			() =>
+				createMermaidPlugin({
+					config: {
+						theme: effectiveTheme === 'dark' ? 'dark' : 'default'
+					}
+				}),
+			[effectiveTheme]
+		);
 		const currentHost = window.location.hostname.toLowerCase();
 		const normalizedAllowedHosts = [
 			currentHost,

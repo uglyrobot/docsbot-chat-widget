@@ -35,7 +35,7 @@
 }
 
 .docsbot-chat-inner-container {
-	border: 1px solid #d8d8d8;
+	border: 1px solid var(--docsbot-border, #d8d8d8);
 	border-radius: 5px;
 }
 
@@ -55,7 +55,7 @@
 
 .docsbot-chat-container {
 	border-radius: 16px;
-	background-color: rgb(249, 250, 250);
+	background-color: var(--docsbot-surface, rgb(249, 250, 250));
 	height: 100%;
 	width: 100%;
 	font-family:
@@ -64,7 +64,8 @@
 }
 
 .docsbot-chat-bot-message {
-	width: auto;
+	width: fit-content;
+	max-width: 100%;
 	margin-left: 0;
 }
 

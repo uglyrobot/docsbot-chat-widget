@@ -1,0 +1,539 @@
+@use '../_utils/tokens' as *;
+
+.docsbot-voice-call-view {
+	--docsbot-voice-fade-top: 168px;
+	--docsbot-voice-fade-bottom: 72px;
+	--docsbot-voice-pad-top: 176px;
+	--docsbot-voice-pad-bottom: 96px;
+	--docsbot-voice-orb-size: clamp(88px, 22vw, 112px);
+	--docsbot-voice-connecting-offset: 0px;
+	--docsbot-voice-settle-duration: 700ms;
+	--docsbot-voice-settle-ease: cubic-bezier(0.22, 1, 0.36, 1);
+	position: relative;
+	min-height: 0;
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	container-type: size;
+	container-name: docsbot-voice-call;
+	background:
+		radial-gradient(
+			circle at 50% 18%,
+			rgba(226, 232, 240, 0.48),
+			transparent 32%
+		),
+		#fff;
+	color: $color-neutral-100;
+	font-family: $font-family;
+	overflow: hidden;
+	overscroll-behavior: contain;
+}
+
+.docsbot-voice-remote-audio {
+	display: none;
+}
+
+.docsbot-voice-transcripts {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	overflow-x: hidden;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	-webkit-overflow-scrolling: touch;
+	padding: var(--docsbot-voice-pad-top) $spacing-lg
+		var(--docsbot-voice-pad-bottom);
+	scrollbar-width: thin;
+	opacity: 1;
+	transition: opacity 0.35s ease 0.12s;
+	-webkit-mask-image: linear-gradient(
+		to bottom,
+		transparent 0,
+		#000 var(--docsbot-voice-fade-top),
+		#000 calc(100% - var(--docsbot-voice-fade-bottom)),
+		transparent 100%
+	);
+	mask-image: linear-gradient(
+		to bottom,
+		transparent 0,
+		#000 var(--docsbot-voice-fade-top),
+		#000 calc(100% - var(--docsbot-voice-fade-bottom)),
+		transparent 100%
+	);
+}
+
+.docsbot-voice-transcripts-inner {
+	display: flex;
+	flex-direction: column;
+	gap: $spacing-md;
+	min-height: min-content;
+}
+
+.docsbot-voice-call-chrome {
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	pointer-events: none;
+}
+
+.docsbot-voice-call-chrome-top {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+}
+
+.docsbot-voice-call-chrome-bottom {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	opacity: 1;
+	transition: opacity 0.35s ease 0.12s;
+}
+
+.docsbot-voice-call-topbar {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	min-height: 48px;
+	padding: $spacing-sm $spacing-md 0;
+	background: #fff;
+}
+
+.docsbot-voice-call-back {
+	display: inline-flex;
+	align-items: center;
+	gap: $spacing-xs;
+	min-width: 0;
+	padding: 8px 10px;
+	border: 0;
+	border-radius: 10px;
+	background: transparent;
+	color: $color-secondary-100;
+	font: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	pointer-events: auto;
+
+	&:hover {
+		background: rgba(148, 163, 184, 0.12);
+		color: $color-neutral-100;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--docsbot-focus-ring, #1292ee);
+		outline-offset: 2px;
+	}
+}
+
+.docsbot-voice-call-stage {
+	position: relative;
+	z-index: 2;
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 6px;
+	padding: 0 $spacing-lg 28px;
+	text-align: center;
+	isolation: isolate;
+	transform: translateY(var(--docsbot-voice-connecting-offset));
+	transition:
+		transform var(--docsbot-voice-settle-duration)
+			var(--docsbot-voice-settle-ease),
+		background var(--docsbot-voice-settle-duration) ease;
+	background: linear-gradient(
+		to bottom,
+		#fff 0%,
+		#fff 62%,
+		rgba(255, 255, 255, 0.92) 78%,
+		rgba(255, 255, 255, 0) 100%
+	);
+}
+
+.docsbot-voice-call-orb-block {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: fit-content;
+}
+
+.docsbot-voice-orb-shell {
+	position: relative;
+	width: var(--docsbot-voice-orb-size);
+	height: var(--docsbot-voice-orb-size);
+	flex: 0 0 auto;
+	display: grid;
+	place-items: center;
+	border-radius: 50%;
+	transform: scale(var(--docsbot-voice-orb-scale, 1));
+	transform-origin: center;
+	transition:
+		width var(--docsbot-voice-settle-duration) var(--docsbot-voice-settle-ease),
+		height var(--docsbot-voice-settle-duration) var(--docsbot-voice-settle-ease),
+		transform 90ms ease-out;
+
+	&::before,
+	&::after {
+		content: '';
+		position: absolute;
+		inset: 10%;
+		border-radius: inherit;
+		background: var(--docsbot-voice-orb-color);
+		opacity: 0.08;
+		filter: blur(28px);
+		animation: docsbot-voice-orb-breathe 2.6s ease-in-out infinite;
+	}
+
+	&::after {
+		inset: 25%;
+		opacity: 0.12;
+		filter: blur(18px);
+		animation-delay: -1.1s;
+	}
+
+	&.is-compact {
+		&::before,
+		&::after {
+			animation-duration: 3.2s;
+		}
+	}
+
+	&.is-user_speaking::before,
+	&.is-agent_speaking::before {
+		opacity: 0.16;
+		animation-duration: 1.15s;
+	}
+
+	&.is-error::before,
+	&.is-ended::before,
+	&.is-error::after,
+	&.is-ended::after {
+		animation-duration: 9s;
+	}
+}
+
+.docsbot-voice-orb {
+	position: relative;
+	z-index: 1;
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.docsbot-voice-call-status {
+	position: absolute;
+	left: 50%;
+	bottom: 6px;
+	z-index: 2;
+	min-height: 20px;
+	max-width: min(100vw - 48px, 28ch);
+	padding: 3px 10px;
+	border-radius: 999px;
+	transform: translateX(-50%);
+	background: rgba(255, 255, 255, 0.52);
+	-webkit-backdrop-filter: blur(7px);
+	backdrop-filter: blur(7px);
+	box-shadow:
+		0 0 12px 6px rgba(255, 255, 255, 0.42),
+		0 0 24px 12px rgba(255, 255, 255, 0.22);
+	color: $color-neutral-100;
+	font-size: 13px;
+	font-weight: 650;
+	line-height: 18px;
+	white-space: nowrap;
+	text-shadow: 0 0 8px rgba(255, 255, 255, 0.55);
+}
+
+.docsbot-voice-call-wave {
+	width: min(168px, 100%);
+	height: 24px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	overflow: hidden;
+
+	span {
+		width: 2px;
+		flex: 0 0 2px;
+		border-radius: 999px;
+		background: var(--docsbot-text-muted, $color-secondary-100);
+		transition:
+			height 80ms linear,
+			opacity 80ms linear;
+	}
+}
+
+.docsbot-voice-call-error {
+	max-width: 34ch;
+	margin: 0;
+	color: #b91c1c;
+	font-size: 12px;
+	line-height: 17px;
+}
+
+.docsbot-voice-call-stage .docsbot-agent-activity {
+	justify-content: center;
+	max-width: min(100%, 34ch);
+	margin-top: 2px;
+}
+
+.docsbot-voice-conversation-message {
+	align-self: stretch;
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+	pointer-events: auto;
+
+	// Tool UI (escalation, booking, etc.) shares this turn wrapper so the
+	// transcript list gap does not float buttons away from the spoken reply.
+	// Match chat log spacing below a bot bubble (rating/CTA uses $spacing-sm).
+	> .docsbot-voice-conversation-attachment {
+		margin-top: $spacing-sm;
+	}
+
+	> .docsbot-voice-conversation-attachment .docbot-chat-bot-message-rate {
+		margin-top: 0;
+	}
+}
+
+.docsbot-voice-call-controls {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 18px $spacing-lg $spacing-lg;
+	background: linear-gradient(
+		to bottom,
+		rgba(255, 255, 255, 0) 0%,
+		rgba(255, 255, 255, 0.82) 28%,
+		#fff 58%
+	);
+}
+
+// Match chat `.docsbot-chat-input-form` / audio-recorder overlay chrome.
+.docsbot-voice-call-input {
+	width: 100%;
+	min-height: 50px;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	box-sizing: border-box;
+	padding: 5px;
+	border: 1px solid $color-secondary-300;
+	border-radius: $spacing-md;
+	background: $color-neutral-300;
+	box-shadow: none;
+	pointer-events: auto;
+}
+
+// Match chat `.docsbot-audio-recorder-visual` (time + wave between controls).
+.docsbot-voice-call-visual {
+	min-width: 0;
+	flex: 1 1 auto;
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	height: 100%;
+	overflow: hidden;
+}
+
+.docsbot-voice-call-time {
+	flex: 0 0 auto;
+	min-width: 29px;
+	color: var(--docsbot-text-muted, $color-secondary-100);
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+}
+
+.docsbot-voice-call-input .docsbot-voice-call-wave {
+	flex: 1 1 auto;
+	min-width: 0;
+	width: auto;
+	// Span the remaining width between the timer and hang-up.
+	justify-content: space-between;
+	gap: 0;
+}
+
+.docsbot-voice-control {
+	min-width: 104px;
+	min-height: 46px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 10px 14px;
+	border: 1px solid transparent;
+	border-radius: 999px;
+	font: inherit;
+	font-size: 13px;
+	font-weight: 650;
+	cursor: pointer;
+	pointer-events: auto;
+	transition:
+		background $transition-duration-default ease,
+		transform $transition-duration-short ease,
+		color $transition-duration-default ease;
+
+	&:active {
+		transform: scale(0.97);
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--docsbot-focus-ring, #1292ee);
+		outline-offset: 2px;
+	}
+
+	&.is-mute,
+	&.is-secondary {
+		border-color: rgba(166, 179, 191, 0.42);
+		background: $color-neutral-300;
+		color: $color-secondary-100;
+		box-shadow: none;
+	}
+
+	&.is-mute:hover,
+	&.is-secondary:hover,
+	&.is-mute.is-active {
+		background: rgba(166, 179, 191, 0.12);
+		color: $color-neutral-100;
+	}
+
+	&.is-end {
+		background: #dc2626;
+		color: #fff;
+	}
+
+	&.is-end:hover {
+		background: #b91c1c;
+	}
+}
+
+// Match audio-recorder cancel/send control size.
+.docsbot-voice-call-input .docsbot-voice-control {
+	flex: 0 0 auto;
+	min-width: 40px;
+	min-height: 40px;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border-radius: 12px;
+	font-size: 14px;
+}
+
+@keyframes docsbot-voice-orb-breathe {
+	0%,
+	100% {
+		transform: scale(0.9);
+		opacity: 0.07;
+	}
+	50% {
+		transform: scale(1.12);
+		opacity: 0.15;
+	}
+}
+
+// Connecting / pre-connect error: large centered orb. Settling animates up.
+.docsbot-voice-call-view[data-voice-layout='connecting'] {
+	--docsbot-voice-orb-size: clamp(168px, 48vw, 240px);
+	--docsbot-voice-connecting-offset: min(28cqh, 200px);
+
+	.docsbot-voice-call-stage {
+		transition: none;
+		background: transparent;
+	}
+
+	.docsbot-voice-orb-shell {
+		transition: transform 90ms ease-out;
+	}
+
+	.docsbot-voice-transcripts {
+		opacity: 0;
+		transition: none;
+		pointer-events: none;
+	}
+
+	// Hide mute/end while connecting; keep Retry reachable on connect errors.
+	.docsbot-voice-call-chrome-bottom {
+		opacity: 0;
+		transition: none;
+		pointer-events: none;
+	}
+
+	&[data-voice-status='error'] .docsbot-voice-call-chrome-bottom {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	.docsbot-voice-call-status {
+		font-size: 15px;
+		bottom: 10px;
+	}
+
+	.docsbot-voice-call-error {
+		margin-top: 10px;
+		font-size: 13px;
+		line-height: 18px;
+		text-align: center;
+	}
+}
+
+@media (max-height: 610px) {
+	.docsbot-voice-call-view {
+		--docsbot-voice-pad-top: 148px;
+		--docsbot-voice-pad-bottom: 84px;
+		--docsbot-voice-fade-top: 140px;
+		--docsbot-voice-fade-bottom: 64px;
+		--docsbot-voice-orb-size: 80px;
+	}
+
+	.docsbot-voice-call-view[data-voice-layout='connecting'] {
+		--docsbot-voice-orb-size: clamp(132px, 40vw, 180px);
+		--docsbot-voice-connecting-offset: min(22cqh, 120px);
+	}
+
+	.docsbot-voice-call-stage {
+		padding-bottom: 22px;
+	}
+}
+
+@media (max-width: 420px) {
+	.docsbot-voice-call-stage,
+	.docsbot-voice-transcripts,
+	.docsbot-voice-call-controls {
+		padding-left: $spacing-md;
+		padding-right: $spacing-md;
+	}
+
+	.docsbot-voice-control {
+		min-width: 0;
+		flex: 1 1 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.docsbot-voice-call-view {
+		--docsbot-voice-settle-duration: 0ms;
+	}
+
+	.docsbot-voice-call-view[data-voice-layout='connecting'] {
+		--docsbot-voice-orb-size: clamp(88px, 22vw, 112px);
+		--docsbot-voice-connecting-offset: 0px;
+	}
+
+	.docsbot-voice-orb-shell::before,
+	.docsbot-voice-orb-shell::after,
+	.docsbot-voice-orb-shell,
+	.docsbot-voice-call-stage,
+	.docsbot-voice-transcripts,
+	.docsbot-voice-call-chrome-bottom,
+	.docsbot-voice-control {
+		animation: none;
+		transition: none;
+	}
+}

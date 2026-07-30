@@ -1,5 +1,10 @@
 import React from "react"
 import { v4 as uuidv4 } from "uuid"
+import {
+  mergeVoiceLookupSourcesIntoMessages,
+  upsertVoiceTranscriptHistory,
+  upsertVoiceTranscriptMessageMap,
+} from "../../utils/voiceCallHistory.mjs"
 
 const ChatbotContext = React.createContext()
 
@@ -9,7 +14,57 @@ function chatbotReducer(state, action) {
       return {
         ...state,
         chatHistory: action.payload.chatHistory,
+        voiceHistoryItemIndices: {},
       }
+    case "start_voice_history":
+      return {
+        ...state,
+        voiceHistoryItemIndices: {},
+      }
+    case "merge_voice_lookup_sources":
+      return {
+        ...state,
+        messages: mergeVoiceLookupSourcesIntoMessages(state.messages),
+      }
+    case "upsert_voice_history": {
+      const nextVoiceHistory = upsertVoiceTranscriptHistory(
+        state.chatHistory,
+        state.voiceHistoryItemIndices,
+        action.payload,
+        action.payload?.transcriptOrder
+      )
+      return {
+        ...state,
+        chatHistory: nextVoiceHistory.history,
+        voiceHistoryItemIndices: nextVoiceHistory.itemIndices,
+      }
+    }
+    case "upsert_voice_message": {
+      const messageId = action.payload?.id || uuidv4()
+      const {
+        transcriptOrder,
+        ...messageFields
+      } = action.payload || {}
+      const payload = {
+        id: messageId,
+        variant: messageFields.variant,
+        message: messageFields.message,
+        loading: messageFields.loading || false,
+        options: messageFields.options || [],
+        ...messageFields,
+        id: messageId,
+      }
+      return {
+        ...state,
+        lastMessage: messageFields.timestamp || Date.now(),
+        messages: upsertVoiceTranscriptMessageMap(state.messages, {
+          messageId,
+          payload,
+          itemId: messageFields.realtimeItemId,
+          transcriptOrder,
+        }),
+      }
+    }
     case "add_message":
       const id = action.payload.id || uuidv4()
       return {
@@ -49,11 +104,13 @@ function chatbotReducer(state, action) {
     case "load_conversation":
       return {
         messages: action.payload.savedConversation || [],
+        voiceHistoryItemIndices: {},
       }
     case "clear_messages":
       return {
         messages: [],
-        chatHistory: []
+        chatHistory: [],
+        voiceHistoryItemIndices: {},
       }
 
     default: {
@@ -67,6 +124,8 @@ export function ChatbotProvider({ children }) {
     messages: [],
     suggestions: [],
     chatInput: "",
+    chatHistory: [],
+    voiceHistoryItemIndices: {},
     lastMessage: Date.now(),
   })
   const value = { state, dispatch }

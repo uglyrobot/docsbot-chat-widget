@@ -10,6 +10,14 @@ import {
   resolveExplicitLocaleString,
 } from "../../utils/mergeWidgetLabels.mjs";
 import { resolveEffectivePiiRedactionConfig } from "../../utils/piiRedaction.mjs";
+import {
+  isVoiceAgentCallEnabled,
+  resolveEffectiveVoiceAgentCallEnabled,
+} from "../../utils/voiceAgentConfig.mjs";
+import {
+  resolveWidgetTheme,
+  resolveWidgetThemePreference,
+} from "../../utils/widgetTheme.mjs";
 
 const ConfigContext = createContext();
 
@@ -85,6 +93,12 @@ function resolveEffectiveBrowserLocale(options) {
 export function ConfigProvider(props = {}) {
   const { id, supportCallback, customButtonCallback, identify, options, signature, children } = props;
   const [config, setConfig] = useState(null);
+  const [systemPrefersDark, setSystemPrefersDark] = useState(() =>
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches
+      : false
+  );
 
   const updateIdentity = (data) => {
     setConfig((prevConfig) => {
@@ -111,6 +125,32 @@ export function ConfigProvider(props = {}) {
   };
 
   const localDev = options?.localDev;
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
+      return undefined;
+    }
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const updateSystemTheme = (event) => setSystemPrefersDark(event.matches);
+    setSystemPrefersDark(media.matches);
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", updateSystemTheme);
+    } else {
+      media.addListener?.(updateSystemTheme);
+    }
+
+    return () => {
+      if (typeof media.removeEventListener === "function") {
+        media.removeEventListener("change", updateSystemTheme);
+      } else {
+        media.removeListener?.(updateSystemTheme);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!id || config) return;
@@ -160,6 +200,7 @@ export function ConfigProvider(props = {}) {
           allowedDomains: optionsAllowedDomains,
           piiRedaction: optionsPiiRedaction,
           testing: optionsTesting,
+          useVoiceAgent: optionsUseVoiceAgent,
           ...restOptions
         } = options || {};
 
@@ -184,6 +225,10 @@ export function ConfigProvider(props = {}) {
         });
 
         const textDirection = localeMod.isRTL ? "rtl" : "ltr";
+        const useVoiceAgent = resolveEffectiveVoiceAgentCallEnabled(
+          isVoiceAgentCallEnabled(data),
+          optionsUseVoiceAgent
+        );
         const piiRedaction = resolveEffectivePiiRedactionConfig(
           data.piiRedaction,
           optionsPiiRedaction,
@@ -200,12 +245,15 @@ export function ConfigProvider(props = {}) {
           signature,
           ...restOptions,
           testing: optionsTesting === true,
+          // Bot config by default; options.useVoiceAgent overrides when set.
+          useVoiceAgent,
           piiRedaction,
           labels: mergedLabels,
           textDirection,
           browserLocale,
           browserLocaleTag,
           browserRequestLanguageTag,
+          theme: resolveWidgetThemePreference(data.theme, restOptions.theme),
         });
       })
       .catch((e) => {
@@ -219,8 +267,10 @@ export function ConfigProvider(props = {}) {
 
   if (!config) return null;
 
+  const effectiveTheme = resolveWidgetTheme(config.theme, systemPrefersDark);
+
   return (
-    <ConfigContext.Provider value={{ ...config, updateIdentity }}>
+    <ConfigContext.Provider value={{ ...config, effectiveTheme, updateIdentity }}>
       {children}
     </ConfigContext.Provider>
   );

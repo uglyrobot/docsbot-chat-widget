@@ -8,6 +8,57 @@ Full documentation can be found at https://docsbot.ai/docs/embeddable-chat-widge
 
 When using the widget in agent mode with a signed request, you can control the reasoning depth of responses by supplying a `reasoningEffort` option. Valid values are `minimal`, `low`, `medium`, and `high`. The parameter is only sent to the API when `signature` is set.
 
+### Inline Media Source Player
+
+Set **`options.inlineMediaSourcePlayer`** to `true` to make YouTube and downloadable `media` sources open an inline player from the source row. The widget starts playback from timestamps already present in source URLs, including YouTube `t=` query params and media download `#t=start,end` fragments. Inline playback for `media` sources only activates when the source URL looks like a playable media file (or includes an audio/video mime type); original/HTML page URLs used when source downloads are disabled stay as normal external links.
+
+### Live voice calls
+
+When browser voice is enabled for a bot, the widget creates a browser WebRTC connection by posting its SDP offer to the DocsBot endpoint `/teams/{team_id}/bots/{bot_id}/voice`. OpenAI credentials are never sent to the browser. The existing `useAudioUpload` recorded-message control remains separate from live voice.
+
+The live-call request sends the same flattened public `identify` fields chat-agent uses (plus `referrer` when missing) via the `X-DocsBot-Metadata` header — not a nested `metadata` object. Trusted `priv_*` values still come only from the signed JWT `signature`, never from client identify.
+
+If the widget is placed inside an iframe, the embedding page must delegate microphone access:
+
+```html
+<iframe src="https://example.com/chat" allow="microphone"></iframe>
+```
+
+The embedding page's `Permissions-Policy` response header must also allow the framed origin when a restrictive policy is used, for example `Permissions-Policy: microphone=(self "https://example.com")`. Without both permissions, browsers may block the microphone without showing a permission prompt; the widget reports that distinction to the caller.
+
+Set `options.useVoiceAgent` to `true` or `false` to override the bot’s server `useVoiceAgent` flag for the live-call control. When omitted, the widget uses the bot config. Voice uses the same API base as chat: the local API when `options.localDev` is true and `https://api.docsbot.ai` in production.
+
+After the widget is mounted, call **`DocsBotAI.startVoiceCall()`** from a user gesture (for example a site button) to enter live voice mode. On the floating launcher it opens the panel if needed; in `#docsbot-widget-embed` it starts voice in the always-visible chat. It returns a Promise that resolves `true` when voice UI starts, or `false` if the widget is not mounted or voice is unavailable.
+
+```js
+document.getElementById('talk-btn').addEventListener('click', () => {
+  DocsBotAI.startVoiceCall();
+});
+```
+
+Public DOM events fire on `document` when live voice UI starts and ends:
+
+```js
+document.addEventListener('docsbot_voice_call_start', (event) => {
+  console.log('voice started', event.detail.conversationId);
+});
+document.addEventListener('docsbot_voice_call_end', (event) => {
+  console.log('voice ended', event.detail.conversationId);
+});
+```
+
+| Event | When | `detail` |
+|-------|------|----------|
+| `docsbot_voice_call_start` | Voice WebRTC data channel opens (connecting UI settles) | `{ conversationId: string \| null }` |
+| `docsbot_voice_call_end` | Caller leaves voice (End call, Back, remote close, etc.) | `{ conversationId: string \| null }` |
+| `docsbot_tool_call` | Tool requested in text chat **or** live voice (same shape) | `{ name: string, data: object \| string \| null }` |
+
+Finalized caller and agent transcripts are appended to the same canonical
+conversation history as text-chat turns. Voice-mode `customButtonCallback` and
+`supportCallback` calls therefore receive the complete mixed text-and-voice
+history in their existing `history` argument; the callback signatures and
+`event.preventDefault()` behavior are unchanged.
+
 ### `signature`: legacy HMAC or JWT (Stripe tools, private bots)
 
 Pass **`signature`** in `DocsBotAI.mount` / `init`. It may be either the **legacy expiring HMAC** string or an **HS256 JWT** signed with your bot’s **signature key** (Widget embed page). The widget sends `Authorization: Bearer <signature>` on chat-agent and related API calls.
@@ -53,6 +104,27 @@ DocsBotAI.init({
   },
 });
 ```
+
+### Color theme
+
+The widget defaults to light mode. Set `options.theme` to `'dark'` or `'auto'`
+to override it:
+
+```js
+DocsBotAI.init({
+  id: 'teamId/botId',
+  options: {
+    theme: 'light', // 'light' (default), 'dark', or 'auto'
+    color: '#1292EE',
+  },
+});
+```
+
+`auto` follows the browser or OS color scheme and updates live when
+`prefers-color-scheme` changes. The configured brand
+color remains the fill for the header, launcher, and primary actions. Dark-mode
+user messages use a quieter brand-tinted fill, while the widget derives
+contrast-safe text, focus, link, and icon colors from the brand.
 
 ## Locales
 

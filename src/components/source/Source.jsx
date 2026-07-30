@@ -1,6 +1,8 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faLink, faFile, faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faLink, faFile, faArrowUpRightFromSquare, faPlay, faChevronUp } from "@fortawesome/free-solid-svg-icons";
+import { useEffect, useRef, useState } from "react";
 import { useConfig } from "../configContext/ConfigContext";
+import { getSourceInlineMedia } from "../../utils/sourceMedia.mjs";
 
 function stripLeadingWww(hostname) {
   if (!hostname) return "";
@@ -57,7 +59,10 @@ function sourceDisplayBase(source) {
 }
 
 export const Source = ({ source }) => {
-  const { noURLSourceTypes, hideSources } = useConfig();
+  const { noURLSourceTypes, hideSources, inlineMediaSourcePlayer, labels } = useConfig();
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [faviconFailed, setFaviconFailed] = useState(false);
+  const mediaRef = useRef(null);
   const ALWAYS_HIDE_SOURCE_TYPES = [
     'helpscout',
     'freshdesk',
@@ -92,47 +97,153 @@ export const Source = ({ source }) => {
     source.url &&
     isWebSourceTypeForFavicon(source.type) &&
     isHttpUrlString(source.url);
-  const faviconSrc = useSiteFavicon ? googleFaviconUrl(source.url) : null;
+  const faviconSrc =
+    useSiteFavicon && !faviconFailed ? googleFaviconUrl(source.url) : null;
+  const inlineMedia = inlineMediaSourcePlayer
+    ? getSourceInlineMedia(source)
+    : null;
+  const canOpenInlineMedia =
+    inlineMedia != null && source.url && !shouldHideUrl;
 
+  useEffect(() => {
+    setFaviconFailed(false);
+  }, [source.url, source.type]);
+
+  useEffect(() => {
+    if (!isPlayerOpen || !mediaRef.current || inlineMedia?.kind === "youtube") {
+      return;
+    }
+
+    const media = mediaRef.current;
+    if (inlineMedia?.start > 0) {
+      const setStartTime = () => {
+        try {
+          media.currentTime = inlineMedia.start;
+        } catch {
+          // Some signed media URLs reject seeking until metadata is fully available.
+        }
+      };
+
+      if (media.readyState >= 1) {
+        setStartTime();
+      } else {
+        media.addEventListener("loadedmetadata", setStartTime, { once: true });
+        return () => media.removeEventListener("loadedmetadata", setStartTime);
+      }
+    }
+  }, [inlineMedia, isPlayerOpen]);
+
+  // Always reserve the same leading slot so labels align across favicon,
+  // document/link, and play icons (and when Google favicon is unavailable).
+  const typeOrPlayIcon = canOpenInlineMedia ? (
+    <span className="docsbot-source-leading-icon docsbot-source-play-icon" aria-hidden>
+      <FontAwesomeIcon icon={isPlayerOpen ? faChevronUp : faPlay} />
+    </span>
+  ) : (
+    <span className="docsbot-source-leading-icon docsbot-source-type-icon" aria-hidden>
+      <FontAwesomeIcon icon={icon} />
+    </span>
+  );
   const leadingIcon =
     faviconSrc != null ? (
       <img
-        className="docsbot-source-favicon"
+        className="docsbot-source-leading-icon docsbot-source-favicon"
         src={faviconSrc}
         alt=""
         width={16}
         height={16}
         loading="lazy"
+        onError={() => setFaviconFailed(true)}
       />
-    ) : null;
+    ) : (
+      typeOrPlayIcon
+    );
 
   return (
-    <li {...(!(source.url && !shouldHideUrl) && {className: 'docsbot-sources-unlinked'})}>
+    <li
+      className={[
+        !(source.url && !shouldHideUrl) ? 'docsbot-sources-unlinked' : '',
+        canOpenInlineMedia ? 'docsbot-source-has-media' : '',
+        isPlayerOpen ? 'is-media-open' : '',
+      ].filter(Boolean).join(' ') || undefined}
+    >
 		{source.url && !shouldHideUrl
 		? (
-			<a
-				href={source.url}
-				target="_blank"
-				rel="noopener noreferrer"
-				title={tooltipText}
-			>
-				<span className="docsbot-source-link-main">
-					{leadingIcon}
-					<span className="docsbot-source-label">{displayText}</span>
-				</span>
-				<span className="docsbot-source-external-icon" aria-hidden>
-					<FontAwesomeIcon icon={faArrowUpRightFromSquare} />
-				</span>
-			</a>
+      <div className="docsbot-source-link-row">
+        {canOpenInlineMedia ? (
+          <button
+            type="button"
+            className="docsbot-source-inline-button"
+            title={tooltipText}
+            aria-expanded={isPlayerOpen}
+            onClick={() => setIsPlayerOpen((open) => !open)}
+          >
+            <span className="docsbot-source-link-main">
+              {leadingIcon}
+              <span className="docsbot-source-label">{displayText}</span>
+            </span>
+          </button>
+        ) : (
+          <a
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={tooltipText}
+          >
+            <span className="docsbot-source-link-main">
+              {leadingIcon}
+              <span className="docsbot-source-label">{displayText}</span>
+            </span>
+            <span className="docsbot-source-external-icon" aria-hidden>
+              <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+            </span>
+          </a>
+        )}
+
+        {canOpenInlineMedia && (
+          <a
+            className="docsbot-source-external-button"
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={labels?.openSource || tooltipText}
+          >
+            <span className="docsbot-screen-reader-only">
+              {labels?.openSource || 'Open source'}
+            </span>
+            <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden />
+          </a>
+        )}
+      </div>
 		)
 		: (
 			<>
-				{leadingIcon || <FontAwesomeIcon icon={icon} />}
+				{leadingIcon}
 				<span className="docsbot-source-label" title={tooltipText}>
 					{displayText}
 				</span>
 			</>
 		)}
+      {canOpenInlineMedia && isPlayerOpen && (
+        <div className="docsbot-source-media-player">
+          {inlineMedia.kind === "youtube" ? (
+            <iframe
+              src={inlineMedia.src}
+              title={displayText}
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+            />
+          ) : inlineMedia.kind === "audio" ? (
+            // Source payloads do not include caption track URLs.
+            // eslint-disable-next-line jsx-a11y/media-has-caption
+            <audio ref={mediaRef} src={inlineMedia.src} controls autoPlay preload="metadata" />
+          ) : (
+            // Source payloads do not include caption track URLs.
+            // eslint-disable-next-line jsx-a11y/media-has-caption
+            <video ref={mediaRef} src={inlineMedia.src} controls autoPlay preload="metadata" playsInline />
+          )}
+        </div>
+      )}
     </li>
   );
 };

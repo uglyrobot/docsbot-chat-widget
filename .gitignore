@@ -135,3 +135,9 @@ dist
 .pnp.*
 
 build
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+output/

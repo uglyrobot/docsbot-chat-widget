@@ -1,10 +1,14 @@
 import { Loader } from "../loader/Loader";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMicrophone } from "@fortawesome/free-solid-svg-icons";
+import clsx from "clsx";
 
-export const UserChatMessage = ({ loading, message, imageUrls, audio, messageBoxRef }) => {
+export const UserChatMessage = ({ loading, message, imageUrls, audio, messageBoxRef, consecutive }) => {
   return (
-    <div className="docsbot-user-chat-message-container">
+    <div className={clsx(
+      "docsbot-user-chat-message-container",
+      consecutive && "consecutive-user-message"
+    )}>
       {imageUrls && imageUrls.length > 0 && (
         <div className="docsbot-user-chat-images">
           {imageUrls.map((url, index) => (
