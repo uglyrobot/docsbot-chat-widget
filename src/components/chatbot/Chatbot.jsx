@@ -1029,6 +1029,48 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		};
 	};
 
+	const shouldRequireLeadBeforeSend = () => {
+		return (
+			isLeadCollectEnabled() &&
+			leadCollect?.mode === 'before_response' &&
+			!isLeadCaptureLocked &&
+			!leadCollected &&
+			Array.isArray(leadCollect.fields) &&
+			leadCollect.fields.length > 0
+		);
+	};
+
+	const requestLeadCollectForEscalation = (data) => {
+		if (leadCollect?.mode !== 'before_escalation') {
+			return false;
+		}
+		if (leadCollected) {
+			return false;
+		}
+
+		const leadMessage = buildLeadFormMessage('before_escalation');
+		if (!leadMessage) return false;
+
+		const history = data?.history || state.chatHistory || [];
+		setPendingLeadCapture({
+			type: 'support',
+			history,
+			trigger: false
+		});
+		dispatch({
+			type: 'add_message',
+			payload: {
+				...leadMessage,
+				leadContext: {
+					type: 'support',
+					history
+				}
+			}
+		});
+		scrollToBottom(ref);
+		return true;
+	};
+
 	const captureLead = async (metadata) => {
 		const conversationId = getConversationId();
 		const apiBase = apiBaseUrl;
@@ -1136,6 +1178,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			return;
 		}
 
+		const isBeforeVoiceCall =
+			activeLeadContext?.type === 'before_voice_call';
 		const isBeforeResponse = activeLeadContext?.type === 'before_response';
 		finalizeLeadSubmission(
 			{
@@ -1144,7 +1188,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				imageUrls: activeLeadContext?.imageUrls,
 				audio: activeLeadContext?.audio,
 				audioUserMessageId: activeLeadContext?.audioUserMessageId,
-				nextAction: isBeforeResponse ? 'send_message' : data.nextAction
+				nextAction: isBeforeVoiceCall
+					? 'start_voice_call'
+					: isBeforeResponse
+						? 'send_message'
+						: data.nextAction
 			},
 			leadMetadata,
 			{
@@ -1276,6 +1324,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				audio: data.audio,
 				audioUserMessageId: data.audioUserMessageId
 			});
+			return;
+		}
+
+		if (data?.nextAction === 'start_voice_call') {
+			setPendingLeadCapture(null);
+			// Start after the lead_collect row is gone from state (same render
+			// still sees isLeadFormVisible=true).
+			pendingVoiceAfterLeadRef.current = true;
 			return;
 		}
 
@@ -1583,6 +1639,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const voiceStartRequestedRef = useRef(false);
 	/** Guards public start/end DOM events against duplicate exits. */
 	const voiceCallActiveRef = useRef(false);
+	/** After before_response lead submit, start voice once the form is gone. */
+	const pendingVoiceAfterLeadRef = useRef(false);
 
 	const startVoiceCall = () => {
 		if (!isVoiceAgentCallAvailable || isFetching || isLeadFormVisible) {
@@ -1591,6 +1649,32 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		if (isVoiceCallView || voiceStartRequestedRef.current) {
 			return true;
 		}
+
+		// Same gate as the first chat send: collect lead before a fresh call.
+		if (shouldRequireLeadBeforeSend()) {
+			setIsLeadCaptureLocked(true);
+			setPendingLeadCapture({
+				type: 'before_voice_call',
+				trigger: false
+			});
+			const leadMessage = buildLeadFormMessage('before_response');
+			if (leadMessage) {
+				dispatch({
+					type: 'add_message',
+					payload: {
+						...leadMessage,
+						leadContext: {
+							type: 'before_voice_call'
+						}
+					}
+				});
+				scrollToBottom(ref);
+				return false;
+			}
+			setIsLeadCaptureLocked(false);
+			setPendingLeadCapture(null);
+		}
+
 		voiceStartRequestedRef.current = true;
 		voiceCallActiveRef.current = true;
 		pendingVoiceLookupSourcesRef.current = [];
@@ -1614,11 +1698,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		// API resumes via conversationId; keep the same prior turns on screen
 		// so live voice transcripts append instead of looking like a fresh chat.
 		setVoiceCallHistoryItems(buildVoiceCallHistoryItems(historyMessages));
-		document.dispatchEvent(
-			new CustomEvent('docsbot_voice_call_start', {
-				detail: { conversationId }
-			})
-		);
+		// docsbot_voice_call_start fires from VoiceCallView when the data
+		// channel opens — same moment the connecting UI settles.
 		setIsVoiceCallView(true);
 		return true;
 	};
@@ -1683,6 +1764,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			Emitter.off('docsbot_start_voice_call', handleStartVoiceCall);
 		};
 	}, []);
+
+	useEffect(() => {
+		if (!pendingVoiceAfterLeadRef.current) return;
+		if (isLeadFormVisible || isFetching) return;
+		pendingVoiceAfterLeadRef.current = false;
+		startVoiceCallRef.current();
+	}, [isLeadFormVisible, isFetching]);
 
 	useEffect(() => {
 		if (!showVoiceCallOrbButton) {
@@ -1968,17 +2056,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				}
 			});
 		}
-	};
-
-	const shouldRequireLeadBeforeSend = () => {
-		return (
-			isLeadCollectEnabled() &&
-			leadCollect?.mode === 'before_response' &&
-			!isLeadCaptureLocked &&
-			!leadCollected &&
-			Array.isArray(leadCollect.fields) &&
-			leadCollect.fields.length > 0
-		);
 	};
 
 	useEffect(() => {
@@ -3228,6 +3305,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							fetchAnswer={fetchAnswer}
 							isCalendlyScriptReady={isCalendlyScriptReady}
 							isTidyCalScriptReady={isTidyCalScriptReady}
+							leadCollectMode={leadCollect?.mode}
+							onLeadCollectRequest={
+								requestLeadCollectForEscalation
+							}
 							onExit={endVoiceCallView}
 						/>
 					) : (
@@ -3452,50 +3533,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 															event
 														)
 													}
-													onLeadCollectRequest={(
-														data
-													) => {
-														if (
-															leadCollect?.mode !==
-															'before_escalation'
-														) {
-															return false;
-														}
-														if (leadCollected) {
-															return false;
-														}
-
-														const leadMessage =
-															buildLeadFormMessage(
-																'before_escalation'
-															);
-														if (!leadMessage)
-															return false;
-
-														setPendingLeadCapture({
-															type: 'support',
-															history:
-																data?.history ||
-																state.chatHistory ||
-																[],
-															trigger: false
-														});
-														dispatch({
-															type: 'add_message',
-															payload: {
-																...leadMessage,
-																leadContext: {
-																	type: 'support',
-																	history:
-																		data?.history ||
-																		state.chatHistory ||
-																		[]
-																}
-															}
-														});
-														scrollToBottom(ref);
-														return true;
-													}}
+													onLeadCollectRequest={
+														requestLeadCollectForEscalation
+													}
 													onLeadCollectEscalated={() => {
 														setPendingLeadCapture(
 															null

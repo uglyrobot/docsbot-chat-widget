@@ -62,6 +62,14 @@ const STATUS_LABEL_ARIA_HIDDEN = new Set([
 	VOICE_CALL_STATUS.THINKING
 ]);
 
+/** Same m:ss shape as voice-message recording (`0:05`), with growing minutes. */
+function formatCallElapsedTime(milliseconds) {
+	const totalSeconds = Math.max(0, Math.floor(Number(milliseconds) / 1000));
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+	return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
 function safeConnectionError(error, labels) {
 	if (isMicrophoneBlockedByPermissionsPolicy(error)) {
 		return labels.audioMicrophonePolicyError;
@@ -89,7 +97,9 @@ function renderMessageBody(
 		isCalendlyScriptReady,
 		isTidyCalScriptReady,
 		onEndVoiceCall,
-		onSendVoiceUserText
+		onSendVoiceUserText,
+		leadCollectMode,
+		onLeadCollectRequest
 	}
 ) {
 	if (message.variant === 'user') {
@@ -116,6 +126,8 @@ function renderMessageBody(
 				isTidyCalScriptReady={isTidyCalScriptReady}
 				onEndVoiceCall={onEndVoiceCall}
 				onSendVoiceUserText={onSendVoiceUserText}
+				leadCollectMode={leadCollectMode}
+				onLeadCollectRequest={onLeadCollectRequest}
 			/>
 			{message.options ? <Options options={message.options} /> : null}
 		</>
@@ -186,6 +198,8 @@ export function VoiceCallView({
 	fetchAnswer,
 	isCalendlyScriptReady,
 	isTidyCalScriptReady,
+	leadCollectMode,
+	onLeadCollectRequest,
 	onExit
 }) {
 	const remoteAudioRef = useRef(null);
@@ -196,6 +210,8 @@ export function VoiceCallView({
 	const attemptRef = useRef(0);
 	const voiceStateRef = useRef(createVoiceRealtimeState());
 	const pendingActionsRef = useRef([]);
+	/** Fires docsbot_voice_call_start once per successful connect. */
+	const voiceCallStartedEventRef = useRef(false);
 	/** Dedupes public docsbot_tool_call DOM events by Realtime call id. */
 	const emittedToolCallIdsRef = useRef(new Set());
 	const toolWorkingChimeRef = useRef(null);
@@ -209,6 +225,11 @@ export function VoiceCallView({
 	const [voiceState, setVoiceState] = useState(createVoiceRealtimeState);
 	const [actionMessages, setActionMessages] = useState([]);
 	const [errorDetail, setErrorDetail] = useState('');
+	/** True after the data channel opens; keeps connection errors on the large orb. */
+	const [hasConnected, setHasConnected] = useState(false);
+	const [callElapsedMs, setCallElapsedMs] = useState(0);
+	const callStartedAtRef = useRef(0);
+	const callTimerRef = useRef(null);
 	const [isMuted, setIsMuted] = useState(false);
 	const [micLevel, setMicLevel] = useState(0);
 	const [outputLevel, setOutputLevel] = useState(0);
@@ -338,6 +359,10 @@ export function VoiceCallView({
 		setActionMessages([]);
 		pendingActionsRef.current = [];
 		emittedToolCallIdsRef.current = new Set();
+		voiceCallStartedEventRef.current = false;
+		setHasConnected(false);
+		setCallElapsedMs(0);
+		callStartedAtRef.current = 0;
 		setErrorDetail('');
 		setIsMuted(false);
 		setMicLevel(0);
@@ -372,21 +397,45 @@ export function VoiceCallView({
 			onConnectionState: (connectionState) => {
 				if (attempt !== attemptRef.current) return;
 				if (connectionState === 'connected') {
-					setVoiceState((current) => ({
-						...current,
-						status: VOICE_CALL_STATUS.LISTENING,
-						error: false
-					}));
+					// Keep ref + React state in lockstep so early realtime
+					// events cannot overwrite LISTENING with stale CONNECTING.
+					const current =
+						voiceStateRef.current || createVoiceRealtimeState();
+					if (current.status === VOICE_CALL_STATUS.CONNECTING) {
+						const next = {
+							...current,
+							status: VOICE_CALL_STATUS.LISTENING,
+							error: false
+						};
+						voiceStateRef.current = next;
+						setVoiceState(next);
+					}
+					setHasConnected(true);
+					if (!voiceCallStartedEventRef.current) {
+						voiceCallStartedEventRef.current = true;
+						document.dispatchEvent(
+							new CustomEvent('docsbot_voice_call_start', {
+								detail: {
+									conversationId:
+										sessionRef.current?.conversationId ||
+										conversationId ||
+										null
+								}
+							})
+						);
+					}
 				} else if (
 					connectionState === 'failed' ||
 					connectionState === 'disconnected'
 				) {
 					setErrorDetail(labels.voiceCallError);
-					setVoiceState((current) => ({
-						...current,
+					const next = {
+						...(voiceStateRef.current || createVoiceRealtimeState()),
 						status: VOICE_CALL_STATUS.ERROR,
 						error: true
-					}));
+					};
+					voiceStateRef.current = next;
+					setVoiceState(next);
 				} else if (connectionState === 'closed') {
 					endCallLifecycleRef.current();
 				}
@@ -413,11 +462,13 @@ export function VoiceCallView({
 				);
 			}
 			setErrorDetail(safeConnectionError(error, labels));
-			setVoiceState((current) => ({
-				...current,
+			const next = {
+				...(voiceStateRef.current || createVoiceRealtimeState()),
 				status: VOICE_CALL_STATUS.ERROR,
 				error: true
-			}));
+			};
+			voiceStateRef.current = next;
+			setVoiceState(next);
 		}
 	}, [
 		apiBase,
@@ -441,6 +492,29 @@ export function VoiceCallView({
 			endCallLifecycleRef.current();
 		};
 	}, []);
+
+	useEffect(() => {
+		if (callTimerRef.current) {
+			window.clearInterval(callTimerRef.current);
+			callTimerRef.current = null;
+		}
+		if (!hasConnected) {
+			setCallElapsedMs(0);
+			callStartedAtRef.current = 0;
+			return;
+		}
+		callStartedAtRef.current = Date.now();
+		setCallElapsedMs(0);
+		callTimerRef.current = window.setInterval(() => {
+			setCallElapsedMs(Date.now() - callStartedAtRef.current);
+		}, 250);
+		return () => {
+			if (callTimerRef.current) {
+				window.clearInterval(callTimerRef.current);
+				callTimerRef.current = null;
+			}
+		};
+	}, [hasConnected]);
 
 	useEffect(() => {
 		// Resumed conversations should open scrolled to the latest prior turn.
@@ -590,13 +664,23 @@ export function VoiceCallView({
 		isCalendlyScriptReady,
 		isTidyCalScriptReady,
 		onEndVoiceCall: leaveCall,
-		onSendVoiceUserText: sendVoiceUserText
+		onSendVoiceUserText: sendVoiceUserText,
+		leadCollectMode,
+		onLeadCollectRequest
 	};
+
+	// Connection-time failures never settled — keep the large centered orb.
+	// Mid-call errors keep the settled layout so history stays visible.
+	const isConnectionStage =
+		voiceState.status === VOICE_CALL_STATUS.CONNECTING ||
+		(voiceState.status === VOICE_CALL_STATUS.ERROR && !hasConnected);
+	const voiceLayout = isConnectionStage ? 'connecting' : 'settled';
 
 	return (
 		<div
 			className="docsbot-voice-call-view"
 			data-voice-status={voiceState.status}
+			data-voice-layout={voiceLayout}
 		>
 			{/* Live WebRTC audio is captioned separately in the transcript log below. */}
 			{/* eslint-disable-next-line jsx-a11y/media-has-caption */}
@@ -710,19 +794,27 @@ export function VoiceCallView({
 										: labels.voiceCallMute}
 								</span>
 							</button>
-							<div
-								className="docsbot-voice-call-wave"
-								aria-hidden="true"
-							>
-								{waveformLevels.map((level, index) => (
-									<span
-										key={index}
-										style={{
-											height: `${Math.round(2 + level * 18)}px`,
-											opacity: 0.42 + level * 0.5
-										}}
-									/>
-								))}
+							<div className="docsbot-voice-call-visual">
+								<span
+									className="docsbot-voice-call-time"
+									aria-live="off"
+								>
+									{formatCallElapsedTime(callElapsedMs)}
+								</span>
+								<div
+									className="docsbot-voice-call-wave"
+									aria-hidden="true"
+								>
+									{waveformLevels.map((level, index) => (
+										<span
+											key={index}
+											style={{
+												height: `${Math.round(2 + level * 18)}px`,
+												opacity: 0.42 + level * 0.5
+											}}
+										/>
+									))}
+								</div>
 							</div>
 							<button
 								type="button"

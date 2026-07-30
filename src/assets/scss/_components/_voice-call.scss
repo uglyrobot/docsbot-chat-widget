@@ -261,7 +261,7 @@
 		width: 2px;
 		flex: 0 0 2px;
 		border-radius: 999px;
-		background: $color-secondary-100;
+		background: var(--docsbot-text-muted, $color-secondary-100);
 		transition:
 			height 80ms linear,
 			opacity 80ms linear;
@@ -331,11 +331,31 @@
 	pointer-events: auto;
 }
 
+// Match chat `.docsbot-audio-recorder-visual` (time + wave between controls).
+.docsbot-voice-call-visual {
+	min-width: 0;
+	flex: 1 1 auto;
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	height: 100%;
+	overflow: hidden;
+}
+
+.docsbot-voice-call-time {
+	flex: 0 0 auto;
+	min-width: 29px;
+	color: var(--docsbot-text-muted, $color-secondary-100);
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+}
+
 .docsbot-voice-call-input .docsbot-voice-call-wave {
 	flex: 1 1 auto;
 	min-width: 0;
 	width: auto;
-	// Span the full input width between mute / hang-up.
+	// Span the remaining width between the timer and hang-up.
 	justify-content: space-between;
 	gap: 0;
 }
@@ -418,8 +438,8 @@
 	}
 }
 
-// Connecting: large centered orb. Leaving this state animates to the top.
-.docsbot-voice-call-view[data-voice-status='connecting'] {
+// Connecting / pre-connect error: large centered orb. Settling animates up.
+.docsbot-voice-call-view[data-voice-layout='connecting'] {
 	--docsbot-voice-orb-size: clamp(168px, 48vw, 240px);
 	--docsbot-voice-connecting-offset: min(28cqh, 200px);
 
@@ -432,16 +452,34 @@
 		transition: transform 90ms ease-out;
 	}
 
-	.docsbot-voice-transcripts,
+	.docsbot-voice-transcripts {
+		opacity: 0;
+		transition: none;
+		pointer-events: none;
+	}
+
+	// Hide mute/end while connecting; keep Retry reachable on connect errors.
 	.docsbot-voice-call-chrome-bottom {
 		opacity: 0;
 		transition: none;
 		pointer-events: none;
 	}
 
+	&[data-voice-status='error'] .docsbot-voice-call-chrome-bottom {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
 	.docsbot-voice-call-status {
 		font-size: 15px;
 		bottom: 10px;
+	}
+
+	.docsbot-voice-call-error {
+		margin-top: 10px;
+		font-size: 13px;
+		line-height: 18px;
+		text-align: center;
 	}
 }
 
@@ -454,7 +492,7 @@
 		--docsbot-voice-orb-size: 80px;
 	}
 
-	.docsbot-voice-call-view[data-voice-status='connecting'] {
+	.docsbot-voice-call-view[data-voice-layout='connecting'] {
 		--docsbot-voice-orb-size: clamp(132px, 40vw, 180px);
 		--docsbot-voice-connecting-offset: min(22cqh, 120px);
 	}
@@ -483,7 +521,7 @@
 		--docsbot-voice-settle-duration: 0ms;
 	}
 
-	.docsbot-voice-call-view[data-voice-status='connecting'] {
+	.docsbot-voice-call-view[data-voice-layout='connecting'] {
 		--docsbot-voice-orb-size: clamp(88px, 22vw, 112px);
 		--docsbot-voice-connecting-offset: 0px;
 	}

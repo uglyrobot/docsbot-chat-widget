@@ -421,7 +421,17 @@ export class DocsBotVoiceCallSession {
 		this.peerConnection = pc;
 
 		pc.addEventListener('connectionstatechange', () => {
-			if (!this.closed) this.onConnectionState(pc.connectionState);
+			if (this.closed) return;
+			// "connected" is reserved for the data channel opening — PC can
+			// report connected earlier and would flash the settled call UI.
+			const state = pc.connectionState;
+			if (
+				state === 'failed' ||
+				state === 'disconnected' ||
+				state === 'closed'
+			) {
+				this.onConnectionState(state);
+			}
 		});
 		pc.addEventListener('track', (event) => {
 			if (event.track) this.remoteTracks.add(event.track);

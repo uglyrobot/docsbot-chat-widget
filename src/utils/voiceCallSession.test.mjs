@@ -275,6 +275,37 @@ test('session negotiates after creating oai-events and cleans every media resour
 	assert.equal(harness.remoteAudio.srcObject, null);
 });
 
+test('connected is reported only when the data channel opens, not PC connected', async () => {
+	const harness = createHarness();
+	const connectionStates = [];
+	const session = new DocsBotVoiceCallSession({
+		apiBase: 'https://api.docsbot.ai',
+		teamId: 'team-1',
+		botId: 'bot-1',
+		remoteAudio: harness.remoteAudio,
+		fetchImpl: harness.fetchImpl,
+		RTCPeerConnectionImpl: harness.FakePeerConnection,
+		getUserMedia: async () => harness.microphone,
+		onConnectionState: (state) => connectionStates.push(state)
+	});
+
+	await session.start();
+	const pc = harness.lastPeerConnection;
+	pc.connectionState = 'connecting';
+	pc.listeners.get('connectionstatechange')?.();
+	pc.connectionState = 'connected';
+	pc.listeners.get('connectionstatechange')?.();
+	assert.deepEqual(connectionStates, []);
+
+	pc.dataChannel.readyState = 'open';
+	pc.dataChannel.listeners.get('open')?.();
+	assert.deepEqual(connectionStates, ['connected']);
+
+	pc.connectionState = 'failed';
+	pc.listeners.get('connectionstatechange')?.();
+	assert.deepEqual(connectionStates, ['connected', 'failed']);
+});
+
 test('sendUserText cancels in-flight speech then injects a user text turn', async () => {
 	const harness = createHarness();
 	const session = new DocsBotVoiceCallSession({

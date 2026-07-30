@@ -211,7 +211,7 @@ const token = jwt.sign(payload, process.env.DOCSBOT_SIGNATURE_KEY, { algorithm: 
           // Widget config: http://localhost:3000/api/... | Chat agent: http://127.0.0.1:9000/...
           localDev: true,
           localApiBase: previewParams.has('visual') ? 'http://127.0.0.1:9000' : undefined,
-          theme: previewParams.get('theme') || 'light',
+          theme: previewParams.get('theme') || 'auto',
           // Local dev can force-enable live voice calls here. Production uses the API useVoiceAgent flag.
           useVoiceAgent: true,
           alignment: previewParams.get('alignment') || 'left',

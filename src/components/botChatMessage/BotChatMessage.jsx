@@ -1520,15 +1520,6 @@ export const BotChatMessage = ({
 								type="button"
 								disabled={isSupportLoading}
 								onClick={(e) => {
-									if (payload.voiceCall) {
-										setVoiceEscalationResolved(true);
-										onEndVoiceCall?.();
-										void runSupportCallback(
-											e,
-											state.chatHistory || []
-										);
-										return;
-									}
 									if (
 										leadCollectMode === 'before_escalation'
 									) {
@@ -1538,7 +1529,26 @@ export const BotChatMessage = ({
 											onLeadCollectRequest({
 												history: state.chatHistory || []
 											});
-										if (didOpen) return;
+										if (didOpen) {
+											// End voice first so chat can show
+											// the lead form (same UI as text).
+											if (payload.voiceCall) {
+												setVoiceEscalationResolved(
+													true
+												);
+												onEndVoiceCall?.();
+											}
+											return;
+										}
+									}
+									if (payload.voiceCall) {
+										setVoiceEscalationResolved(true);
+										onEndVoiceCall?.();
+										void runSupportCallback(
+											e,
+											state.chatHistory || []
+										);
+										return;
 									}
 									runSupportCallback(
 										e,

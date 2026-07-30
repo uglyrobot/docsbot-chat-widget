@@ -560,14 +560,17 @@
 	color: var(--docsbot-submit-button--color);
 }
 
-.docsbot-audio-recorder-time {
+.docsbot-audio-recorder-time,
+.docsbot-voice-call-time {
 	color: var(--docsbot-text-muted);
 }
 
 .docsbot-audio-recorder-wave span,
-.docsbot-voice-call-wave span {
-	background: var(--docsbot-link-color);
-	opacity: 0.78 !important;
+.docsbot-voice-call-wave span,
+.docsbot-live-voice-wave span {
+	// Prefer muted text over link/accent: --docsbot-link-color is only set in
+	// dark theme, and an unset var() makes background invalid → transparent.
+	background: var(--docsbot-text-muted);
 }
 
 .docsbot-chat-bot-message .docsbot-copy-button:hover,

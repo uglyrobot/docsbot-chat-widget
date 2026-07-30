@@ -480,7 +480,7 @@
 		width: 2px;
 		height: 2px;
 		border-radius: 999px;
-		background: $color-secondary-100;
+		background: var(--docsbot-text-muted, $color-secondary-100);
 		transition:
 			height 80ms linear,
 			opacity 80ms linear;
@@ -653,7 +653,7 @@
 		width: 2px;
 		height: 2px;
 		border-radius: 999px;
-		background: $color-secondary-100;
+		background: var(--docsbot-text-muted, $color-secondary-100);
 		transition:
 			height 80ms linear,
 			opacity 80ms linear;

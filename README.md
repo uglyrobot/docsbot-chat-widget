@@ -49,7 +49,7 @@ document.addEventListener('docsbot_voice_call_end', (event) => {
 
 | Event | When | `detail` |
 |-------|------|----------|
-| `docsbot_voice_call_start` | Voice call view starts (orb, `startVoiceCall()`, etc.) | `{ conversationId: string }` |
+| `docsbot_voice_call_start` | Voice WebRTC data channel opens (connecting UI settles) | `{ conversationId: string \| null }` |
 | `docsbot_voice_call_end` | Caller leaves voice (End call, Back, remote close, etc.) | `{ conversationId: string \| null }` |
 | `docsbot_tool_call` | Tool requested in text chat **or** live voice (same shape) | `{ name: string, data: object \| string \| null }` |
 

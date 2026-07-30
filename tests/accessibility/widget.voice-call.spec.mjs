@@ -58,10 +58,20 @@ async function installVoiceBrowserMocks(page) {
 				this.localDescription = offer;
 			}
 			async setRemoteDescription() {
+				// PC can connect before the data channel; the widget must stay
+				// on "connecting" until the channel opens (deferred here so
+				// tests can observe that intermediate UI).
 				this.connectionState = 'connected';
 				this.dispatchEvent(new Event('connectionstatechange'));
-				window.__docsbotVoiceChannel.readyState = 'open';
-				window.__docsbotVoiceChannel.dispatchEvent(new Event('open'));
+				await new Promise((resolve) => {
+					setTimeout(() => {
+						window.__docsbotVoiceChannel.readyState = 'open';
+						window.__docsbotVoiceChannel.dispatchEvent(
+							new Event('open')
+						);
+						resolve();
+					}, 80);
+				});
 			}
 			getSenders() {
 				return this.senders;
@@ -309,6 +319,11 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 	});
 	await voiceOrbStart.click();
 
+	// Connecting chrome mounts immediately; start event waits for WebRTC.
+	await expect(
+		root.locator('.docsbot-voice-call-view[data-voice-layout="connecting"]')
+	).toBeVisible();
+
 	await expect
 		.poll(async () =>
 			page.evaluate(() =>
@@ -321,8 +336,15 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 	);
 	expect(startDetail?.conversationId).toBeTruthy();
 
+	await expect(
+		root.locator('.docsbot-voice-call-view[data-voice-layout="connecting"]')
+	).toHaveCount(0);
+	await expect(
+		root.locator('.docsbot-voice-call-view[data-voice-layout="settled"]')
+	).toBeVisible();
 	await expect(root.getByRole('button', { name: 'Mute' })).toBeVisible();
 	await expect(root.getByRole('button', { name: 'End call' })).toBeVisible();
+	await expect(root.locator('.docsbot-voice-call-time')).toHaveText('0:00');
 	await expect(
 		root.getByRole('img', { name: 'Listening…' })
 	).toBeVisible();
