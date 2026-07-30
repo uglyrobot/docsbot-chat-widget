@@ -497,6 +497,63 @@ test('voiceClientActionFromEvent whitelists lookup_answer sources without raw co
 		}),
 		null
 	);
+	assert.deepEqual(
+		voiceClientActionFromEvent({
+			type: 'conversation.item.created',
+			item: {
+				call_id: 'call-lookup-unsafe-url',
+				type: 'function_call_output',
+				output: JSON.stringify({
+					client_action: {
+						type: 'lookup_answer',
+						sources: [
+							{
+								title: 'Malicious source',
+								url: 'javascript:alert(document.domain)',
+								type: 'url'
+							},
+							{
+								title: 'Safe source',
+								url: 'https://docs.example.com/safe'
+							}
+						]
+					}
+				})
+			}
+		}),
+		{
+			kind: 'lookup_answer',
+			callId: 'call-lookup-unsafe-url',
+			type: 'lookup_answer',
+			message: '',
+			sources: [
+				{
+					title: 'Malicious source',
+					type: 'url'
+				},
+				{
+					title: 'Safe source',
+					url: 'https://docs.example.com/safe'
+				}
+			]
+		}
+	);
+	assert.equal(
+		voiceClientActionFromEvent({
+			type: 'conversation.item.created',
+			item: {
+				call_id: 'call-lookup-only-unsafe',
+				type: 'function_call_output',
+				output: JSON.stringify({
+					client_action: {
+						type: 'lookup_answer',
+						sources: [{ url: 'javascript:alert(1)' }]
+					}
+				})
+			}
+		}),
+		null
+	);
 });
 
 test('voiceClientActionFromEvent ignores unknown or unsafe handoffs', () => {

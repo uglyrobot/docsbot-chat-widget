@@ -409,7 +409,9 @@ function sanitizeLookupSource(source) {
 		return null;
 	}
 	const title = clampClientActionText(source.title, MAX_LOOKUP_SOURCE_TITLE);
-	const url = clampClientActionText(source.url, MAX_LOOKUP_SOURCE_URL);
+	const url = sanitizeExternalActionUrl(
+		clampClientActionText(source.url, MAX_LOOKUP_SOURCE_URL)
+	);
 	const type = clampClientActionText(source.type, MAX_CLIENT_ACTION_KEY);
 	if (!title && !url) return null;
 	const sanitized = {};
