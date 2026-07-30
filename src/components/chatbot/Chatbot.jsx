@@ -4039,11 +4039,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 														}
 														size={24}
 														compact
-														speed={
-															isVoiceOrbHovered
-																? 1
-																: 0.25
-														}
+														speed={0}
 													/>
 												</button>
 											) : (
