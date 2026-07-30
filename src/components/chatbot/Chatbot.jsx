@@ -76,7 +76,10 @@ import DocsBotLogo from '../../assets/images/docsbot-logo.svg';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { VoiceCallView } from '../voiceCall/VoiceCallView';
 import { VoiceOrb } from '../voiceCall/VoiceOrb';
-import { buildVoiceCallHistoryItems } from '../../utils/voiceCallHistory.mjs';
+import {
+	buildVoiceCallHistoryItems,
+	mergeVoiceLookupSourcesIntoMessages
+} from '../../utils/voiceCallHistory.mjs';
 import { VOICE_CALL_STATUS } from '../../utils/voiceRealtimeState.mjs';
 import { primeSharedVoiceToolWorkingChime } from '../../utils/voiceToolWorkingChime.mjs';
 import voiceToolWorkingSrc from '../../assets/audio/voiceToolWorkingSrc.mjs';
@@ -324,6 +327,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const piiRedactionBypassedRef = useRef(false);
 	const piiRedactionSessionKeyRef = useRef('');
 	const stateMessagesRef = useRef(state.messages);
+	/** lookup_answer sources wait for the next agent transcript (same as voice UI). */
+	const pendingVoiceLookupSourcesRef = useRef([]);
 	const hasRestoredConversationRef = useRef(false);
 	const shouldRedactPii = isPiiRedactionEnabled(piiRedaction);
 	const apiBaseUrl =
@@ -1350,10 +1355,25 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		setVoiceConversationId(conversationId);
 	};
 
+	const takePendingVoiceLookupSources = () => {
+		const pending = pendingVoiceLookupSourcesRef.current;
+		if (!pending.length) return null;
+		pendingVoiceLookupSourcesRef.current = [];
+		const sources = [];
+		for (const entry of pending) {
+			if (Array.isArray(entry?.sources)) {
+				sources.push(...entry.sources);
+			}
+		}
+		return sources.length ? sources : null;
+	};
+
 	const upsertVoiceTranscriptMessage = ({ itemId, role, text }) => {
 		if (!itemId || !text || (role !== 'caller' && role !== 'agent')) return;
 		const messageId = `voice-${itemId}`;
 		const existing = stateMessagesRef.current?.[messageId];
+		const pendingSources =
+			role === 'agent' ? takePendingVoiceLookupSources() : null;
 		const payload = {
 			id: messageId,
 			variant: role === 'caller' ? 'user' : 'chatbot',
@@ -1364,12 +1384,25 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			realtimeItemId: itemId,
 			conversationId:
 				voiceConversationId || getStoredConversationId() || null,
-			timestamp: existing?.timestamp || Date.now()
+			timestamp: existing?.timestamp || Date.now(),
+			...(pendingSources
+				? { sources: pendingSources }
+				: existing?.sources
+					? { sources: existing.sources }
+					: {})
 		};
 		dispatch({
 			type: existing ? 'update_message' : 'add_message',
 			payload
 		});
+		// Keep the ref current across rapid final transcript events.
+		stateMessagesRef.current = {
+			...(stateMessagesRef.current || {}),
+			[messageId]: {
+				...(existing || {}),
+				...payload
+			}
+		};
 		dispatch({
 			type: 'upsert_voice_history',
 			payload: { itemId, role, text }
@@ -1424,16 +1457,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
 		if (action.kind === 'custom_button') {
 			if (!useCustomButtons) return null;
+			// Voice already speaks the handoff; show only the CTA button.
 			const payload = {
 				id: messageId,
 				variant: 'chatbot',
 				type: 'custom_button',
-				message: action.message,
+				message: '',
 				customButton: {
 					url: action.url,
 					functionKey: action.functionKey,
-					buttonText: action.buttonText,
-					message: action.message
+					buttonText: action.buttonText
 				},
 				loading: false,
 				streaming: false,
@@ -1495,13 +1528,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		}
 
 		if (action.kind === 'lookup_answer') {
-			// Spoken answer is already in the transcript; show sources under it.
+			// Voice UI queues this until the post-tool agent transcript. Chat
+			// history attaches sources onto that answer (text-chat shape) instead
+			// of keeping a separate sources-only message.
+			const sources = Array.isArray(action.sources) ? action.sources : [];
 			const payload = {
 				id: messageId,
 				variant: 'chatbot',
 				type: 'lookup_answer',
 				message: action.message || '',
-				sources: Array.isArray(action.sources) ? action.sources : [],
+				sources,
 				loading: false,
 				streaming: false,
 				voiceCall: true,
@@ -1509,10 +1545,20 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				conversationId,
 				timestamp: existing?.timestamp || Date.now()
 			};
-			dispatch({
-				type: existing ? 'update_message' : 'add_message',
-				payload
-			});
+			if (sources.length) {
+				const pending = pendingVoiceLookupSourcesRef.current.filter(
+					(entry) => entry.callId !== action.callId
+				);
+				pending.push({ callId: action.callId, sources });
+				pendingVoiceLookupSourcesRef.current = pending;
+			}
+			// Do not persist a standalone lookup row in chat message state.
+			if (existing) {
+				dispatch({
+					type: 'remove_message',
+					payload: { id: messageId }
+				});
+			}
 			return payload;
 		}
 
@@ -1532,6 +1578,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		}
 		voiceStartRequestedRef.current = true;
 		voiceCallActiveRef.current = true;
+		pendingVoiceLookupSourcesRef.current = [];
 		// Unlock the tool-working chime under this click; VoiceCallView mounts
 		// later in an effect, which is too late for autoplay policies.
 		void primeSharedVoiceToolWorkingChime([
@@ -1541,11 +1588,17 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		const conversationId = getConversationId();
 		setVoiceConversationId(conversationId);
 		dispatch({ type: 'start_voice_history' });
+		// Fold any leftover sources-only rows before snapshotting history.
+		const historyMessages = mergeVoiceLookupSourcesIntoMessages(
+			stateMessagesRef.current
+		);
+		if (historyMessages !== stateMessagesRef.current) {
+			stateMessagesRef.current = historyMessages;
+			dispatch({ type: 'merge_voice_lookup_sources' });
+		}
 		// API resumes via conversationId; keep the same prior turns on screen
 		// so live voice transcripts append instead of looking like a fresh chat.
-		setVoiceCallHistoryItems(
-			buildVoiceCallHistoryItems(stateMessagesRef.current)
-		);
+		setVoiceCallHistoryItems(buildVoiceCallHistoryItems(historyMessages));
 		document.dispatchEvent(
 			new CustomEvent('docsbot_voice_call_start', {
 				detail: { conversationId }
@@ -1559,6 +1612,30 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		if (!voiceCallActiveRef.current) return;
 		voiceCallActiveRef.current = false;
 		voiceStartRequestedRef.current = false;
+		// If lookup arrived after the agent transcript finalized, attach now.
+		const pendingSources = takePendingVoiceLookupSources();
+		if (pendingSources) {
+			const messages = stateMessagesRef.current || {};
+			const keys = Object.keys(messages);
+			for (let i = keys.length - 1; i >= 0; i -= 1) {
+				const message = messages[keys[i]];
+				if (
+					message?.variant === 'chatbot' &&
+					message?.voiceCall &&
+					typeof message.message === 'string' &&
+					message.message.trim() &&
+					message.type !== 'lookup_answer'
+				) {
+					dispatch({
+						type: 'update_message',
+						payload: { id: message.id, sources: pendingSources }
+					});
+					break;
+				}
+			}
+		}
+		// Fold any legacy standalone lookup rows into their agent answers.
+		dispatch({ type: 'merge_voice_lookup_sources' });
 		const conversationId =
 			conversationIdRef.current || getStoredConversationId() || null;
 		document.dispatchEvent(
@@ -1951,12 +2028,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 								type: 'load_conversation',
 								payload: {
 									savedConversation:
-										sanitizeRestoredConversation(
-											savedConversation,
-											{
-												allowLeadCollect:
-													isLeadCollectEnabled()
-											}
+										mergeVoiceLookupSourcesIntoMessages(
+											sanitizeRestoredConversation(
+												savedConversation,
+												{
+													allowLeadCollect:
+														isLeadCollectEnabled()
+												}
+											)
 										)
 								}
 							});
@@ -4039,7 +4118,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 														}
 														size={24}
 														compact
-														speed={0}
+														speed={
+															isVoiceOrbHovered
+																? 1
+																: 0.25
+														}
 													/>
 												</button>
 											) : (

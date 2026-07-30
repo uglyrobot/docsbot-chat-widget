@@ -501,19 +501,38 @@
 	);
 }
 
-.docsbot-voice-call-input,
+.docsbot-voice-call-input {
+	background: var(--docsbot-surface-elevated);
+	border-color: var(--docsbot-border);
+	color: var(--docsbot-text);
+	box-shadow: none;
+}
+
 .docsbot-voice-control.is-mute,
 .docsbot-voice-control.is-secondary {
 	background: var(--docsbot-surface-elevated);
 	border-color: var(--docsbot-border);
-	color: var(--docsbot-text);
-	box-shadow: 0 4px 14px var(--docsbot-shadow);
+	color: var(--docsbot-text-muted);
+	box-shadow: none;
 }
 
 .docsbot-voice-control.is-mute:hover,
 .docsbot-voice-control.is-secondary:hover,
 .docsbot-voice-control.is-mute.is-active {
 	background: var(--docsbot-surface-muted);
+	color: var(--docsbot-text);
+}
+
+.docsbot-theme-root[data-docsbot-theme='dark'] .docsbot-voice-control.is-end,
+.docsbot-wrapper[data-docsbot-theme='dark'] .docsbot-voice-control.is-end {
+	// Soften the hang-up red against dark chrome.
+	background: #a84848;
+	color: #f8fafc;
+}
+
+.docsbot-theme-root[data-docsbot-theme='dark'] .docsbot-voice-control.is-end:hover,
+.docsbot-wrapper[data-docsbot-theme='dark'] .docsbot-voice-control.is-end:hover {
+	background: #933d3d;
 }
 
 .docsbot-live-voice-status,
@@ -543,7 +562,8 @@
 	color: var(--docsbot-text-muted);
 }
 
-.docsbot-audio-recorder-wave span {
+.docsbot-audio-recorder-wave span,
+.docsbot-voice-call-wave span {
 	background: var(--docsbot-link-color);
 	opacity: 0.78 !important;
 }

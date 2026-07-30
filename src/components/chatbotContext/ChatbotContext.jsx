@@ -1,6 +1,9 @@
 import React from "react"
 import { v4 as uuidv4 } from "uuid"
-import { upsertVoiceTranscriptHistory } from "../../utils/voiceCallHistory.mjs"
+import {
+  mergeVoiceLookupSourcesIntoMessages,
+  upsertVoiceTranscriptHistory,
+} from "../../utils/voiceCallHistory.mjs"
 
 const ChatbotContext = React.createContext()
 
@@ -16,6 +19,11 @@ function chatbotReducer(state, action) {
       return {
         ...state,
         voiceHistoryItemIndices: {},
+      }
+    case "merge_voice_lookup_sources":
+      return {
+        ...state,
+        messages: mergeVoiceLookupSourcesIntoMessages(state.messages),
       }
     case "upsert_voice_history": {
       const nextVoiceHistory = upsertVoiceTranscriptHistory(

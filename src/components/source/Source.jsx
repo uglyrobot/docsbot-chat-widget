@@ -61,6 +61,7 @@ function sourceDisplayBase(source) {
 export const Source = ({ source }) => {
   const { noURLSourceTypes, hideSources, inlineMediaSourcePlayer, labels } = useConfig();
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [faviconFailed, setFaviconFailed] = useState(false);
   const mediaRef = useRef(null);
   const ALWAYS_HIDE_SOURCE_TYPES = [
     'helpscout',
@@ -96,12 +97,17 @@ export const Source = ({ source }) => {
     source.url &&
     isWebSourceTypeForFavicon(source.type) &&
     isHttpUrlString(source.url);
-  const faviconSrc = useSiteFavicon ? googleFaviconUrl(source.url) : null;
+  const faviconSrc =
+    useSiteFavicon && !faviconFailed ? googleFaviconUrl(source.url) : null;
   const inlineMedia = inlineMediaSourcePlayer
     ? getSourceInlineMedia(source)
     : null;
   const canOpenInlineMedia =
     inlineMedia != null && source.url && !shouldHideUrl;
+
+  useEffect(() => {
+    setFaviconFailed(false);
+  }, [source.url, source.type]);
 
   useEffect(() => {
     if (!isPlayerOpen || !mediaRef.current || inlineMedia?.kind === "youtube") {
@@ -127,17 +133,31 @@ export const Source = ({ source }) => {
     }
   }, [inlineMedia, isPlayerOpen]);
 
+  // Always reserve the same leading slot so labels align across favicon,
+  // document/link, and play icons (and when Google favicon is unavailable).
+  const typeOrPlayIcon = canOpenInlineMedia ? (
+    <span className="docsbot-source-leading-icon docsbot-source-play-icon" aria-hidden>
+      <FontAwesomeIcon icon={isPlayerOpen ? faChevronUp : faPlay} />
+    </span>
+  ) : (
+    <span className="docsbot-source-leading-icon docsbot-source-type-icon" aria-hidden>
+      <FontAwesomeIcon icon={icon} />
+    </span>
+  );
   const leadingIcon =
     faviconSrc != null ? (
       <img
-        className="docsbot-source-favicon"
+        className="docsbot-source-leading-icon docsbot-source-favicon"
         src={faviconSrc}
         alt=""
         width={16}
         height={16}
         loading="lazy"
+        onError={() => setFaviconFailed(true)}
       />
-    ) : null;
+    ) : (
+      typeOrPlayIcon
+    );
 
   return (
     <li
@@ -159,11 +179,7 @@ export const Source = ({ source }) => {
             onClick={() => setIsPlayerOpen((open) => !open)}
           >
             <span className="docsbot-source-link-main">
-              {leadingIcon || (
-                <span className="docsbot-source-play-icon" aria-hidden>
-                  <FontAwesomeIcon icon={isPlayerOpen ? faChevronUp : faPlay} />
-                </span>
-              )}
+              {leadingIcon}
               <span className="docsbot-source-label">{displayText}</span>
             </span>
           </button>
@@ -202,7 +218,7 @@ export const Source = ({ source }) => {
 		)
 		: (
 			<>
-				{leadingIcon || <FontAwesomeIcon icon={icon} />}
+				{leadingIcon}
 				<span className="docsbot-source-label" title={tooltipText}>
 					{displayText}
 				</span>

@@ -10,7 +10,7 @@ const ORB_PRESENTATION = {
 	[VOICE_CALL_STATUS.AGENT_SPEAKING]: { orbState: 'composing', speed: 1.35 },
 	[VOICE_CALL_STATUS.ERROR]: {
 		orbState: 'shaping',
-		speed: 0.12,
+		speed: 0,
 		color: '#dc2626'
 	},
 	[VOICE_CALL_STATUS.ENDED]: {

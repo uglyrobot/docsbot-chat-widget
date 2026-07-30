@@ -12,7 +12,12 @@ import {
 	VoiceCallSessionError,
 	buildVoiceWidgetPublicMetadata
 } from '../../utils/voiceCallSession.mjs';
-import { interleaveVoiceLiveItems, flushPendingVoiceActions, queuePendingVoiceAction } from '../../utils/voiceCallHistory.mjs';
+import {
+	composeVoiceConversationGroups,
+	interleaveVoiceLiveItems,
+	flushPendingVoiceActions,
+	queuePendingVoiceAction
+} from '../../utils/voiceCallHistory.mjs';
 import {
 	VOICE_CALL_STATUS,
 	appendLocalVoiceTranscript,
@@ -76,7 +81,7 @@ function safeConnectionError(error, labels) {
 	return labels.voiceCallError;
 }
 
-function renderConversationMessage(
+function renderMessageBody(
 	message,
 	{
 		fetchAnswer,
@@ -85,29 +90,23 @@ function renderConversationMessage(
 		isTidyCalScriptReady,
 		onEndVoiceCall,
 		onSendVoiceUserText
-	},
-	{ key = message.id, isHistory = false } = {}
+	}
 ) {
-	const wrapperClass = `docsbot-voice-conversation-message${
-		isHistory ? ' is-history' : ''
-	}`;
 	if (message.variant === 'user') {
 		return (
-			<div key={key} className={wrapperClass}>
-				<UserChatMessage
-					loading={Boolean(message.loading)}
-					message={message.message}
-					imageUrls={message.imageUrls}
-					audio={message.audio}
-					messageBoxRef={{ current: null }}
-					consecutive={false}
-				/>
-			</div>
+			<UserChatMessage
+				loading={Boolean(message.loading)}
+				message={message.message}
+				imageUrls={message.imageUrls}
+				audio={message.audio}
+				messageBoxRef={{ current: null }}
+				consecutive={false}
+			/>
 		);
 	}
 
 	return (
-		<div key={key} className={wrapperClass}>
+		<>
 			<BotChatMessage
 				payload={message}
 				messageBoxRef={{ current: null }}
@@ -119,6 +118,29 @@ function renderConversationMessage(
 				onSendVoiceUserText={onSendVoiceUserText}
 			/>
 			{message.options ? <Options options={message.options} /> : null}
+		</>
+	);
+}
+
+function renderConversationGroup(
+	group,
+	actionProps,
+	{ isHistory = false } = {}
+) {
+	const wrapperClass = `docsbot-voice-conversation-message${
+		isHistory ? ' is-history' : ''
+	}`;
+	return (
+		<div key={group.id} className={wrapperClass}>
+			{renderMessageBody(group.message, actionProps)}
+			{group.attachments.map((attachment) => (
+				<div
+					key={attachment.id}
+					className="docsbot-voice-conversation-attachment"
+				>
+					{renderMessageBody(attachment, actionProps)}
+				</div>
+			))}
 		</div>
 	);
 }
@@ -413,6 +435,22 @@ export function VoiceCallView({
 
 	const transcripts = orderedVoiceTranscripts(voiceState);
 	const liveItems = interleaveVoiceLiveItems(transcripts, actionMessages);
+	const historyGroups = composeVoiceConversationGroups(
+		historyItems.map((entry) => ({
+			id: entry.id,
+			message: historyEntryMessage(entry)
+		}))
+	);
+	const liveGroups = composeVoiceConversationGroups(
+		liveItems.map((entry) =>
+			entry.kind === 'action'
+				? { id: entry.id, message: entry.message }
+				: {
+						id: entry.id,
+						message: liveTranscriptMessage(entry.transcript)
+					}
+		)
+	);
 	// Prefer server VAD, but also promote local mic energy so the listening
 	// orb reacts even when speech_started is late or missing.
 	const micListening =
@@ -558,26 +596,13 @@ export function VoiceCallView({
 					ref={transcriptContentRef}
 					className="docsbot-voice-transcripts-inner"
 				>
-					{historyItems.map((entry) =>
-						renderConversationMessage(
-							historyEntryMessage(entry),
-							liveActionProps,
-							{
-								key: `history-${entry.id}`,
-								isHistory: true
-							}
-						)
+					{historyGroups.map((group) =>
+						renderConversationGroup(group, liveActionProps, {
+							isHistory: true
+						})
 					)}
-					{liveItems.map((entry) =>
-						entry.kind === 'action'
-							? renderConversationMessage(
-									entry.message,
-									liveActionProps
-								)
-							: renderConversationMessage(
-									liveTranscriptMessage(entry.transcript),
-									liveActionProps
-								)
+					{liveGroups.map((group) =>
+						renderConversationGroup(group, liveActionProps)
 					)}
 				</div>
 			</div>
@@ -640,20 +665,6 @@ export function VoiceCallView({
 							role="group"
 							aria-label={labels.voiceCallListening}
 						>
-							<div
-								className="docsbot-voice-call-wave"
-								aria-hidden="true"
-							>
-								{waveformLevels.map((level, index) => (
-									<span
-										key={index}
-										style={{
-											height: `${Math.round(2 + level * 18)}px`,
-											opacity: 0.42 + level * 0.5
-										}}
-									/>
-								))}
-							</div>
 							<button
 								type="button"
 								className={`docsbot-voice-control is-mute ${isMuted ? 'is-active' : ''}`}
@@ -678,6 +689,20 @@ export function VoiceCallView({
 										: labels.voiceCallMute}
 								</span>
 							</button>
+							<div
+								className="docsbot-voice-call-wave"
+								aria-hidden="true"
+							>
+								{waveformLevels.map((level, index) => (
+									<span
+										key={index}
+										style={{
+											height: `${Math.round(2 + level * 18)}px`,
+											opacity: 0.42 + level * 0.5
+										}}
+									/>
+								))}
+							</div>
 							<button
 								type="button"
 								className="docsbot-voice-control is-end"

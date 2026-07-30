@@ -302,10 +302,8 @@ test('voiceClientActionFromEvent whitelists booking, custom_button, support, and
 					result: 'secret retrieval',
 					client_action: {
 						type: 'calendly',
-						message: 'Book a demo when you are ready.',
 						eventPath: 'docsbot/demo',
-						hideEventDetails: true,
-						voice_message: "I've opened the booking calendar."
+						hideEventDetails: true
 					}
 				})
 			}
@@ -314,7 +312,7 @@ test('voiceClientActionFromEvent whitelists booking, custom_button, support, and
 			kind: 'booking',
 			callId: 'call-booking',
 			type: 'calendly',
-			message: 'Book a demo when you are ready.',
+			message: '',
 			eventPath: 'docsbot/demo',
 			hideEventDetails: true,
 			hideCookieBanner: false,
@@ -333,11 +331,9 @@ test('voiceClientActionFromEvent whitelists booking, custom_button, support, and
 					status: 'ok',
 					client_action: {
 						type: 'custom_button',
-						message: 'Open your account settings.',
 						buttonText: 'Open account',
 						url: 'https://example.com/account',
-						functionKey: 'account',
-						voice_message: "I've shown the next step on screen."
+						functionKey: 'account'
 					}
 				})
 			}
@@ -346,7 +342,7 @@ test('voiceClientActionFromEvent whitelists booking, custom_button, support, and
 			kind: 'custom_button',
 			callId: 'call-button',
 			type: 'custom_button',
-			message: 'Open your account settings.',
+			message: '',
 			url: 'https://example.com/account',
 			functionKey: 'account',
 			buttonText: 'Open account'
@@ -362,9 +358,7 @@ test('voiceClientActionFromEvent whitelists booking, custom_button, support, and
 				output: JSON.stringify({
 					client_action: {
 						type: 'support_escalation',
-						message: 'Would you like support?',
-						responses: { yes: 'Yes, please', no: 'No, thanks' },
-						voice_message: 'Would you like support?'
+						responses: { yes: 'Yes, please', no: 'No, thanks' }
 					}
 				})
 			}
@@ -373,9 +367,26 @@ test('voiceClientActionFromEvent whitelists booking, custom_button, support, and
 			kind: 'support_escalation',
 			callId: 'call-support',
 			type: 'support_escalation',
-			message: 'Would you like support?',
+			message: '',
 			responses: { yes: 'Yes, please', no: 'No, thanks' }
 		}
+	);
+	assert.equal(
+		voiceClientActionFromEvent({
+			type: 'conversation.item.created',
+			item: {
+				call_id: 'call-support-incomplete',
+				type: 'function_call_output',
+				output: JSON.stringify({
+					client_action: {
+						type: 'support_escalation',
+						message: 'Would you like support?',
+						responses: { yes: 'Yes, please' }
+					}
+				})
+			}
+		}),
+		null
 	);
 
 	assert.deepEqual(
@@ -525,7 +536,7 @@ test('voiceClientActionFromEvent ignores unknown or unsafe handoffs', () => {
 			kind: 'custom_button',
 			callId: 'call-safe-function-only',
 			type: 'custom_button',
-			message: 'Continue',
+			message: '',
 			url: '',
 			functionKey: 'continue_safely',
 			buttonText: 'Continue'

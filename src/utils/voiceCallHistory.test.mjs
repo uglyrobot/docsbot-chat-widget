@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
 	buildVoiceCallHistoryItems,
+	composeVoiceConversationGroups,
 	flushPendingVoiceActions,
 	interleaveVoiceLiveItems,
+	mergeVoiceLookupSourcesIntoMessages,
 	queuePendingVoiceAction,
 	upsertVoiceTranscriptHistory
 } from './voiceCallHistory.mjs';
@@ -235,6 +237,170 @@ test('interleaveVoiceLiveItems places unanchored actions before live transcripts
 			{ kind: 'transcript', id: 'caller-1' }
 		]
 	);
+});
+
+test('buildVoiceCallHistoryItems keeps lookup_answer sources as attachable actions', () => {
+	const items = buildVoiceCallHistoryItems({
+		user1: {
+			id: 'user1',
+			variant: 'user',
+			message: 'What is pricing?'
+		},
+		bot1: {
+			id: 'bot1',
+			variant: 'chatbot',
+			message: 'Here is what I found.'
+		},
+		sources: {
+			id: 'sources',
+			variant: 'chatbot',
+			type: 'lookup_answer',
+			message: '',
+			sources: [{ title: 'Pricing', url: 'https://example.com/pricing' }]
+		}
+	});
+
+	assert.deepEqual(
+		items.map((item) =>
+			item.kind === 'transcript'
+				? { kind: item.kind, id: item.id }
+				: {
+						kind: item.kind,
+						id: item.id,
+						type: item.message.type,
+						sourceCount: item.message.sources.length
+					}
+		),
+		[
+			{ kind: 'transcript', id: 'user1' },
+			{ kind: 'transcript', id: 'bot1' },
+			{
+				kind: 'action',
+				id: 'sources',
+				type: 'lookup_answer',
+				sourceCount: 1
+			}
+		]
+	);
+});
+
+test('mergeVoiceLookupSourcesIntoMessages attaches lookup rows to the next spoken agent turn', () => {
+	const merged = mergeVoiceLookupSourcesIntoMessages({
+		user1: {
+			id: 'user1',
+			variant: 'user',
+			message: 'What is pricing?'
+		},
+		// Tool result is inserted before the spoken answer lands.
+		sources: {
+			id: 'sources',
+			variant: 'chatbot',
+			type: 'lookup_answer',
+			message: '',
+			sources: [{ title: 'Pricing', url: 'https://example.com/pricing' }]
+		},
+		agent1: {
+			id: 'agent1',
+			variant: 'chatbot',
+			message: 'Pricing starts at $99.',
+			voiceCall: true
+		}
+	});
+
+	assert.deepEqual(Object.keys(merged), ['user1', 'agent1']);
+	assert.deepEqual(merged.agent1.sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' }
+	]);
+	assert.equal(merged.agent1.message, 'Pricing starts at $99.');
+});
+
+test('mergeVoiceLookupSourcesIntoMessages falls back to the prior agent turn', () => {
+	const merged = mergeVoiceLookupSourcesIntoMessages({
+		agent1: {
+			id: 'agent1',
+			variant: 'chatbot',
+			message: 'Pricing starts at $99.'
+		},
+		sources: {
+			id: 'sources',
+			variant: 'chatbot',
+			type: 'lookup_answer',
+			message: '',
+			sources: [{ title: 'Pricing', url: 'https://example.com/pricing' }]
+		}
+	});
+
+	assert.deepEqual(Object.keys(merged), ['agent1']);
+	assert.deepEqual(merged.agent1.sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' }
+	]);
+});
+
+test('composeVoiceConversationGroups merges lookup sources into the prior agent turn', () => {
+	const groups = composeVoiceConversationGroups([
+		{
+			id: 'agent-1',
+			message: {
+				id: 'agent-1',
+				variant: 'chatbot',
+				message: 'Pricing starts at $99.'
+			}
+		},
+		{
+			id: 'voice-action-lookup',
+			message: {
+				id: 'voice-action-lookup',
+				variant: 'chatbot',
+				type: 'lookup_answer',
+				message: '',
+				sources: [{ title: 'Pricing', url: 'https://example.com/pricing' }]
+			}
+		}
+	]);
+
+	assert.equal(groups.length, 1);
+	assert.equal(groups[0].id, 'agent-1');
+	assert.equal(groups[0].attachments.length, 0);
+	assert.deepEqual(groups[0].message.sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' }
+	]);
+	assert.equal(groups[0].message.message, 'Pricing starts at $99.');
+});
+
+test('composeVoiceConversationGroups keeps escalation controls on the agent turn', () => {
+	const groups = composeVoiceConversationGroups([
+		{
+			id: 'agent-1',
+			message: {
+				id: 'agent-1',
+				variant: 'chatbot',
+				message: 'Want me to connect you with support?'
+			}
+		},
+		{
+			id: 'voice-action-support',
+			message: {
+				id: 'voice-action-support',
+				variant: 'chatbot',
+				type: 'support_escalation',
+				message: '',
+				responses: { yes: 'Yes', no: 'No' }
+			}
+		},
+		{
+			id: 'caller-1',
+			message: {
+				id: 'caller-1',
+				variant: 'user',
+				message: 'Yes please'
+			}
+		}
+	]);
+
+	assert.equal(groups.length, 2);
+	assert.equal(groups[0].attachments.length, 1);
+	assert.equal(groups[0].attachments[0].type, 'support_escalation');
+	assert.equal(groups[1].message.variant, 'user');
 });
 
 test('queue and flush pending voice actions after the post-tool agent turn', () => {

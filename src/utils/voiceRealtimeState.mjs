@@ -297,6 +297,8 @@ function sanitizeJsonValue(value, depth = 0) {
 }
 
 function sanitizeBookingClientAction(action, callId) {
+	// Voice confirmation is spoken by the model; UI only needs the calendar.
+	// Do not require message / voice_message (no longer sent on voice client_action).
 	const eventPath = clampClientActionText(
 		action.eventPath,
 		MAX_CLIENT_ACTION_PATH
@@ -306,12 +308,11 @@ function sanitizeBookingClientAction(action, callId) {
 		action.message || action.voice_message,
 		MAX_CLIENT_ACTION_TEXT
 	);
-	if (!message) return null;
 	return {
 		kind: 'booking',
 		callId,
 		type: action.type,
-		message,
+		message: message || '',
 		eventPath,
 		hideEventDetails: Boolean(action.hideEventDetails),
 		hideCookieBanner: Boolean(action.hideCookieBanner),
@@ -320,6 +321,8 @@ function sanitizeBookingClientAction(action, callId) {
 }
 
 function sanitizeCustomButtonClientAction(action, callId) {
+	// Voice confirmation is spoken by the model; UI only needs the CTA.
+	// Do not require message / voice_message (no longer sent on voice client_action).
 	const buttonText = clampClientActionText(
 		action.buttonText,
 		MAX_CLIENT_ACTION_BUTTON
@@ -333,14 +336,14 @@ function sanitizeCustomButtonClientAction(action, callId) {
 	);
 	if (!buttonText || (!url && !functionKey)) return null;
 	const message = clampClientActionText(
-		action.message || action.voice_message || buttonText,
+		action.message || action.voice_message,
 		MAX_CLIENT_ACTION_TEXT
 	);
 	return {
 		kind: 'custom_button',
 		callId,
 		type: 'custom_button',
-		message,
+		message: message || '',
 		url,
 		functionKey,
 		buttonText
@@ -348,32 +351,27 @@ function sanitizeCustomButtonClientAction(action, callId) {
 }
 
 function sanitizeSupportEscalationClientAction(action, callId) {
+	// Voice confirmation is spoken by the model; UI only needs Yes/No labels.
+	// Do not require message / voice_message (no longer sent on voice client_action).
+	const yes = clampClientActionText(
+		action.responses?.yes,
+		MAX_CLIENT_ACTION_BUTTON
+	);
+	const no = clampClientActionText(
+		action.responses?.no,
+		MAX_CLIENT_ACTION_BUTTON
+	);
+	if (!yes || !no) return null;
 	const message = clampClientActionText(
 		action.message || action.voice_message,
 		MAX_CLIENT_ACTION_TEXT
 	);
-	if (!message) return null;
-	const responses =
-		action.responses &&
-		typeof action.responses === 'object' &&
-		!Array.isArray(action.responses)
-			? {
-					yes: clampClientActionText(
-						action.responses.yes,
-						MAX_CLIENT_ACTION_BUTTON
-					),
-					no: clampClientActionText(
-						action.responses.no,
-						MAX_CLIENT_ACTION_BUTTON
-					)
-				}
-			: {};
 	return {
 		kind: 'support_escalation',
 		callId,
 		type: 'support_escalation',
-		message,
-		responses
+		message: message || '',
+		responses: { yes, no }
 	};
 }
 

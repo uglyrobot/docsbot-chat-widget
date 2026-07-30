@@ -431,11 +431,9 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 					result: { credential: 'must-not-render-action' },
 					client_action: {
 						type: 'custom_button',
-						message: 'Open your account settings.',
 						buttonText: 'Open account',
 						url: 'https://example.com/account',
-						functionKey: 'account',
-						voice_message: "I've shown the next step on screen."
+						functionKey: 'account'
 					}
 				})
 			}
@@ -455,7 +453,7 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 	await expect(
 		root.getByRole('button', { name: 'Open account' })
 	).toBeVisible();
-	await expect(root.getByText('Open your account settings.')).toBeVisible();
+	// Confirmation copy is spoken by the model; client_action has no message.
 	await expect(root.getByText('must-not-render-action')).toHaveCount(0);
 
 	// Later speech must append below the tool card, not above it.
@@ -503,8 +501,8 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 				)
 				.filter(Boolean)
 		);
-	const cardIndex = timelineTexts.findIndex((text) =>
-		text.includes('Open your account settings.')
+	const buttonIndex = timelineTexts.findIndex((text) =>
+		text.includes('Open account')
 	);
 	const handoffIndex = timelineTexts.findIndex((text) =>
 		text.includes("I've shown the next step on screen.")
@@ -516,8 +514,9 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 		text.includes('Great — let me know if you need anything else.')
 	);
 	expect(handoffIndex).toBeGreaterThanOrEqual(0);
-	expect(cardIndex).toBeGreaterThan(handoffIndex);
-	expect(laterCallerIndex).toBeGreaterThan(cardIndex);
+	// Button attaches under the spoken handoff turn (same group or after).
+	expect(buttonIndex).toBeGreaterThanOrEqual(handoffIndex);
+	expect(laterCallerIndex).toBeGreaterThan(buttonIndex);
 	expect(laterAgentIndex).toBeGreaterThan(laterCallerIndex);
 
 	await page.evaluate(() => {
@@ -712,7 +711,6 @@ test('voice custom and support callbacks receive complete canonical history', as
 				output: JSON.stringify({
 					client_action: {
 						type: 'custom_button',
-						message: 'Open account settings.',
 						buttonText: 'Open account',
 						functionKey: 'account_settings'
 					}
@@ -729,42 +727,13 @@ test('voice custom and support callbacks receive complete canonical history', as
 	const customActionButton = root.getByRole('button', {
 		name: 'Open account'
 	});
-	const customActionColumn = root
-		.locator('.docsbot-chat-bot-message-column')
-		.filter({ hasText: 'Open account settings.' });
-	const customActionWrapper = root
-		.locator('.docsbot-voice-conversation-message')
-		.filter({ hasText: 'Open account settings.' });
-	const customActionBubble = customActionColumn.locator(
-		':scope > .docsbot-chat-bot-message'
-	);
-	const customActionRow = customActionColumn.locator(
-		':scope > .docsbot-custom-button-cta-row'
-	);
-	await expect(customActionBubble).toHaveCSS(
-		'border-top-left-radius',
-		'4px'
-	);
-	await expect(customActionBubble).toHaveCSS(
-		'border-top-right-radius',
-		'12px'
-	);
-	await expect(customActionWrapper).toHaveCSS(
-		'background-color',
-		'rgba(0, 0, 0, 0)'
-	);
-	const [columnBox, bubbleBox, actionRowBox] = await Promise.all([
-		customActionColumn.boundingBox(),
-		customActionBubble.boundingBox(),
-		customActionRow.boundingBox()
-	]);
-	expect(columnBox).not.toBeNull();
-	expect(bubbleBox).not.toBeNull();
-	expect(actionRowBox).not.toBeNull();
-	expect(bubbleBox.width).toBeLessThan(columnBox.width);
-	expect(actionRowBox.y - (bubbleBox.y + bubbleBox.height)).toBeGreaterThanOrEqual(
-		3
-	);
+	await expect(customActionButton).toBeVisible();
+	// Voice custom_button is button-only; no client_action confirmation bubble.
+	await expect(root.getByText('Open account settings.')).toHaveCount(0);
+	const customActionRow = root.locator('.docsbot-custom-button-cta-row').filter({
+		has: customActionButton
+	});
+	await expect(customActionRow).toBeVisible();
 
 	await customActionButton.click();
 	await expect
@@ -796,7 +765,6 @@ test('voice custom and support callbacks receive complete canonical history', as
 				output: JSON.stringify({
 					client_action: {
 						type: 'support_escalation',
-						message: 'Would you like human support?',
 						responses: { yes: 'Yes, please', no: 'No, thanks' }
 					}
 				})
@@ -870,9 +838,7 @@ test('voice support escalation: No stays on call; Yes ends call', async ({
 					status: 'ok',
 					client_action: {
 						type: 'support_escalation',
-						message: 'Would you like support?',
-						responses: { yes: 'Yes, please', no: 'No, thanks' },
-						voice_message: 'Would you like support?'
+						responses: { yes: 'Yes, please', no: 'No, thanks' }
 					}
 				})
 			}
@@ -882,8 +848,6 @@ test('voice support escalation: No stays on call; Yes ends call', async ({
 	await expect(
 		root.getByText('Would you like me to connect you with support?')
 	).toBeVisible();
-	// Confirmation copy from the client_action must not appear as a bubble.
-	await expect(root.getByText('Would you like support?')).toHaveCount(0);
 	// Buttons wait for the post-tool spoken reply.
 	await expect(
 		root.getByRole('button', { name: 'Yes, please' })
@@ -937,9 +901,7 @@ test('voice support escalation: No stays on call; Yes ends call', async ({
 					status: 'ok',
 					client_action: {
 						type: 'support_escalation',
-						message: 'Connect with support?',
-						responses: { yes: 'Yes, please', no: 'No, thanks' },
-						voice_message: 'Connect with support?'
+						responses: { yes: 'Yes, please', no: 'No, thanks' }
 					}
 				})
 			}

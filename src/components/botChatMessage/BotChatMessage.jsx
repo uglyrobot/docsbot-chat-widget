@@ -787,12 +787,14 @@ export const BotChatMessage = ({
 	const hasVisibleMessageText =
 		typeof payload.message === 'string' &&
 		payload.message.trim().length > 0;
-	// Voice booking/Stripe/escalation handoffs omit copy (spoken in the
-	// transcript) and only render the interactive UI — skip the empty bubble.
+	// Voice booking/Stripe/escalation/custom-button handoffs omit copy
+	// (spoken in the transcript) and only render the interactive UI —
+	// skip the empty bubble.
 	const isUiOnlyVoiceHandoff =
 		Boolean(payload.schedulerEmbed?.path) ||
 		Boolean(payload.stripeBilling) ||
-		payload.type === 'support_escalation';
+		payload.type === 'support_escalation' ||
+		(payload.type === 'custom_button' && Boolean(payload.voiceCall));
 	const showMessageBubble =
 		payload.loading ||
 		payload.error ||

@@ -254,14 +254,14 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 4px;
+	gap: 5px;
 	overflow: hidden;
 
 	span {
 		width: 2px;
 		flex: 0 0 2px;
 		border-radius: 999px;
-		background: var(--docsbot-color-main, #1292ee);
+		background: $color-secondary-100;
 		transition:
 			height 80ms linear,
 			opacity 80ms linear;
@@ -288,6 +288,17 @@
 	max-width: 100%;
 	box-sizing: border-box;
 	pointer-events: auto;
+
+	// Tool UI (escalation, booking, etc.) shares this turn wrapper so the
+	// transcript list gap does not float buttons away from the spoken reply.
+	// Match chat log spacing below a bot bubble (rating/CTA uses $spacing-sm).
+	> .docsbot-voice-conversation-attachment {
+		margin-top: $spacing-sm;
+	}
+
+	> .docsbot-voice-conversation-attachment .docbot-chat-bot-message-rate {
+		margin-top: 0;
+	}
 }
 
 .docsbot-voice-call-controls {
@@ -304,18 +315,19 @@
 	);
 }
 
+// Match chat `.docsbot-chat-input-form` / audio-recorder overlay chrome.
 .docsbot-voice-call-input {
-	width: min(100%, 360px);
-	min-height: 48px;
+	width: 100%;
+	min-height: 50px;
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 10px;
 	box-sizing: border-box;
-	padding: 5px 6px 5px 12px;
-	border: 1px solid rgba(148, 163, 184, 0.42);
-	border-radius: 14px;
-	background: #fff;
-	box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+	padding: 5px;
+	border: 1px solid $color-secondary-300;
+	border-radius: $spacing-md;
+	background: $color-neutral-300;
+	box-shadow: none;
 	pointer-events: auto;
 }
 
@@ -323,6 +335,7 @@
 	flex: 1 1 auto;
 	min-width: 0;
 	width: auto;
+	// Span the full input width between mute / hang-up.
 	justify-content: space-between;
 	gap: 0;
 }
@@ -358,15 +371,17 @@
 
 	&.is-mute,
 	&.is-secondary {
-		border-color: rgba(148, 163, 184, 0.42);
-		background: #fff;
-		color: #334155;
+		border-color: rgba(166, 179, 191, 0.42);
+		background: $color-neutral-300;
+		color: $color-secondary-100;
+		box-shadow: none;
 	}
 
 	&.is-mute:hover,
 	&.is-secondary:hover,
 	&.is-mute.is-active {
-		background: #f1f5f9;
+		background: rgba(166, 179, 191, 0.12);
+		color: $color-neutral-100;
 	}
 
 	&.is-end {
@@ -379,13 +394,16 @@
 	}
 }
 
+// Match audio-recorder cancel/send control size.
 .docsbot-voice-call-input .docsbot-voice-control {
-	min-width: 36px;
-	min-height: 36px;
-	width: 36px;
-	height: 36px;
+	flex: 0 0 auto;
+	min-width: 40px;
+	min-height: 40px;
+	width: 40px;
+	height: 40px;
 	padding: 0;
-	border-radius: 10px;
+	border-radius: 12px;
+	font-size: 14px;
 }
 
 @keyframes docsbot-voice-orb-breathe {

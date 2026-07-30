@@ -119,11 +119,27 @@
 			}
 		}
 
-		.docsbot-source-favicon {
+		// Fixed leading slot so favicons, FA type icons, and play icons align labels.
+		.docsbot-source-leading-icon {
+			box-sizing: border-box;
 			width: 16px;
 			height: 16px;
-			flex-shrink: 0;
+			flex: 0 0 16px;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
 			margin-right: $spacing-sm;
+			overflow: hidden;
+			line-height: 1;
+
+			svg {
+				width: 12px;
+				height: 12px;
+			}
+		}
+
+		.docsbot-source-favicon {
+			object-fit: contain;
 		}
 
 		a .docsbot-source-link-main,
@@ -136,13 +152,6 @@
 		}
 
 		.docsbot-source-play-icon {
-			width: 18px;
-			height: 18px;
-			flex: 0 0 18px;
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			margin-right: $spacing-sm;
 			border-radius: 999px;
 			color: var(--docsbot-color-main, $color-primary-100);
 
@@ -190,10 +199,6 @@
 			display: flex;
 			align-items: center;
 			min-width: 0;
-
-			svg {
-				margin-right: $spacing-sm;
-			}
 		}
 	}
 

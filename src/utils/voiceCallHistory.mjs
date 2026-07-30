@@ -1,8 +1,19 @@
 const INTERACTIVE_VOICE_HISTORY_TYPES = new Set([
 	'custom_button',
 	'stripe_billing',
-	'support_escalation'
+	'support_escalation',
+	// Sources-only handoff; may have empty message text (spoken in transcript).
+	'lookup_answer'
 ]);
+
+function isAttachableVoiceAction(message) {
+	if (!message || typeof message !== 'object') return false;
+	if (INTERACTIVE_VOICE_HISTORY_TYPES.has(message.type)) return true;
+	if (message.schedulerEmbed) return true;
+	if (message.stripeBilling) return true;
+	if (message.customButton) return true;
+	return false;
+}
 
 /**
  * Add a finalized Realtime transcript to the same canonical history used by
@@ -67,12 +78,7 @@ export function upsertVoiceTranscriptHistory(
 }
 
 function isInteractiveHistoryMessage(message) {
-	if (!message || typeof message !== 'object') return false;
-	if (INTERACTIVE_VOICE_HISTORY_TYPES.has(message.type)) return true;
-	if (message.schedulerEmbed) return true;
-	if (message.stripeBilling) return true;
-	if (message.customButton) return true;
-	return false;
+	return isAttachableVoiceAction(message);
 }
 
 function hasUserEngagement(messages) {
@@ -135,6 +141,138 @@ export function buildVoiceCallHistoryItems(messages) {
 		});
 	}
 	return items;
+}
+
+function isSpokenAgentMessage(message) {
+	if (!message || typeof message !== 'object') return false;
+	if (message.variant === 'user') return false;
+	if (message.type === 'lookup_answer') return false;
+	const text =
+		typeof message.message === 'string' ? message.message.trim() : '';
+	return message.variant === 'chatbot' && Boolean(text);
+}
+
+/**
+ * Fold standalone `lookup_answer` source rows into the agent answer they
+ * belong to and drop the sources-only messages.
+ *
+ * Voice inserts lookup rows when the tool returns (before speech), so prefer
+ * the next spoken agent turn; fall back to the prior agent bubble when the
+ * list is already interleaved the way the live voice UI renders it.
+ *
+ * @param {Record<string, object> | object} messages
+ * @returns {Record<string, object> | object}
+ */
+export function mergeVoiceLookupSourcesIntoMessages(messages) {
+	if (!messages || typeof messages !== 'object' || Array.isArray(messages)) {
+		return messages;
+	}
+
+	const keys = Object.keys(messages);
+	const drop = new Set();
+	const sourcesByTarget = new Map();
+
+	for (let i = 0; i < keys.length; i++) {
+		const key = keys[i];
+		const message = messages[key];
+		if (
+			!message ||
+			typeof message !== 'object' ||
+			message.type !== 'lookup_answer' ||
+			!Array.isArray(message.sources) ||
+			!message.sources.length
+		) {
+			continue;
+		}
+
+		let targetKey = null;
+		for (let j = i + 1; j < keys.length; j++) {
+			const candidate = messages[keys[j]];
+			if (!candidate || typeof candidate !== 'object') continue;
+			if (candidate.variant === 'user') break;
+			if (isSpokenAgentMessage(candidate)) {
+				targetKey = keys[j];
+				break;
+			}
+		}
+		if (!targetKey) {
+			for (let j = i - 1; j >= 0; j--) {
+				const candidate = messages[keys[j]];
+				if (!candidate || typeof candidate !== 'object') continue;
+				if (candidate.variant === 'user') break;
+				if (isSpokenAgentMessage(candidate)) {
+					targetKey = keys[j];
+					break;
+				}
+			}
+		}
+
+		if (!targetKey) continue;
+		sourcesByTarget.set(targetKey, message.sources);
+		drop.add(key);
+	}
+
+	if (!drop.size) return messages;
+
+	const next = {};
+	for (const key of keys) {
+		if (drop.has(key)) continue;
+		const message = messages[key];
+		next[key] = sourcesByTarget.has(key)
+			? { ...message, sources: sourcesByTarget.get(key) }
+			: message;
+	}
+	return next;
+}
+
+/**
+ * Fold tool UI onto the agent turn it belongs to so the voice transcript
+ * list does not insert a separate row (and flex gap) between the spoken
+ * reply and its controls/sources.
+ *
+ * `lookup_answer` sources are merged into the previous agent bubble — the
+ * same visual treatment as text chat — instead of a sources-only message.
+ *
+ * @param {Array<{ id: string, message: object }>} messages
+ * @returns {Array<{ id: string, message: object, attachments: object[] }>}
+ */
+export function composeVoiceConversationGroups(messages) {
+	const list = Array.isArray(messages) ? messages : [];
+	const groups = [];
+
+	for (const entry of list) {
+		if (!entry?.message || typeof entry.message !== 'object') continue;
+		const message = entry.message;
+		const id = String(entry.id || message.id || '');
+		if (!id) continue;
+
+		const last = groups[groups.length - 1];
+		const canAttachToAgent =
+			Boolean(last) && last.message?.variant !== 'user';
+
+		if (
+			canAttachToAgent &&
+			message.type === 'lookup_answer' &&
+			Array.isArray(message.sources) &&
+			message.sources.length
+		) {
+			// Spoken answer is already on the transcript bubble.
+			last.message = {
+				...last.message,
+				sources: message.sources
+			};
+			continue;
+		}
+
+		if (canAttachToAgent && isAttachableVoiceAction(message)) {
+			last.attachments.push(message);
+			continue;
+		}
+
+		groups.push({ id, message, attachments: [] });
+	}
+
+	return groups;
 }
 
 /**
