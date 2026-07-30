@@ -107,20 +107,21 @@ DocsBotAI.init({
 
 ### Color theme
 
-The widget follows the browser or operating-system color scheme by default. Set
-`options.theme` to override it:
+The widget defaults to light mode. Set `options.theme` to `'dark'` or `'auto'`
+to override it:
 
 ```js
 DocsBotAI.init({
   id: 'teamId/botId',
   options: {
-    theme: 'auto', // 'auto' (default), 'light', or 'dark'
+    theme: 'light', // 'light' (default), 'dark', or 'auto'
     color: '#1292EE',
   },
 });
 ```
 
-`auto` updates live when `prefers-color-scheme` changes. The configured brand
+`auto` follows the browser or OS color scheme and updates live when
+`prefers-color-scheme` changes. The configured brand
 color remains the fill for the header, launcher, and primary actions. Dark-mode
 user messages use a quieter brand-tinted fill, while the widget derives
 contrast-safe text, focus, link, and icon colors from the brand.

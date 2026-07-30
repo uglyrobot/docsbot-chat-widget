@@ -3,13 +3,13 @@ export const WIDGET_THEME_LIGHT = 'light';
 export const WIDGET_THEME_DARK = 'dark';
 
 export function normalizeWidgetTheme(value) {
-	if (typeof value !== 'string') return WIDGET_THEME_AUTO;
+	if (typeof value !== 'string') return WIDGET_THEME_LIGHT;
 	const normalized = value.trim().toLowerCase();
 	return [WIDGET_THEME_AUTO, WIDGET_THEME_LIGHT, WIDGET_THEME_DARK].includes(
 		normalized
 	)
 		? normalized
-		: WIDGET_THEME_AUTO;
+		: WIDGET_THEME_LIGHT;
 }
 
 export function resolveWidgetTheme(theme, systemPrefersDark = false) {
