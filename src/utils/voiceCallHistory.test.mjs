@@ -7,7 +7,8 @@ import {
 	interleaveVoiceLiveItems,
 	mergeVoiceLookupSourcesIntoMessages,
 	queuePendingVoiceAction,
-	upsertVoiceTranscriptHistory
+	upsertVoiceTranscriptHistory,
+	upsertVoiceTranscriptMessageMap
 } from './voiceCallHistory.mjs';
 
 test('upsertVoiceTranscriptHistory appends canonical callback history in voice order', () => {
@@ -15,11 +16,17 @@ test('upsertVoiceTranscriptHistory appends canonical callback history in voice o
 		{ role: 'user', message: 'Prior text question' },
 		{ role: 'assistant', message: 'Prior text answer' }
 	];
-	const caller = upsertVoiceTranscriptHistory(initial, {}, {
-		itemId: 'caller-1',
-		role: 'caller',
-		text: 'Voice question'
-	});
+	const order = ['caller-1', 'agent-1'];
+	const caller = upsertVoiceTranscriptHistory(
+		initial,
+		{},
+		{
+			itemId: 'caller-1',
+			role: 'caller',
+			text: 'Voice question'
+		},
+		order
+	);
 	const agent = upsertVoiceTranscriptHistory(
 		caller.history,
 		caller.itemIndices,
@@ -27,7 +34,8 @@ test('upsertVoiceTranscriptHistory appends canonical callback history in voice o
 			itemId: 'agent-1',
 			role: 'agent',
 			text: 'Voice answer'
-		}
+		},
+		order
 	);
 
 	assert.deepEqual(agent.history, [
@@ -44,6 +52,39 @@ test('upsertVoiceTranscriptHistory appends canonical callback history in voice o
 		{ role: 'user', message: 'Prior text question' },
 		{ role: 'assistant', message: 'Prior text answer' }
 	]);
+});
+
+test('upsertVoiceTranscriptHistory inserts late caller finals before agent by transcriptOrder', () => {
+	const order = ['caller-1', 'agent-1'];
+	const agentFirst = upsertVoiceTranscriptHistory(
+		[],
+		{},
+		{
+			itemId: 'agent-1',
+			role: 'agent',
+			text: 'Voice answer'
+		},
+		order
+	);
+	const withCaller = upsertVoiceTranscriptHistory(
+		agentFirst.history,
+		agentFirst.itemIndices,
+		{
+			itemId: 'caller-1',
+			role: 'caller',
+			text: 'Voice question'
+		},
+		order
+	);
+
+	assert.deepEqual(withCaller.history, [
+		{ role: 'user', message: 'Voice question' },
+		{ role: 'assistant', message: 'Voice answer' }
+	]);
+	assert.deepEqual(withCaller.itemIndices, {
+		'caller-1': 0,
+		'agent-1': 1
+	});
 });
 
 test('upsertVoiceTranscriptHistory reconciles repeated final transcript events', () => {
@@ -79,6 +120,41 @@ test('upsertVoiceTranscriptHistory ignores invalid transcript payloads', () => {
 
 	assert.equal(result.history, history);
 	assert.equal(result.itemIndices, indices);
+});
+
+test('upsertVoiceTranscriptMessageMap inserts late caller before agent bubble', () => {
+	const withAgent = upsertVoiceTranscriptMessageMap(
+		{},
+		{
+			messageId: 'voice-agent-1',
+			itemId: 'agent-1',
+			transcriptOrder: ['caller-1', 'agent-1'],
+			payload: {
+				id: 'voice-agent-1',
+				variant: 'chatbot',
+				message: 'Voice answer',
+				realtimeItemId: 'agent-1'
+			}
+		}
+	);
+	const withCaller = upsertVoiceTranscriptMessageMap(withAgent, {
+		messageId: 'voice-caller-1',
+		itemId: 'caller-1',
+		transcriptOrder: ['caller-1', 'agent-1'],
+		payload: {
+			id: 'voice-caller-1',
+			variant: 'user',
+			message: 'Voice question',
+			realtimeItemId: 'caller-1'
+		}
+	});
+
+	assert.deepEqual(Object.keys(withCaller), [
+		'voice-caller-1',
+		'voice-agent-1'
+	]);
+	assert.equal(withCaller['voice-caller-1'].message, 'Voice question');
+	assert.equal(withCaller['voice-agent-1'].message, 'Voice answer');
 });
 
 test('buildVoiceCallHistoryItems maps prior chat into appendable voice entries', () => {

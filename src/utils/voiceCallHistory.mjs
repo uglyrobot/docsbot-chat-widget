@@ -16,14 +16,71 @@ function isAttachableVoiceAction(message) {
 }
 
 /**
+ * Where a Realtime transcript item should land in finalized chatHistory.
+ * Prefer the first already-finalized item that follows it in transcriptOrder
+ * (so a late caller final inserts before an earlier-completed agent turn).
+ */
+function voiceHistoryInsertIndex(
+	itemId,
+	transcriptOrder,
+	itemIndices,
+	historyLength
+) {
+	if (!Array.isArray(transcriptOrder) || !transcriptOrder.length) {
+		return historyLength;
+	}
+	const orderIndex = transcriptOrder.indexOf(itemId);
+	if (orderIndex < 0) {
+		return historyLength;
+	}
+
+	for (let i = orderIndex + 1; i < transcriptOrder.length; i++) {
+		const laterIndex = itemIndices[transcriptOrder[i]];
+		if (
+			Number.isInteger(laterIndex) &&
+			laterIndex >= 0 &&
+			laterIndex < historyLength
+		) {
+			return laterIndex;
+		}
+	}
+
+	for (let i = orderIndex - 1; i >= 0; i--) {
+		const earlierIndex = itemIndices[transcriptOrder[i]];
+		if (
+			Number.isInteger(earlierIndex) &&
+			earlierIndex >= 0 &&
+			earlierIndex < historyLength
+		) {
+			return earlierIndex + 1;
+		}
+	}
+
+	return historyLength;
+}
+
+function shiftVoiceHistoryIndices(itemIndices, insertAt) {
+	const next = {};
+	for (const [id, index] of Object.entries(itemIndices)) {
+		next[id] =
+			Number.isInteger(index) && index >= insertAt ? index + 1 : index;
+	}
+	return next;
+}
+
+/**
  * Add a finalized Realtime transcript to the same canonical history used by
  * text-chat callbacks and persistence. Repeated final events for the same
  * Realtime item update the existing turn rather than duplicating it.
+ *
+ * New turns insert by Realtime `transcriptOrder` when provided, so a late
+ * caller transcription does not append after the agent reply it preceded.
  */
 export function upsertVoiceTranscriptHistory(
 	history,
 	itemIndices,
-	transcript
+	transcript,
+	transcriptOrder
 ) {
 	const currentHistory = Array.isArray(history) ? history : [];
 	const currentIndices =
@@ -67,14 +124,90 @@ export function upsertVoiceTranscriptHistory(
 		};
 	}
 
-	const nextIndex = currentHistory.length;
+	const nextIndex = voiceHistoryInsertIndex(
+		itemId,
+		transcriptOrder,
+		currentIndices,
+		currentHistory.length
+	);
+	const nextHistory = [
+		...currentHistory.slice(0, nextIndex),
+		entry,
+		...currentHistory.slice(nextIndex)
+	];
 	return {
-		history: [...currentHistory, entry],
+		history: nextHistory,
 		itemIndices: {
-			...currentIndices,
+			...shiftVoiceHistoryIndices(currentIndices, nextIndex),
 			[itemId]: nextIndex
 		}
 	};
+}
+
+/**
+ * Insert or update a voice transcript bubble in chat `messages` using the
+ * same Realtime item order as live captions / chatHistory.
+ */
+export function upsertVoiceTranscriptMessageMap(
+	messages,
+	{ messageId, payload, itemId, transcriptOrder }
+) {
+	const current =
+		messages && typeof messages === 'object' && !Array.isArray(messages)
+			? messages
+			: {};
+	const id = typeof messageId === 'string' ? messageId.trim() : '';
+	if (!id || !payload || typeof payload !== 'object') {
+		return current;
+	}
+
+	if (current[id]) {
+		return {
+			...current,
+			[id]: {
+				...current[id],
+				...payload
+			}
+		};
+	}
+
+	const order = Array.isArray(transcriptOrder) ? transcriptOrder : [];
+	const realtimeId =
+		typeof itemId === 'string' && itemId.trim() ? itemId.trim() : '';
+	let insertBeforeKey = null;
+	if (realtimeId && order.length) {
+		const orderIndex = order.indexOf(realtimeId);
+		if (orderIndex >= 0) {
+			for (let i = orderIndex + 1; i < order.length; i++) {
+				const laterKey = `voice-${order[i]}`;
+				if (current[laterKey]) {
+					insertBeforeKey = laterKey;
+					break;
+				}
+			}
+		}
+	}
+
+	if (!insertBeforeKey) {
+		return {
+			...current,
+			[id]: payload
+		};
+	}
+
+	const next = {};
+	let inserted = false;
+	for (const key of Object.keys(current)) {
+		if (key === insertBeforeKey) {
+			next[id] = payload;
+			inserted = true;
+		}
+		next[key] = current[key];
+	}
+	if (!inserted) {
+		next[id] = payload;
+	}
+	return next;
 }
 
 function isInteractiveHistoryMessage(message) {

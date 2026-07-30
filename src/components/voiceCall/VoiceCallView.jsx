@@ -263,11 +263,14 @@ export function VoiceCallView({
 
 	const handleRealtimeEvent = useCallback(
 		(event) => {
-			setVoiceState((current) => {
-				const next = reduceVoiceRealtimeEvent(current, event);
-				voiceStateRef.current = next;
-				return next;
-			});
+			// Reduce against the ref so transcriptOrder is current before
+			// onTranscriptFinal runs (setState updaters are not sync).
+			const next = reduceVoiceRealtimeEvent(
+				voiceStateRef.current || createVoiceRealtimeState(),
+				event
+			);
+			voiceStateRef.current = next;
+			setVoiceState(next);
 
 			// Same public DOM event as chat-agent SSE tool_call.
 			const toolCall = voiceToolCallFromEvent(event);
@@ -301,7 +304,10 @@ export function VoiceCallView({
 
 			const finalTranscript = finalVoiceTranscriptFromEvent(event);
 			if (finalTranscript) {
-				onTranscriptFinal(finalTranscript);
+				onTranscriptFinal({
+					...finalTranscript,
+					transcriptOrder: next.transcriptOrder || []
+				});
 				if (
 					finalTranscript.role === 'agent' &&
 					pendingActionsRef.current.length
@@ -314,9 +320,7 @@ export function VoiceCallView({
 				event.type === 'response.done' &&
 				pendingActionsRef.current.length
 			) {
-				const transcripts = orderedVoiceTranscripts(
-					voiceStateRef.current
-				);
+				const transcripts = orderedVoiceTranscripts(next);
 				flushPendingActions(
 					transcripts[transcripts.length - 1]?.itemId ?? null
 				);
@@ -564,7 +568,12 @@ export function VoiceCallView({
 			if (!itemId) return true;
 			voiceStateRef.current = next;
 			setVoiceState(next);
-			onTranscriptFinal?.({ itemId, role: 'caller', text: trimmed });
+			onTranscriptFinal?.({
+				itemId,
+				role: 'caller',
+				text: trimmed,
+				transcriptOrder: next.transcriptOrder || []
+			});
 			return true;
 		},
 		[onTranscriptFinal]

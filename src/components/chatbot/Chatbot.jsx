@@ -78,7 +78,8 @@ import { VoiceCallView } from '../voiceCall/VoiceCallView';
 import { VoiceOrb } from '../voiceCall/VoiceOrb';
 import {
 	buildVoiceCallHistoryItems,
-	mergeVoiceLookupSourcesIntoMessages
+	mergeVoiceLookupSourcesIntoMessages,
+	upsertVoiceTranscriptMessageMap
 } from '../../utils/voiceCallHistory.mjs';
 import { VOICE_CALL_STATUS } from '../../utils/voiceRealtimeState.mjs';
 import { primeSharedVoiceToolWorkingChime } from '../../utils/voiceToolWorkingChime.mjs';
@@ -1368,7 +1369,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		return sources.length ? sources : null;
 	};
 
-	const upsertVoiceTranscriptMessage = ({ itemId, role, text }) => {
+	const upsertVoiceTranscriptMessage = ({
+		itemId,
+		role,
+		text,
+		transcriptOrder
+	}) => {
 		if (!itemId || !text || (role !== 'caller' && role !== 'agent')) return;
 		const messageId = `voice-${itemId}`;
 		const existing = stateMessagesRef.current?.[messageId];
@@ -1392,20 +1398,29 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 					: {})
 		};
 		dispatch({
-			type: existing ? 'update_message' : 'add_message',
-			payload
+			type: existing ? 'update_message' : 'upsert_voice_message',
+			payload: {
+				...payload,
+				transcriptOrder
+			}
 		});
 		// Keep the ref current across rapid final transcript events.
-		stateMessagesRef.current = {
-			...(stateMessagesRef.current || {}),
-			[messageId]: {
-				...(existing || {}),
-				...payload
+		// Prefer ordered insert so late caller finals stay before the agent turn.
+		stateMessagesRef.current = upsertVoiceTranscriptMessageMap(
+			stateMessagesRef.current || {},
+			{
+				messageId,
+				payload: {
+					...(existing || {}),
+					...payload
+				},
+				itemId,
+				transcriptOrder
 			}
-		};
+		);
 		dispatch({
 			type: 'upsert_voice_history',
-			payload: { itemId, role, text }
+			payload: { itemId, role, text, transcriptOrder }
 		});
 	};
 
