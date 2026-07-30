@@ -233,6 +233,20 @@ export function VoiceCallView({
 		sessionRef.current = null;
 	}, []);
 
+	const onExitRef = useRef(onExit);
+	onExitRef.current = onExit;
+	const exitLifecycleRef = useRef(false);
+	// session.close() sets closed=true before teardown, so the 'closed' callback is
+	// suppressed. Parent unmount / pagehide / hangup must still run onExit once.
+	const endCallLifecycle = useCallback(() => {
+		if (exitLifecycleRef.current) return;
+		exitLifecycleRef.current = true;
+		cleanupSession();
+		onExitRef.current?.();
+	}, [cleanupSession]);
+	const endCallLifecycleRef = useRef(endCallLifecycle);
+	endCallLifecycleRef.current = endCallLifecycle;
+
 	const flushPendingActions = useCallback((afterItemId) => {
 		const pending = pendingActionsRef.current;
 		if (!pending.length) return;
@@ -370,7 +384,7 @@ export function VoiceCallView({
 						error: true
 					}));
 				} else if (connectionState === 'closed') {
-					onExit();
+					endCallLifecycleRef.current();
 				}
 			}
 		});
@@ -410,18 +424,17 @@ export function VoiceCallView({
 		identify,
 		labels,
 		onConversationId,
-		onExit,
 		signature,
 		teamId
 	]);
 
 	useEffect(() => {
 		void startCall();
-		const handlePageHide = () => cleanupSession();
+		const handlePageHide = () => endCallLifecycleRef.current();
 		window.addEventListener('pagehide', handlePageHide);
 		return () => {
 			window.removeEventListener('pagehide', handlePageHide);
-			cleanupSession();
+			endCallLifecycleRef.current();
 		};
 	}, []);
 
@@ -536,8 +549,7 @@ export function VoiceCallView({
 	const leaveCall = () => {
 		toolWorkingChimeRef.current?.setActive(false);
 		toolSearchingChimeRef.current?.setActive(false);
-		cleanupSession();
-		onExit();
+		endCallLifecycle();
 	};
 	const sendVoiceUserText = useCallback(
 		(text) => {
