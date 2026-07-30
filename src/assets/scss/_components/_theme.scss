@@ -145,18 +145,20 @@
 }
 
 .docsbot-chat-btn-send:disabled {
-	background: var(--docsbot-surface-muted);
+	background: transparent;
 	color: var(--docsbot-text-subtle);
 }
 
 .docsbot-chat-btn-send.docsbot-chat-btn-voice-orb
 	.docsbot-chat-btn-voice-orb-disc {
+	border: 0;
 	background: radial-gradient(
 		circle at center,
 		var(--docsbot-surface-muted) 0%,
-		var(--docsbot-surface-muted) 42%,
-		color-mix(in srgb, var(--docsbot-surface-muted) 55%, transparent) 68%,
-		transparent 100%
+		color-mix(in srgb, var(--docsbot-text-subtle) 18%, var(--docsbot-surface-muted))
+			55%,
+		color-mix(in srgb, var(--docsbot-text-subtle) 32%, var(--docsbot-surface-muted))
+			100%
 	);
 }
 

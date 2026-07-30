@@ -4108,7 +4108,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 													/>
 													<VoiceOrb
 														status={
-															VOICE_CALL_STATUS.LISTENING
+															VOICE_CALL_STATUS.AGENT_SPEAKING
 														}
 														color={
 															isVoiceOrbHovered
@@ -4116,12 +4116,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 																	'#1292ee'
 																: '#a6b3bf'
 														}
-														size={24}
+														size={22}
 														compact
 														speed={
 															isVoiceOrbHovered
-																? 1
-																: 0.25
+																? 1.35
+																: 0.5
 														}
 													/>
 												</button>
