@@ -317,6 +317,13 @@ export function mergeVoiceLookupSourcesIntoMessages(messages) {
 		) {
 			continue;
 		}
+		const messageText =
+			typeof message.message === 'string' ? message.message.trim() : '';
+		// Text chat stores the complete answer and its sources on the same
+		// lookup_answer row. Only voice tool attachments are standalone rows.
+		if (messageText && message.voiceCall !== true) {
+			continue;
+		}
 
 		let targetKey = null;
 		for (let j = i + 1; j < keys.length; j++) {

@@ -412,6 +412,42 @@ test('mergeVoiceLookupSourcesIntoMessages falls back to the prior agent turn', (
 	]);
 });
 
+test('mergeVoiceLookupSourcesIntoMessages preserves text answers before feedback prompts', () => {
+	const messages = {
+		user1: {
+			id: 'user1',
+			variant: 'user',
+			message: 'Can DocsBot learn from support tickets?'
+		},
+		answer1: {
+			id: 'answer1',
+			variant: 'chatbot',
+			type: 'lookup_answer',
+			message: 'DocsBot can learn from closed support tickets.',
+			sources: [
+				{
+					title: 'Training from support tickets',
+					url: 'https://example.com/support-tickets'
+				}
+			]
+		},
+		feedback1: {
+			id: 'feedback1',
+			variant: 'chatbot',
+			type: 'is_resolved_question',
+			message: 'Did that answer your question?',
+			responses: { yes: 'Yes', no: 'No' }
+		}
+	};
+
+	const merged = mergeVoiceLookupSourcesIntoMessages(messages);
+
+	assert.equal(merged, messages);
+	assert.equal(merged.answer1.message, messages.answer1.message);
+	assert.deepEqual(merged.answer1.sources, messages.answer1.sources);
+	assert.equal(merged.feedback1.sources, undefined);
+});
+
 test('composeVoiceConversationGroups merges lookup sources into the prior agent turn', () => {
 	const groups = composeVoiceConversationGroups([
 		{
