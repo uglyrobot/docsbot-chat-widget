@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Loader } from '../loader/Loader';
 import { useConfig } from '../configContext/ConfigContext';
@@ -27,6 +27,7 @@ import { StripeBilling } from '../stripeBilling/StripeBilling';
 import { CalendlyEmbed } from '../calendlyEmbed/CalendlyEmbed';
 import { CalComEmbed } from '../calComEmbed/CalComEmbed';
 import { TidyCalEmbed } from '../tidyCalEmbed/TidyCalEmbed';
+import { ImageLightbox } from '../imageLightbox/ImageLightbox';
 
 /**
  * Config `labels` keys when agent activity uses configKey (all tools except reasoning).
@@ -331,11 +332,102 @@ export const BotChatMessage = ({
 	const contentRef = useRef(null);
 	const [isSupportLoading, setIsSupportLoading] = useState(false);
 	const [isCopied, setIsCopied] = useState(false);
+	const [lightboxImage, setLightboxImage] = useState(null);
+	const [lightboxTrigger, setLightboxTrigger] = useState(null);
 	const [leadFormValues, setLeadFormValues] = useState({});
 	const [leadFormTouched, setLeadFormTouched] = useState(false);
 	const [voiceEscalationResolved, setVoiceEscalationResolved] =
 		useState(false);
 	const assistantMessagePrefix = `${botName || 'Assistant'}: `;
+
+	const openImageLightbox = useCallback((image, triggerElement) => {
+		setLightboxImage(image);
+		setLightboxTrigger(triggerElement);
+	}, []);
+
+	const closeImageLightbox = useCallback(() => {
+		setLightboxImage(null);
+		setLightboxTrigger(null);
+	}, []);
+
+	useEffect(() => {
+		const contentNode = contentRef.current;
+		if (!contentNode) return undefined;
+
+		const imageSelector = "img[data-streamdown='image']";
+		const removeImageEnhancement = (image) => {
+			image.classList.remove('docsbot-answer-image');
+			image.removeAttribute('role');
+			image.removeAttribute('tabindex');
+			image.removeAttribute('aria-label');
+			delete image.dataset.docsbotClickableImage;
+		};
+
+		const enhanceImages = () => {
+			contentNode.querySelectorAll(imageSelector).forEach((image) => {
+				if (image.closest("a, [data-streamdown='link']")) {
+					removeImageEnhancement(image);
+					return;
+				}
+				image.classList.add('docsbot-answer-image');
+				image.dataset.docsbotClickableImage = 'true';
+				image.setAttribute('role', 'button');
+				image.setAttribute('tabindex', '0');
+				image.setAttribute(
+					'aria-label',
+					image.alt || image.title || image.src
+				);
+			});
+		};
+
+		const getImageFromEvent = (event) => {
+			const target = event.target;
+			return target instanceof Element
+				? target.closest(imageSelector)
+				: null;
+		};
+
+		const handleClick = (event) => {
+			const image = getImageFromEvent(event);
+			if (!image || image.closest("a, [data-streamdown='link']")) return;
+
+			event.preventDefault();
+			event.stopPropagation();
+			openImageLightbox(
+				{
+					src: image.currentSrc || image.src,
+					alt: image.alt,
+					title: image.title
+				},
+				image
+			);
+		};
+
+		const handleKeyDown = (event) => {
+			if (event.key !== 'Enter' && event.key !== ' ') return;
+
+			const image = getImageFromEvent(event);
+			if (!image || image.closest("a, [data-streamdown='link']")) return;
+
+			event.preventDefault();
+			handleClick(event);
+		};
+
+		enhanceImages();
+		const observer = new MutationObserver(enhanceImages);
+		observer.observe(contentNode, { childList: true, subtree: true });
+		contentNode.addEventListener('click', handleClick);
+		contentNode.addEventListener('keydown', handleKeyDown);
+
+		return () => {
+			observer.disconnect();
+			contentNode.removeEventListener('click', handleClick);
+			contentNode.removeEventListener('keydown', handleKeyDown);
+			contentNode.querySelectorAll('[data-docsbot-clickable-image]').forEach(
+				removeImageEnhancement
+			);
+		};
+	}, [openImageLightbox, payload.message, payload.streaming, payload.type]);
 
 	const copyContentToClipboard = async () => {
 		// payload.message contains raw markdown
@@ -877,6 +969,12 @@ export const BotChatMessage = ({
 
 	return (
 		<>
+			<ImageLightbox
+				image={lightboxImage}
+				closeLabel={labels.close}
+				onClose={closeImageLightbox}
+				triggerElement={lightboxTrigger}
+			/>
 			{showMessageChrome ? (
 			<div
 				className={clsx(

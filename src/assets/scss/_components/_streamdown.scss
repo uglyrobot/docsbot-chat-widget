@@ -38,3 +38,124 @@
 	overflow-wrap: anywhere;
 	word-break: normal;
 }
+
+.docsbot-streamdown img[data-streamdown='image'].docsbot-answer-image {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	cursor: zoom-in;
+	outline: 0 solid transparent;
+	transition:
+		box-shadow 140ms ease,
+		transform 140ms ease;
+}
+.docsbot-streamdown img[data-streamdown='image'].docsbot-answer-image:hover {
+	box-shadow: 0 0 0 2px var(--docsbot-border-subtle);
+}
+
+.docsbot-streamdown img[data-streamdown='image'].docsbot-answer-image:focus-visible {
+	box-shadow: 0 0 0 3px var(--docsbot-link-color, var(--docsbot-border));
+}
+
+.docsbot-image-lightbox {
+	position: fixed;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: clamp(16px, 4vw, 48px);
+	box-sizing: border-box;
+	background: rgba(15, 23, 42, 0.82);
+	z-index: 1000001;
+}
+
+.docsbot-image-lightbox-backdrop {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	cursor: default;
+}
+
+.docsbot-image-lightbox-panel {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	max-width: min(100%, 1200px);
+	max-height: 100%;
+	padding: clamp(16px, 3vw, 32px);
+	box-sizing: border-box;
+	border-radius: 14px;
+	background: var(--docsbot-surface-elevated);
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.38);
+	z-index: 1;
+}
+
+.docsbot-image-lightbox-image {
+	display: block;
+	max-width: 100%;
+	max-height: min(86vh, 760px);
+	width: auto;
+	height: auto;
+	object-fit: contain;
+	border-radius: 8px;
+}
+
+.docsbot-image-lightbox-close {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	min-height: 36px;
+	padding: 6px 10px;
+	border: 1px solid var(--docsbot-border-subtle);
+	border-radius: 999px;
+	background: var(--docsbot-surface);
+	color: var(--docsbot-text);
+	font: inherit;
+	font-size: 0.8125rem;
+	line-height: 1;
+	cursor: pointer;
+	z-index: 1;
+}
+
+.docsbot-image-lightbox-close span:first-child {
+	font-size: 1.35rem;
+	line-height: 0.7;
+}
+
+.docsbot-image-lightbox-close:hover {
+	background: var(--docsbot-surface-subtle);
+}
+
+.docsbot-image-lightbox-close:focus-visible {
+	outline: 2px solid var(--docsbot-link-color, var(--docsbot-border));
+	outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+	.docsbot-image-lightbox {
+		padding: 12px;
+	}
+
+	.docsbot-image-lightbox-panel {
+		width: 100%;
+		padding: 42px 12px 12px;
+	}
+
+	.docsbot-image-lightbox-image {
+		max-height: 78vh;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.docsbot-streamdown img[data-streamdown='image'].docsbot-answer-image {
+		transition: none;
+	}
+}
