@@ -52,6 +52,26 @@ document.addEventListener('docsbot_voice_call_end', (event) => {
 | `docsbot_voice_call_start` | Voice WebRTC data channel opens (connecting UI settles) | `{ conversationId: string \| null }` |
 | `docsbot_voice_call_end` | Caller leaves voice (End call, Back, remote close, etc.) | `{ conversationId: string \| null }` |
 | `docsbot_tool_call` | Tool requested in text chat **or** live voice (same shape) | `{ name: string, data: object \| string \| null }` |
+| `docsbot_lead_capture` | Lead form submission is accepted by the lead capture API | `{ conversationId: string \| null, fields: object, metadata: object }` |
+
+Listen on `document` to trigger analytics after a lead has been saved. `fields`
+contains the values submitted through the lead form. `metadata` contains the
+complete public metadata sent to the lead API, including merged `identify`
+values and the submitted fields.
+
+```js
+document.addEventListener('docsbot_lead_capture', (event) => {
+  console.log('Captured lead fields:', event.detail.fields);
+  console.log('Captured lead metadata:', event.detail.metadata);
+
+  fbq('trackCustom', 'DocsBotLeadCaptured', {
+    conversation_id: event.detail.conversationId,
+  });
+});
+```
+
+Lead fields may contain personal information. Do not send names, email
+addresses, phone numbers, or other prohibited customer data to Meta Pixel.
 
 Finalized caller and agent transcripts are appended to the same canonical
 conversation history as text-chat turns. Voice-mode `customButtonCallback` and
