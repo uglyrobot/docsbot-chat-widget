@@ -57,6 +57,7 @@ import {
 	trimPersistedChatHistory,
 	trimPersistedConversationMessages
 } from '../../utils/localStoragePersistence.mjs';
+import { dispatchLeadCaptureEvent } from '../../utils/widgetDomEvents.mjs';
 import {
 	mapChatHistoryStrings,
 	mapChatHistoryStringsSync
@@ -1071,7 +1072,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		return true;
 	};
 
-	const captureLead = async (metadata) => {
+	const captureLead = async (metadata, fields) => {
 		const conversationId = getConversationId();
 		const apiBase = apiBaseUrl;
 		const apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${conversationId}/lead`;
@@ -1095,7 +1096,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 					response.status,
 					response.statusText
 				);
+				return;
 			}
+
+			dispatchLeadCaptureEvent({
+				conversationId,
+				fields,
+				metadata
+			});
 		} catch (err) {
 			console.warn('DOCSBOT: Failed to capture lead', err);
 		}
@@ -1161,7 +1169,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			pendingLeadCapture || message?.leadContext || null;
 
 		updateIdentity(leadMetadata);
-		void captureLead(leadMetadata);
+		void captureLead(leadMetadata, data.metadata || {});
 
 		if (leadCollect?.mode === 'before_escalation') {
 			setLeadCollected(true);
