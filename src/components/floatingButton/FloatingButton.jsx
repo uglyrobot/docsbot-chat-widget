@@ -57,9 +57,9 @@ export const FloatingButton = ({
       aria-controls={chatPanelId}
       aria-label={buttonLabel}
       style={{
-        left: alignment === "left" ? horizontalMargin || 20 : "auto",
-        right: alignment === "right" ? horizontalMargin || 20 : "auto",
-        bottom: verticalMargin || 20,
+        left: alignment === "left" ? horizontalMargin ?? 20 : "auto",
+        right: alignment === "right" ? horizontalMargin ?? 20 : "auto",
+        bottom: verticalMargin ?? 20,
         "--docsbot-floating-button--bg": primaryColor,
         "--docsbot-floating-button--color":
           effectiveTheme === "dark"

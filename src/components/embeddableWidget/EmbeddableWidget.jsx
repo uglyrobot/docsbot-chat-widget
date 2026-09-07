@@ -18,6 +18,17 @@ fontAwesomeConfig.autoAddCss = false;
 
 export default class EmbeddableWidget {
   static _root;
+  static _optionsUpdater = null;
+  static _registerOptionsUpdater = (updater) => {
+    EmbeddableWidget._optionsUpdater = updater;
+  };
+
+  // Returns true when accepted; React applies the patch on its next render.
+  static updateOptions(options) {
+    if (!this._root || !this._optionsUpdater) return false;
+    return this._optionsUpdater(options);
+  }
+
   static el;
   static teamId;
   static botId;
@@ -168,7 +179,7 @@ export default class EmbeddableWidget {
         this.isChatbotOpen = true;
       }
       const component = (
-        <ConfigProvider {...props}>
+        <ConfigProvider {...props} registerOptionsUpdater={this._registerOptionsUpdater}>
           {embeddedChatElement ? (
             <EmbeddedChat />
           ) : (
@@ -228,6 +239,7 @@ export default class EmbeddableWidget {
         resolve(false);
         return;
       }
+      this._optionsUpdater = null;
       clearPendingStartVoiceCall();
       const div_root = document.getElementById("docsbotai-root");
       if (this._root) {

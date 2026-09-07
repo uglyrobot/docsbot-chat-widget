@@ -168,3 +168,30 @@ The embeddable chat widget is hosted on our CDN at https://widget.docsbot.ai/cha
 Third-party attribution and redistributed asset notices are maintained in
 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md). A plain-text copy is also
 published with the widget CDN build as `THIRD_PARTY_NOTICES.txt`.
+
+## Update options without remounting
+
+After `DocsBotAI.init()` or `DocsBotAI.mount()` resolves, call `DocsBotAI.updateOptions(patch)` from your application's route-change handler:
+
+```js
+DocsBotAI.updateOptions({
+  questions: ['How does pricing work?', 'Can I change plans later?'],
+  suggestedQuestions: 2,
+  labels: { suggestions: 'Questions about pricing' },
+});
+```
+
+This returns `true` when the patch is accepted (React applies it on the next render), or `false` if the widget is not ready or has been unmounted. Invalid values or unsupported keys throw `TypeError`; the entire patch is rejected. It does not fetch configuration, remount the widget, clear history, discard typed input, or open/close the panel. Call it explicitly from your router; the widget does not watch navigation automatically.
+
+Supported runtime keys:
+
+- `questions`, `suggestedQuestions`, `labels`
+- `botName`, `description`, `color`, `theme`, `icon`, `botIcon`, `logo`, `customCSS`
+- `alignment`, `headerAlignment`, `hideHeader`, `showButtonLabel`
+- `horizontalMargin`, `verticalMargin`, `keepFooterVisible`, `showAgentActivity`
+
+Omitted keys stay unchanged. `labels` merges per key and accepts string values (including empty strings). Question arrays replace the previous pool, accepting strings or `{ label, question }` objects. Suggestions are randomly selected without duplicate prompts, up to `suggestedQuestions` (default 3), during both initialization and runtime updates. Changing only the count selects from the retained full pool; unrelated updates do not reshuffle suggestions. Use `questions: []` or `suggestedQuestions: 0` to hide them. Counts must be nonnegative integers; margins must be finite nonnegative numbers. Theme accepts `auto`, `light`, or `dark`; alignment accepts `left` or `right`; header alignment accepts `left` or `center`. `logo: null` removes the logo.
+
+Suggestions retain their existing visibility rule: they appear before the conversation gets underway. Updating `labels.firstMessage` affects the next chat reset or fresh chat, not messages already displayed. Runtime changes last for this mounted instance; pass page-specific initial options again after a full page load. Agent mode, locale, authentication, domain restrictions, and capability settings remain initialization-only.
+
+Verification: `npm run test:options` runs merge/validation tests. With `npm run dev:web` already running, `npm run test:options:browser` checks both widget surfaces without triggering a production build. Set `WIDGET_TEST_URL` to use another development-server URL.

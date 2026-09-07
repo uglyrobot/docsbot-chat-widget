@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { defaultLabels } from "../../constants/defaultLabels.mjs";
 import { loadLocaleModule } from "../../utils/loadLocaleModule";
 import {
@@ -19,6 +19,8 @@ import {
   resolveWidgetThemePreference,
 } from "../../utils/widgetTheme.mjs";
 
+import { normalizeQuestions, pickQuestions, questionPool, validateRuntimeOptions, mergeRuntimeOptions } from "../../utils/runtimeWidgetOptions.mjs";
+
 const ConfigContext = createContext();
 
 export function useConfig() {
@@ -38,44 +40,6 @@ export function useConfig() {
  *
  * Widget JSON must include `language` (2-char, e.g. ja, en).
  */
-function normalizeSuggestedQuestionItem(item) {
-  if (typeof item === "string") {
-    const s = item.trim();
-    return s ? { label: s, question: s } : null;
-  }
-  if (item && typeof item === "object") {
-    const question =
-      typeof item.question === "string" ? item.question.trim() : "";
-    const label = typeof item.label === "string" ? item.label.trim() : "";
-    const q = question || label;
-    const l = label || question;
-    return q ? { label: l, question: q } : null;
-  }
-  return null;
-}
-
-const grabQuestions = (questions, limit = 3) => {
-  if (!questions?.length) return [];
-
-  const cap = Math.min(limit, questions.length);
-  const picked = [];
-  const seen = new Set();
-  let guard = 0;
-  const maxGuard = cap * questions.length * 8 + questions.length;
-
-  while (picked.length < cap && guard < maxGuard) {
-    guard++;
-    const randomIndex = Math.floor(Math.random() * questions.length);
-    const item = questions[randomIndex];
-    const key = item.question;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    picked.push(item);
-  }
-
-  return picked;
-};
-
 function resolveEffectiveBrowserLocale(options) {
   const navLangs =
     typeof navigator !== "undefined" ? navigator.languages : undefined;
@@ -91,8 +55,15 @@ function resolveEffectiveBrowserLocale(options) {
 }
 
 export function ConfigProvider(props = {}) {
-  const { id, supportCallback, customButtonCallback, identify, options, signature, children } = props;
+  const { id, supportCallback, customButtonCallback, identify, options, signature, children, registerOptionsUpdater } = props;
   const [config, setConfig] = useState(null);
+  // Imperative actions may run before React commits an accepted option patch.
+  // Retain label overrides immediately so even an older callback reads them.
+  const runtimeLabelOverrides = useRef({});
+  const getCurrentLabels = () => ({
+    ...config?.labels,
+    ...runtimeLabelOverrides.current,
+  });
   const [systemPrefersDark, setSystemPrefersDark] = useState(() =>
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function"
@@ -169,13 +140,9 @@ export function ConfigProvider(props = {}) {
       .then(async (data) => {
         if (cancelled) return;
 
-        const rawQuestions = Array.isArray(data.questions) ? data.questions : [];
-        const normalizedQuestions = rawQuestions
-          .map(normalizeSuggestedQuestionItem)
-          .filter(Boolean);
-        data.questions = grabQuestions(
-          normalizedQuestions,
-          options?.suggestedQuestions
+        const pool = normalizeQuestions(
+          Array.isArray(options?.questions) ? options.questions :
+          Array.isArray(data.questions) ? data.questions : []
         );
 
         if (data.allowedDomains && data.allowedDomains.length > 0) {
@@ -244,6 +211,9 @@ export function ConfigProvider(props = {}) {
           identify: identify || {},
           signature,
           ...restOptions,
+          [questionPool]: pool,
+          questions: pickQuestions(pool, options?.suggestedQuestions),
+          suggestedQuestions: options?.suggestedQuestions ?? 3,
           testing: optionsTesting === true,
           // Bot config by default; options.useVoiceAgent overrides when set.
           useVoiceAgent,
@@ -265,12 +235,29 @@ export function ConfigProvider(props = {}) {
     };
   }, [id, config, localDev]);
 
+  const ready = Boolean(config);
+  useLayoutEffect(() => {
+    if (!ready || !registerOptionsUpdater) return undefined;
+    registerOptionsUpdater((options) => {
+      const patch = validateRuntimeOptions(options);
+      if (patch.labels) {
+        runtimeLabelOverrides.current = {
+          ...runtimeLabelOverrides.current,
+          ...patch.labels,
+        };
+      }
+      setConfig((previous) => mergeRuntimeOptions(previous, patch));
+      return true;
+    });
+    return () => registerOptionsUpdater(null);
+  }, [ready, registerOptionsUpdater]);
+
   if (!config) return null;
 
   const effectiveTheme = resolveWidgetTheme(config.theme, systemPrefersDark);
 
   return (
-    <ConfigContext.Provider value={{ ...config, effectiveTheme, updateIdentity }}>
+    <ConfigContext.Provider value={{ ...config, effectiveTheme, updateIdentity, getCurrentLabels }}>
       {children}
     </ConfigContext.Provider>
   );
