@@ -1,6 +1,8 @@
 {
   "scripts": {
     "test:labels": "node --test src/utils/mergeWidgetLabels.test.mjs src/utils/localeLabelCompleteness.test.mjs src/utils/chatbotMessageState.test.mjs src/utils/chatHistoryTransforms.test.mjs",
+    "test:options": "node --test src/utils/runtimeWidgetOptions.test.mjs",
+    "test:options:browser": "playwright test --config playwright.runtime.config.mjs",
     "test:voice": "node --test src/utils/voiceAgentConfig.test.mjs src/utils/voiceRealtimeState.test.mjs src/utils/voiceCallSession.test.mjs src/utils/voiceCallHistory.test.mjs src/utils/voiceToolWorkingChime.test.mjs src/utils/externalActionUrl.test.mjs src/utils/microphonePermissions.test.mjs src/utils/voiceCallJsApi.test.mjs src/components/voiceCall/voiceOrbPresentation.test.mjs",
     "a11y": "npm-run-all a11y:lint a11y:axe",
     "a11y:axe": "PLAYWRIGHT_JSON_OUTPUT_FILE=artifacts/accessibility/playwright-axe-report.json playwright test tests/accessibility/widget.a11y.spec.mjs --reporter=list,json",

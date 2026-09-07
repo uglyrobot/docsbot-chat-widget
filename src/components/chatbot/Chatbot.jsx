@@ -332,6 +332,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	/** lookup_answer sources wait for the next agent transcript (same as voice UI). */
 	const pendingVoiceLookupSourcesRef = useRef([]);
 	const hasRestoredConversationRef = useRef(false);
+	const refreshChatHistoryRef = useRef(null);
 	const shouldRedactPii = isPiiRedactionEnabled(piiRedaction);
 	const apiBaseUrl =
 		localDev && typeof localApiBase === 'string' && localApiBase.trim()
@@ -944,7 +945,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		});
 
 		Emitter.on('docsbot_clear_history', async () => {
-			await refreshChatHistory();
+			await refreshChatHistoryRef.current?.();
 			Emitter.emit('docsbot_clear_history_complete');
 		});
 
@@ -2067,6 +2068,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	};
 
 	useEffect(() => {
+		refreshChatHistoryRef.current = refreshChatHistory;
+	});
+
+	useEffect(() => {
 		if (!isLeadCollectEnabled()) {
 			setLeadCollected(false);
 			return;
@@ -2075,6 +2080,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	}, [identify, leadCollect]);
 
 	useEffect(() => {
+		// Runtime greeting changes apply to the next reset, not stored/live history.
+		if (hasRestoredConversationRef.current) return;
 		const addFirstMessage = async () => {
 			if (Object.keys(stateMessagesRef.current || {}).length > 0) {
 				return;
@@ -3254,13 +3261,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 					? {
 							left:
 								alignment === 'left'
-									? horizontalMargin || 20
+									? horizontalMargin ?? 20
 									: 'auto',
 							right:
 								alignment === 'right'
-									? horizontalMargin || 20
+									? horizontalMargin ?? 20
 									: 'auto',
-							bottom: verticalMargin ? verticalMargin + 80 : 100
+							bottom: (verticalMargin ?? 20) + 80
 						}
 					: {}),
 				...chatThemeStyles
