@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { defaultLabels } from "../../constants/defaultLabels.mjs";
 import { loadLocaleModule } from "../../utils/loadLocaleModule";
 import {
@@ -57,6 +57,13 @@ function resolveEffectiveBrowserLocale(options) {
 export function ConfigProvider(props = {}) {
   const { id, supportCallback, customButtonCallback, identify, options, signature, children, registerOptionsUpdater } = props;
   const [config, setConfig] = useState(null);
+  // Imperative actions may run before React commits an accepted option patch.
+  // Retain label overrides immediately so even an older callback reads them.
+  const runtimeLabelOverrides = useRef({});
+  const getCurrentLabels = () => ({
+    ...config?.labels,
+    ...runtimeLabelOverrides.current,
+  });
   const [systemPrefersDark, setSystemPrefersDark] = useState(() =>
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function"
@@ -233,6 +240,12 @@ export function ConfigProvider(props = {}) {
     if (!ready || !registerOptionsUpdater) return undefined;
     registerOptionsUpdater((options) => {
       const patch = validateRuntimeOptions(options);
+      if (patch.labels) {
+        runtimeLabelOverrides.current = {
+          ...runtimeLabelOverrides.current,
+          ...patch.labels,
+        };
+      }
       setConfig((previous) => mergeRuntimeOptions(previous, patch));
       return true;
     });
@@ -244,7 +257,7 @@ export function ConfigProvider(props = {}) {
   const effectiveTheme = resolveWidgetTheme(config.theme, systemPrefersDark);
 
   return (
-    <ConfigContext.Provider value={{ ...config, effectiveTheme, updateIdentity }}>
+    <ConfigContext.Provider value={{ ...config, effectiveTheme, updateIdentity, getCurrentLabels }}>
       {children}
     </ConfigContext.Provider>
   );

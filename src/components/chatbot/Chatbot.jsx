@@ -275,6 +275,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		linkSafetyEnabled,
 		leadCollect,
 		updateIdentity,
+		getCurrentLabels,
 		supportCallback,
 		supportLink,
 		browserLocaleTag,
@@ -2052,14 +2053,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		setPendingLeadCapture(null);
 		resetPiiRedactionGuard();
 
-		// Add first message after clearing
-		if (labels.firstMessage) {
+		// Read accepted overrides even if updateOptions has not rendered yet.
+		const firstMessage = getCurrentLabels().firstMessage;
+		if (firstMessage) {
 			dispatch({
 				type: 'add_message',
 				payload: {
 					id: uuidv4(),
 					variant: 'chatbot',
-					message: labels.firstMessage,
+					message: firstMessage,
 					streaming: false,
 					timestamp: Date.now()
 				}

@@ -163,6 +163,49 @@ for (const embedded of [false, true]) {
 		await expect(
 			root.getByRole('button', { name: 'Next page', exact: true })
 		).toBeVisible();
+		// No render or awaited completion between accepting labels and resetting.
+		await page.evaluate(() => {
+			DocsBotAI.updateOptions({
+				labels: { firstMessage: 'Immediate greeting' }
+			});
+			DocsBotAI.updateOptions({
+				labels: { suggestions: 'Immediate starters' }
+			});
+			return DocsBotAI.clearChatHistory();
+		});
+		await expect(
+			root.getByText('Immediate greeting', { exact: true })
+		).toBeVisible();
+		await expect(
+			root.getByText('Future greeting', { exact: true })
+		).toHaveCount(0);
+		expect(
+			await page.evaluate(() => {
+				try {
+					DocsBotAI.updateOptions({
+						labels: { firstMessage: 'Rejected greeting' },
+						isAgent: false
+					});
+					return false;
+				} catch (error) {
+					DocsBotAI.clearChatHistory();
+					return error instanceof TypeError;
+				}
+			})
+		).toBe(true);
+		await expect(
+			root.getByText('Immediate greeting', { exact: true })
+		).toBeVisible();
+		await expect(
+			root.getByText('Rejected greeting', { exact: true })
+		).toHaveCount(0);
+		await page.evaluate(() => {
+			DocsBotAI.updateOptions({ labels: { firstMessage: '' } });
+			return DocsBotAI.clearChatHistory();
+		});
+		await expect(
+			root.getByText('Immediate greeting', { exact: true })
+		).toHaveCount(0);
 		// Check synchronous updater cleanup independently of unmount completion.
 		await page.evaluate(() => {
 			DocsBotAI.unmount();
