@@ -39,6 +39,37 @@
 	word-break: normal;
 }
 
+// Keep markers outside the content line so an unbreakable first element
+// (a link-safety button, code, or image) cannot strand the marker above it.
+.docsbot-streamdown [data-streamdown='unordered-list'],
+.docsbot-streamdown [data-streamdown='ordered-list'] {
+	list-style-position: outside;
+	padding-inline-start: 1.5em;
+}
+
+.docsbot-streamdown [data-streamdown='list-item'] {
+	min-width: 0;
+
+	[data-streamdown='image-wrapper'] {
+		display: inline-block;
+		vertical-align: top;
+		max-width: 100%;
+		margin-block: 0.25em;
+	}
+
+	[data-streamdown='image'] {
+		max-width: 100%;
+		height: auto;
+	}
+}
+
+.docsbot-streamdown [data-streamdown='list-item'] button[data-streamdown='link'] {
+	// Native buttons remain atomic inline boxes even with display:inline.
+	// Align their top, rather than their last text baseline, with the marker.
+	vertical-align: top;
+	max-width: 100%;
+}
+
 .docsbot-streamdown img[data-streamdown='image'].docsbot-answer-image {
 	display: block;
 	max-width: 100%;
