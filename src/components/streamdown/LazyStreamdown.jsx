@@ -1,5 +1,23 @@
 import React, { lazy, useMemo } from 'react';
+import { orderedListGutter } from '../../utils/orderedListGutter.mjs';
 import { useConfig } from '../configContext/ConfigContext';
+
+const OrderedList = ({ node, children, start = 1, className = '', style, ...props }) => {
+	const itemCount = node?.children?.filter(
+		(child) => child.type === 'element' && child.tagName === 'li'
+	).length || 1;
+	return (
+		<ol
+			{...props}
+			start={start}
+			className={`list-decimal whitespace-normal ${className}`}
+			data-streamdown="ordered-list"
+			style={{ ...style, '--docsbot-list-gutter': orderedListGutter(start, itemCount) }}
+		>
+			{children}
+		</ol>
+	);
+};
 
 /** Hosts always treated as safe when link safety is on (apex + subdomains via isAllowedHost). */
 const LINK_SAFETY_ALWAYS_ALLOWED_HOSTS = ['stripe.com'];
@@ -105,6 +123,7 @@ export const LazyStreamdown = lazy(async () => {
 		children,
 		allowedDomains = [],
 		linkSafetyEnabled = false,
+		components,
 		...props
 	}) => {
 		const { effectiveTheme } = useConfig();
@@ -137,6 +156,7 @@ export const LazyStreamdown = lazy(async () => {
 		return (
 			<Streamdown
 				{...props}
+				components={{ ol: OrderedList, ...components }}
 				linkSafety={linkSafety}
 				plugins={{
 					code,
