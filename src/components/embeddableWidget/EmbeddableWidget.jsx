@@ -14,6 +14,8 @@ import {
   markPendingStartVoiceCall,
 } from "../../utils/voiceCallJsApi.mjs";
 
+import { waitForMessageHandler } from "../../utils/widgetMessageReady.mjs";
+
 fontAwesomeConfig.autoAddCss = false;
 
 export default class EmbeddableWidget {
@@ -131,20 +133,21 @@ export default class EmbeddableWidget {
     });
   }
 
-  static addUserMessage(message, send = false) {
-    return new Promise(async (resolve) => {
-      if (!this._root) {
-        console.warn("DOCSBOT: EmbeddableWidget is not mounted, mount first");
-        resolve(false);
-        return;
-      }
+  static async addUserMessage(message, send = false) {
+    if (!this._root) {
+      console.warn("DOCSBOT: EmbeddableWidget is not mounted, mount first");
+      return false;
+    }
+    if (typeof message !== "string" || !message.trim()) return false;
 
-      if (send) {
-        await this.open();
-      }
+    // Chatbot mounts only when the floating panel opens, including for
+    // display-only messages. Inline chat is already visible.
+    if (!this.isEmbeddedMount) await this.open();
+    if (!(await waitForMessageHandler(Emitter))) return false;
 
-      Emitter.emit("docsbot_add_user_message", { message, send });
+    return new Promise((resolve) => {
       Emitter.once("docsbot_add_user_message_complete", resolve);
+      Emitter.emit("docsbot_add_user_message", { message, send });
     });
   }
 
@@ -197,7 +200,11 @@ export default class EmbeddableWidget {
         let el = null;
         let root = null;
         if (embeddedChatElement) {
-          el = embeddedChatElement;
+          // Existing embed snippets wait for this ID before resolving init().
+          el = document.createElement("div");
+          el.id = "docsbotai-root";
+          el.style.height = "100%";
+          embeddedChatElement.appendChild(el);
         } else {
           el = document.createElement("div");
           el.id = "docsbotai-root";

@@ -950,6 +950,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			Emitter.emit('docsbot_clear_history_complete');
 		});
 
+		Emitter.emit('docsbot_message_ready');
+
 		// Clean up event listeners
 		return () => {
 			Emitter.off('docsbot_add_user_message');
