@@ -23,7 +23,7 @@ function loadWidget() {
     createElement() { return { style: {} }; }
   };
   const context = { Emitter: emitter, waitForMessageHandler, fontAwesomeConfig: {}, console,
-    document, ConfigProvider: {}, EmbeddedChat: {}, App: {},
+    document, clearPendingStartVoiceCall() {}, ConfigProvider: {}, EmbeddedChat: {}, App: {},
     React: { createElement: () => ({}) },
     ReactDOM: { createRoot: () => ({ render() { queueMicrotask(() => emitter.emit('docsbot_mount_complete')); } }) }
   };
@@ -82,3 +82,38 @@ test('readiness timeout and unmount clean up listeners', async () => {
   assert.equal(await pending, false);
   assert.deepEqual(emitter.eventNames(), []);
 });
+
+for (const remount of [false, true]) {
+  test(`inline message cancels if unmounted during readiness await, remount=${remount}`, async () => {
+    const { Widget, emitter } = loadWidget();
+    Widget.isEmbeddedMount = true;
+    Widget.el = {};
+    Widget._root = {
+      unmount() { emitter.removeAllListeners('docsbot_add_user_message'); }
+    };
+    let deliveries = 0;
+    const handler = () => {
+      deliveries++;
+      emitter.emit('docsbot_add_user_message_complete');
+    };
+    emitter.on('docsbot_add_user_message', handler);
+    const pending = Widget.addUserMessage('Hello', true);
+    void Widget.unmount();
+    if (remount) {
+      Widget._root = {};
+      emitter.on('docsbot_add_user_message', handler);
+    }
+    let timer;
+    try {
+      const result = await Promise.race([
+        pending,
+        new Promise((_, reject) => { timer = setTimeout(() => reject(Error('message hung')), 100); })
+      ]);
+      assert.equal(result, false);
+      assert.equal(deliveries, 0);
+      assert.equal(emitter.listenerCount('docsbot_add_user_message_complete'), 0);
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+}

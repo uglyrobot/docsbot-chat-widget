@@ -140,10 +140,18 @@ export default class EmbeddableWidget {
     }
     if (typeof message !== "string" || !message.trim()) return false;
 
+    const mountedRoot = this._root;
+
     // Chatbot mounts only when the floating panel opens, including for
     // display-only messages. Inline chat is already visible.
     if (!this.isEmbeddedMount) await this.open();
     if (!(await waitForMessageHandler(Emitter))) return false;
+
+    // Even an already-ready promise yields: unmount/close may remove the
+    // handler before we resume. Never deliver an old call to a new mount.
+    if (this._root !== mountedRoot || !Emitter.listenerCount("docsbot_add_user_message")) {
+      return false;
+    }
 
     return new Promise((resolve) => {
       Emitter.once("docsbot_add_user_message_complete", resolve);
