@@ -35,14 +35,6 @@ export const LeadCollectMessage = ({
 	if (fields.length === 0) {
 		return null;
 	}
-	const hasMissingRequired = fields.some(
-		(field, index) =>
-			field.required &&
-			!String(
-				leadFormValues[field.key || `field_${index}`] || ''
-			).trim()
-	);
-
 	useEffect(() => {
 		if (!payload?.leadForm?.fields) return;
 		const nextValues = {};
@@ -73,16 +65,10 @@ export const LeadCollectMessage = ({
 					<div className="space-y-4 w-full">
 						<form
 							className="space-y-4 w-full"
+							onInvalid={() => setHasSubmitted(true)}
 							onSubmit={(event) => {
 								event.preventDefault();
 								setHasSubmitted(true);
-								setTouchedFieldKeys((previous) => {
-									const next = { ...previous };
-									fields.forEach((field, index) => {
-										next[field.key || `field_${index}`] = true;
-									});
-									return next;
-								});
 								if (
 									event.currentTarget.reportValidity &&
 									!event.currentTarget.reportValidity()
@@ -357,19 +343,16 @@ export const LeadCollectMessage = ({
 							</div>
 								<div className="flex items-center justify-end gap-3 pt-2">
 									<button
-									type="submit"
-									className="rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
-									style={{
-										backgroundColor:
-											'var(--docsbot-color-main, #1292ee)',
-										color:
-											'var(--docsbot-color-main-contrast, #000000)',
-										opacity: hasMissingRequired ? 0.6 : 1,
-										cursor: hasMissingRequired ? 'not-allowed' : 'pointer'
-									}}
-									disabled={hasMissingRequired}
-								>
-									{labels.continue || 'Continue'}
+										type="submit"
+										className="rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+										style={{
+											backgroundColor:
+												'var(--docsbot-color-main, #1292ee)',
+											color:
+												'var(--docsbot-color-main-contrast, #000000)'
+										}}
+									>
+										{labels.continue || 'Continue'}
 									</button>
 								</div>
 						</form>
