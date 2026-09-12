@@ -109,20 +109,40 @@ test("lead capture form exposes labels and invalid state before support escalati
 
   await nameField.fill("A11y Tester");
 
-  await expect(emailField).toHaveAttribute("aria-invalid", "true");
-  await expect(companySizeField).toHaveAttribute("aria-invalid", "true");
+  await expect(emailField).not.toHaveAttribute("aria-invalid", "true");
+  await expect(companySizeField).not.toHaveAttribute("aria-invalid", "true");
   await expect(
     page
       .locator("#docsbotai-root")
-      .getByText("Please fill out required fields.")
-      .first()
-  ).toBeVisible();
+      .getByRole("alert")
+  ).toHaveCount(0);
+
+  await emailField.focus();
+  await page.keyboard.press("Tab");
+
+  await expect(emailField).toHaveAttribute("aria-invalid", "true");
+  await expect(companySizeField).not.toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page.locator("#docsbotai-root").getByRole("alert")
+  ).toHaveCount(1);
   await expect(
     page
       .locator("#docsbotai-root")
       .locator(".docsbot-chat-lead-message-container")
       .getByRole("button", { name: "Continue" })
-  ).toBeDisabled();
+  ).toBeEnabled();
+
+  await page
+    .locator("#docsbotai-root")
+    .locator(".docsbot-chat-lead-message-container")
+    .getByRole("button", { name: "Continue" })
+    .click();
+
+  await expect(emailField).toHaveAttribute("aria-invalid", "true");
+  await expect(companySizeField).toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page.locator("#docsbotai-root").getByRole("alert")
+  ).toHaveCount(2);
 });
 
 test("embedded mode renders the chat surface with no critical axe violations", async ({
