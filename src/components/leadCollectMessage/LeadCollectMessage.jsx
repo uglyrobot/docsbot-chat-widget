@@ -9,7 +9,8 @@ export const LeadCollectMessage = ({
 }) => {
 	const { labels } = useConfig();
 	const [leadFormValues, setLeadFormValues] = useState({});
-	const [leadFormTouched, setLeadFormTouched] = useState(false);
+	const [touchedFieldKeys, setTouchedFieldKeys] = useState({});
+	const [hasSubmitted, setHasSubmitted] = useState(false);
 	const [isWide, setIsWide] = useState(false);
 	const leadMessageRef = useRef(null);
 
@@ -35,9 +36,11 @@ export const LeadCollectMessage = ({
 		return null;
 	}
 	const hasMissingRequired = fields.some(
-		(field) =>
+		(field, index) =>
 			field.required &&
-			!String(leadFormValues[field.key] || '').trim()
+			!String(
+				leadFormValues[field.key || `field_${index}`] || ''
+			).trim()
 	);
 
 	useEffect(() => {
@@ -72,7 +75,14 @@ export const LeadCollectMessage = ({
 							className="space-y-4 w-full"
 							onSubmit={(event) => {
 								event.preventDefault();
-								setLeadFormTouched(true);
+								setHasSubmitted(true);
+								setTouchedFieldKeys((previous) => {
+									const next = { ...previous };
+									fields.forEach((field, index) => {
+										next[field.key || `field_${index}`] = true;
+									});
+									return next;
+								});
 								if (
 									event.currentTarget.reportValidity &&
 									!event.currentTarget.reportValidity()
@@ -111,8 +121,10 @@ export const LeadCollectMessage = ({
 								const inputType = field.type || 'text';
 								const fieldValue = leadFormValues[field.key || fieldKey] || '';
 								const isLocked = Boolean(field.isPrefilled);
+								const isFieldTouched =
+									hasSubmitted || touchedFieldKeys[fieldKey];
 								const isMissingRequired =
-									leadFormTouched &&
+									isFieldTouched &&
 									field.required &&
 									!String(fieldValue || '').trim();
 								const normalizedColorValue =
@@ -161,10 +173,16 @@ export const LeadCollectMessage = ({
 									'aria-describedby': describedBy || undefined,
 									onChange: (event) => {
 										if (isLocked) return;
-										setLeadFormTouched(true);
 										setLeadFormValues((prev) => ({
 											...prev,
 											[field.key || fieldKey]: event.target.value
+										}));
+									},
+									onBlur: () => {
+										if (isLocked) return;
+										setTouchedFieldKeys((previous) => ({
+											...previous,
+											[field.key || fieldKey]: true
 										}));
 									}
 								};
@@ -203,13 +221,19 @@ export const LeadCollectMessage = ({
 																disabled={isLocked}
 																onChange={(event) => {
 																	if (isLocked) return;
-																	setLeadFormTouched(true);
 																	setLeadFormValues((prev) => ({
 																		...prev,
 																		[field.key || fieldKey]:
 																			event.target.value
 																	}));
 																}}
+																	onBlur={() => {
+																		if (isLocked) return;
+																		setTouchedFieldKeys((previous) => ({
+																			...previous,
+																			[field.key || fieldKey]: true
+																		}));
+																	}}
 																className="docsbot-color-swatch h-7 w-14 shrink-0 cursor-pointer rounded-md border-0 bg-transparent p-0 disabled:cursor-not-allowed"
 																aria-describedby={
 																	describedBy || undefined
@@ -331,20 +355,8 @@ export const LeadCollectMessage = ({
 								);
 							})}
 							</div>
-							<div
-								className={`flex items-center gap-3 pt-2 ${
-									leadFormTouched && hasMissingRequired
-										? 'justify-between'
-										: 'justify-end'
-								}`}
-							>
-								{leadFormTouched && hasMissingRequired && (
-									<div className="text-xs text-red-700">
-										{labels.requiredField ||
-											'Please fill out required fields.'}
-									</div>
-								)}
-								<button
+								<div className="flex items-center justify-end gap-3 pt-2">
+									<button
 									type="submit"
 									className="rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
 									style={{
@@ -358,8 +370,8 @@ export const LeadCollectMessage = ({
 									disabled={hasMissingRequired}
 								>
 									{labels.continue || 'Continue'}
-								</button>
-							</div>
+									</button>
+								</div>
 						</form>
 					</div>
 				</div>
