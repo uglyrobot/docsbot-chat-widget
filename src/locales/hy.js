@@ -3,6 +3,7 @@ export default {
   "name": "Հայերեն (Armenian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Դադարեցնել պատասխանը",
     "poweredBy": "Աջակցում է",
     "inputPlaceholder": "Ուղարկեք հաղորդագրություն...",
     "firstMessage": "Ինչպե՞ս կարող եմ օգնել։",

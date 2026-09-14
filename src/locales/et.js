@@ -3,6 +3,7 @@ export default {
   "name": "Eesti (Estonian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Peata vastus",
     "poweredBy": "Toetab",
     "inputPlaceholder": "Saada sõnum...",
     "firstMessage": "Kuidas saan aidata?",

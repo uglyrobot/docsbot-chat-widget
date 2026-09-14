@@ -15,6 +15,7 @@ export const defaultLabels = {
   create: "Create your own!",
   submit: "Submit",
   audioRecord: "Record voice message",
+  stopResponse: "Stop response",
   audioStopRecording: "Stop recording voice message",
   audioTranscribing: "Transcribing voice message…",
   audioMicrophoneError:

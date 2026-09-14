@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
 	DocsBotVoiceCallSession,
 	VoiceCallSessionError,
+	buildVoiceToolResultRequest,
 	buildVoiceWebrtcRequest,
 	buildVoiceWidgetPublicMetadata,
 	microphoneLevelFromByteTimeDomain,
@@ -158,7 +159,8 @@ function createHarness({ responseOk = true } = {}) {
 			text: async () => 'v=0\r\no=server-answer',
 			headers: new Headers({
 				'X-DocsBot-Voice-Call-Id': 'call-123',
-				'X-DocsBot-Conversation-Id': 'conversation-returned'
+				'X-DocsBot-Conversation-Id': 'conversation-returned',
+				'X-DocsBot-Voice-Event-Token': 'event-token'
 			})
 		};
 	};
@@ -235,6 +237,28 @@ test('voice public metadata flattens identify.metadata like chat-agent', () => {
 			'metadata'
 		),
 		false
+	);
+});
+
+test('tool result request is scoped to its voice call and per-session token', () => {
+	assert.deepEqual(
+		buildVoiceToolResultRequest({
+			apiBase: 'https://api.docsbot.ai',
+			teamId: 'team 1',
+			botId: 'bot/1',
+			callId: 'live_123',
+			toolCallId: 'call/booking',
+			eventToken: 'event-token'
+		}),
+		{
+			url:
+				'https://api.docsbot.ai/teams/team%201/bots/bot%2F1/' +
+				'voice/live_123/tool-result?tool_call_id=call%2Fbooking',
+			options: {
+				method: 'GET',
+				headers: { 'X-DocsBot-Voice-Event-Token': 'event-token' }
+			}
+		}
 	);
 });
 
@@ -345,6 +369,106 @@ test('sendUserText cancels in-flight speech then injects a user text turn', asyn
 
 	session.close();
 	assert.equal(session.sendUserText('Still here?'), false);
+});
+
+test('sendUserText uses Live Responses commands after session.started', async () => {
+	const harness = createHarness();
+	const session = new DocsBotVoiceCallSession({
+		apiBase: 'https://api.docsbot.ai',
+		teamId: 'team-1',
+		botId: 'bot-1',
+		remoteAudio: harness.remoteAudio,
+		fetchImpl: harness.fetchImpl,
+		RTCPeerConnectionImpl: harness.FakePeerConnection,
+		getUserMedia: async () => harness.microphone
+	});
+
+	await session.start();
+	const channel = harness.lastPeerConnection.dataChannel;
+	channel.readyState = 'open';
+	channel.listeners.get('message')?.({
+		data: JSON.stringify({
+			type: 'session.started',
+			session: { model: 'gpt-live-1' }
+		})
+	});
+
+	assert.equal(session.sendUserText('  No, thanks  '), true);
+	assert.deepEqual(
+		channel.sent.map((raw) => JSON.parse(raw)),
+		[
+			{
+				type: 'response.item.create',
+				item: {
+					type: 'message',
+					role: 'user',
+					content: [{ type: 'input_text', text: 'No, thanks' }]
+				}
+			},
+			{ type: 'response.create' }
+		]
+	);
+});
+
+test('Live tool result polling waits for server completion and returns a client action', async () => {
+	const harness = createHarness();
+	let pollCount = 0;
+	const fetchImpl = async (url, options) => {
+		if (url.includes('/tool-result?')) {
+			pollCount += 1;
+			assert.equal(
+				options.headers['X-DocsBot-Voice-Event-Token'],
+				'event-token'
+			);
+			if (pollCount === 1) {
+				return { ok: false, status: 202 };
+			}
+			return {
+				ok: true,
+				status: 200,
+				json: async () => ({
+					completed: true,
+					callId: 'call-booking',
+					clientAction: {
+						type: 'calcom',
+						eventPath: 'docsbot/demo'
+					}
+				})
+			};
+		}
+		return harness.fetchImpl(url, options);
+	};
+	const session = new DocsBotVoiceCallSession({
+		apiBase: 'https://api.docsbot.ai',
+		teamId: 'team-1',
+		botId: 'bot-1',
+		remoteAudio: harness.remoteAudio,
+		fetchImpl,
+		RTCPeerConnectionImpl: harness.FakePeerConnection,
+		getUserMedia: async () => harness.microphone
+	});
+
+	await session.start();
+	const channel = harness.lastPeerConnection.dataChannel;
+	channel.readyState = 'open';
+	channel.listeners.get('message')?.({
+		data: JSON.stringify({ type: 'session.started' })
+	});
+	assert.deepEqual(
+		await session.waitForToolResult('call-booking', {
+			timeoutMs: 100,
+			pollIntervalMs: 1
+		}),
+		{
+			type: 'docsbot.tool_result',
+			call_id: 'call-booking',
+			client_action: {
+				type: 'calcom',
+				eventPath: 'docsbot/demo'
+			}
+		}
+	);
+	assert.equal(pollCount, 2);
 });
 
 test('safe API errors propagate without leaving a live peer connection', async () => {

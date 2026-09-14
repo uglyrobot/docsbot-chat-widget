@@ -3,6 +3,7 @@ export default {
   "name": "Русский (Russian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Остановить ответ",
     "poweredBy": "Предоставлено",
     "inputPlaceholder": "Отправить сообщение...",
     "firstMessage": "Чем я могу помочь?",

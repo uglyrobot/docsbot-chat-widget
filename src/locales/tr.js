@@ -3,6 +3,7 @@ export default {
   "name": "Türkçe (Turkish)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Yanıtı durdur",
     "poweredBy": "Tarafından desteklenmektedir",
     "inputPlaceholder": "Bir mesaj gönder...",
     "firstMessage": "Size nasıl yardımcı olabilirim?",

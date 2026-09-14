@@ -3,6 +3,7 @@ export default {
   "name": "Română (Romanian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Oprește răspunsul",
     "poweredBy": "Alimentat de",
     "inputPlaceholder": "Trimite un mesaj...",
     "firstMessage": "Cu ce vă pot ajuta?",

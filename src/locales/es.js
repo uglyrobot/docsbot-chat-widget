@@ -3,6 +3,7 @@ export default {
   "name": "Español (Spanish)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Detener respuesta",
     "poweredBy": "Proporcionado por",
     "inputPlaceholder": "Enviar un mensaje...",
     "firstMessage": "¿Cómo puedo ayudarte?",

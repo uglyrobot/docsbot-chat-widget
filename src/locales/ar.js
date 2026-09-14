@@ -3,6 +3,7 @@ export default {
   "name": "العربية (Arabic)",
   "isRTL": true,
   "labels": {
+    "stopResponse": "إيقاف الرد",
     "poweredBy": "مدعوم من",
     "inputPlaceholder": "أرسل رسالة...",
     "firstMessage": "كيف يمكنني مساعدتك؟",

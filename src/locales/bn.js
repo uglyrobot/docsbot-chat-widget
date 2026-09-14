@@ -3,6 +3,7 @@ export default {
   "name": "বাংলা (Bengali)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "উত্তর থামান",
     "poweredBy": "দ্বারা চালিত",
     "inputPlaceholder": "একটি বার্তা পাঠান...",
     "firstMessage": "আমি আপনাকে কীভাবে সাহায্য করতে পারি?",

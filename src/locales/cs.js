@@ -3,6 +3,7 @@ export default {
   "name": "Čeština (Czech)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Zastavit odpověď",
     "poweredBy": "Poskytováno",
     "inputPlaceholder": "Poslat zprávu...",
     "firstMessage": "Jak vám mohu pomoci?",

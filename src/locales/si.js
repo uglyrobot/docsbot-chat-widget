@@ -3,6 +3,7 @@ export default {
   "name": "සිංහල (Sinhala)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "පිළිතුර නවත්වන්න",
     "poweredBy": "සපයනු ලබන්නේ",
     "inputPlaceholder": "පණිවිඩයක් යවන්න...",
     "firstMessage": "මම ඔබට කෙසේ උදව් කළ හැකිද?",

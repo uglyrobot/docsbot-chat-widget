@@ -3,6 +3,7 @@ export default {
   "name": "Hrvatski (Croatian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Zaustavi odgovor",
     "poweredBy": "Pokreće",
     "inputPlaceholder": "Pošalji poruku...",
     "firstMessage": "Kako vam mogu pomoći?",

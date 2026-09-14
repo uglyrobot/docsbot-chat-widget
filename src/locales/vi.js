@@ -3,6 +3,7 @@ export default {
   "name": "Tiếng Việt (Vietnamese)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Dừng phản hồi",
     "poweredBy": "Được hỗ trợ bởi",
     "inputPlaceholder": "Gửi tin nhắn...",
     "firstMessage": "Tôi có thể giúp gì cho bạn?",

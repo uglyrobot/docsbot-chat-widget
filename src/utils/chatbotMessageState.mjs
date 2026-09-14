@@ -47,3 +47,24 @@ export function shouldShowErrorSupportButton(payload) {
 export function getVisibleMessageKeys(messages) {
 	return Object.keys(messages || {});
 }
+
+// Finish interrupted messages without losing text already received.
+export function stopResponseMessages(messages) {
+	return Object.fromEntries(
+		Object.entries(messages || {}).flatMap(([id, message]) => {
+			if (!message.loading && !message.streaming) return [[id, message]];
+			if (message.variant === 'chatbot' && !message.message) return [];
+			return [
+				[
+					id,
+					{
+						...message,
+						loading: false,
+						streaming: false,
+						agentActivity: null
+					}
+				]
+			];
+		})
+	);
+}

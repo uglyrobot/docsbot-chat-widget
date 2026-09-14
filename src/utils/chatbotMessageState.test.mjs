@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  stopResponseMessages,
   getVisibleMessageKeys,
   sanitizeRestoredConversation,
   shouldShowErrorSupportButton,
@@ -110,4 +111,33 @@ test("shouldShowErrorSupportButton suppresses browser microphone errors only whe
     }),
     false
   );
+});
+
+test('stopping preserves partial text and clears activity without changing completed messages', () => {
+	const done = {
+		variant: 'chatbot',
+		message: 'Earlier answer',
+		loading: false
+	};
+	const partial = {
+		variant: 'chatbot',
+		message: 'Partial answer',
+		streaming: true,
+		agentActivity: { type: 'thinking' }
+	};
+	const messages = {
+		done,
+		partial,
+		pending: { variant: 'chatbot', loading: true, message: null },
+		audio: { variant: 'user', loading: true, message: 'Question' }
+	};
+	const result = stopResponseMessages(messages);
+	assert.equal(result.done, done);
+	assert.equal(result.partial.message, 'Partial answer');
+	assert.equal(result.partial.streaming, false);
+	assert.equal(result.partial.agentActivity, null);
+	assert.equal(result.pending, undefined);
+	assert.equal(result.audio.loading, false);
+	assert.equal(messages.partial.streaming, true);
+	assert.deepEqual(stopResponseMessages(result), result);
 });

@@ -3,6 +3,7 @@ export default {
   "name": "ქართული (Georgian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "პასუხის შეჩერება",
     "poweredBy": "უზრუნველყოფს",
     "inputPlaceholder": "გაგზავნეთ შეტყობინება...",
     "firstMessage": "რით შემიძლია დაგეხმაროთ?",

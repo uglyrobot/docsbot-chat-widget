@@ -3,6 +3,7 @@ export default {
   "name": "Français (French)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Arrêter la réponse",
     "poweredBy": "Propulsé par",
     "inputPlaceholder": "Envoyer un message...",
     "firstMessage": "Comment puis-je vous aider?",

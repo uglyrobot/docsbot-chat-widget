@@ -3,6 +3,7 @@ export default {
   "name": "Svenska (Swedish)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Stoppa svaret",
     "poweredBy": "Drivs av",
     "inputPlaceholder": "Skicka ett meddelande...",
     "firstMessage": "Hur kan jag hjälpa dig?",

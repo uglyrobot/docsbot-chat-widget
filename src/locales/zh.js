@@ -3,6 +3,7 @@ export default {
   "name": "简体中文 (Chinese Simplified)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "停止回复",
     "poweredBy": "由...提供",
     "inputPlaceholder": "发送一条消息...",
     "firstMessage": "我能帮你做什么？",

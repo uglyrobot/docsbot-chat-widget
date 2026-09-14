@@ -3,6 +3,7 @@ export default {
   "name": "اردو (Urdu)",
   "isRTL": true,
   "labels": {
+    "stopResponse": "جواب روکیں",
     "poweredBy": "کی معاونت سے",
     "inputPlaceholder": "پیغام بھیجیں...",
     "firstMessage": "میں آپ کی کیسے مدد کر سکتا ہوں؟",

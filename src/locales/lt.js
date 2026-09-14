@@ -3,6 +3,7 @@ export default {
   "name": "Lietuvių (Lithuanian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Stabdyti atsakymą",
     "poweredBy": "Sukurta naudojant",
     "inputPlaceholder": "Siųsti žinutę...",
     "firstMessage": "Kaip galiu padėti?",

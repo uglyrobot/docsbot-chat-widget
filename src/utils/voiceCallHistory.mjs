@@ -8,6 +8,11 @@ const INTERACTIVE_VOICE_HISTORY_TYPES = new Set([
 
 function isAttachableVoiceAction(message) {
 	if (!message || typeof message !== 'object') return false;
+	if (message.variant === 'user') return false;
+	const id = typeof message.id === 'string' ? message.id : '';
+	// Live and hangup grouping is by row, not by card type, so a new
+	// `voice-action-*` client_action does not need a hangup special case.
+	if (id.startsWith('voice-action-')) return true;
 	if (INTERACTIVE_VOICE_HISTORY_TYPES.has(message.type)) return true;
 	if (message.schedulerEmbed) return true;
 	if (message.stripeBilling) return true;
@@ -325,11 +330,13 @@ export function mergeVoiceLookupSourcesIntoMessages(messages) {
 			continue;
 		}
 
+		const requireVoiceCall = message.voiceCall === true;
 		let targetKey = null;
 		for (let j = i + 1; j < keys.length; j++) {
 			const candidate = messages[keys[j]];
 			if (!candidate || typeof candidate !== 'object') continue;
 			if (candidate.variant === 'user') break;
+			if (requireVoiceCall && candidate.voiceCall !== true) continue;
 			if (isSpokenAgentMessage(candidate)) {
 				targetKey = keys[j];
 				break;
@@ -340,6 +347,7 @@ export function mergeVoiceLookupSourcesIntoMessages(messages) {
 				const candidate = messages[keys[j]];
 				if (!candidate || typeof candidate !== 'object') continue;
 				if (candidate.variant === 'user') break;
+				if (requireVoiceCall && candidate.voiceCall !== true) continue;
 				if (isSpokenAgentMessage(candidate)) {
 					targetKey = keys[j];
 					break;
@@ -413,6 +421,218 @@ export function composeVoiceConversationGroups(messages) {
 	}
 
 	return groups;
+}
+
+function liveTranscriptPayload(entry) {
+	return {
+		id: `voice-${entry.itemId}`,
+		variant: entry.role === 'caller' ? 'user' : 'chatbot',
+		message: entry.text,
+		realtimeItemId: entry.itemId
+	};
+}
+
+/**
+ * Copy live voice source grouping onto finalized transcripts so hangup
+ * chat history matches the in-call transcript instead of dumping leftover
+ * lookup sources onto the first agent turn.
+ */
+export function finalizeVoiceTranscriptsWithSources(transcripts, actionEntries) {
+	const list = Array.isArray(transcripts) ? transcripts : [];
+	const transcriptOrder = list.map((entry) => entry.itemId).filter(Boolean);
+	const liveItems = interleaveVoiceLiveItems(list, actionEntries);
+	const groups = composeVoiceConversationGroups(
+		liveItems.map((entry) =>
+			entry.kind === 'action'
+				? { id: entry.id, message: entry.message }
+				: {
+						id: entry.id,
+						message: liveTranscriptPayload(entry.transcript)
+					}
+		)
+	);
+
+	const finalized = [];
+	let heldSources = null;
+	for (const group of groups) {
+		const message = group.message;
+		const itemId =
+			typeof message?.realtimeItemId === 'string'
+				? message.realtimeItemId
+				: '';
+		const isSpokenTranscript =
+			Boolean(itemId) && message.type !== 'lookup_answer';
+		const groupSources =
+			Array.isArray(message?.sources) && message.sources.length
+				? message.sources
+				: null;
+
+		if (isSpokenTranscript) {
+			const role = message.variant === 'user' ? 'caller' : 'agent';
+			const sources =
+				role === 'agent' ? groupSources || heldSources : null;
+			if (role === 'agent') heldSources = null;
+			finalized.push({
+				itemId,
+				role,
+				text: typeof message.message === 'string' ? message.message : '',
+				...(sources ? { sources } : {}),
+				transcriptOrder
+			});
+			continue;
+		}
+
+		if (message?.type === 'lookup_answer' && groupSources) {
+			heldSources = groupSources;
+		}
+	}
+
+	if (heldSources) {
+		for (let i = finalized.length - 1; i >= 0; i -= 1) {
+			if (finalized[i].role === 'agent') {
+				finalized[i] = { ...finalized[i], sources: heldSources };
+				break;
+			}
+		}
+	}
+
+	return finalized;
+}
+
+export function queuePendingVoiceLookupSources(pending, entry) {
+	const list = Array.isArray(pending) ? pending : [];
+	const callId = typeof entry?.callId === 'string' ? entry.callId.trim() : '';
+	const sources = Array.isArray(entry?.sources) ? entry.sources : [];
+	if (!callId || !sources.length) return list;
+	const next = list.filter((item) => item.callId !== callId);
+	const afterRole =
+		entry.afterRole === 'caller' || entry.afterRole === 'agent'
+			? entry.afterRole
+			: null;
+	const afterItemId =
+		typeof entry.afterItemId === 'string' && entry.afterItemId.trim()
+			? entry.afterItemId.trim()
+			: null;
+	next.push({ callId, sources, afterItemId, afterRole });
+	return next;
+}
+
+function pendingLookupBelongsOnAgent(
+	entry,
+	{ itemId, itemIndex, transcriptOrder }
+) {
+	if (entry.afterItemId === itemId) return true;
+	if (entry.afterRole === 'agent') return false;
+	if (itemIndex < 0) return false;
+	const afterIndex = entry.afterItemId
+		? transcriptOrder.indexOf(entry.afterItemId)
+		: -1;
+	if (entry.afterItemId && afterIndex < 0) return false;
+	return itemIndex > afterIndex;
+}
+
+/**
+ * Take only the lookup sources that belong on this agent turn. Hangup
+ * replays every transcript in order, so dumping all pending sources onto
+ * the first agent bubble would move them off the answer they were shown on.
+ */
+export function takePendingVoiceLookupSourcesForAgent(
+	pending,
+	{ itemId, transcriptOrder }
+) {
+	const list = Array.isArray(pending) ? pending : [];
+	const id = typeof itemId === 'string' ? itemId.trim() : '';
+	if (!id) return { sources: null, pending: list };
+	const order = Array.isArray(transcriptOrder) ? transcriptOrder : [];
+	const itemIndex = order.indexOf(id);
+	const matched = [];
+	const remaining = [];
+	for (const entry of list) {
+		if (
+			pendingLookupBelongsOnAgent(entry, {
+				itemId: id,
+				itemIndex,
+				transcriptOrder: order
+			})
+		) {
+			matched.push(entry);
+		} else {
+			remaining.push(entry);
+		}
+	}
+	if (!matched.length) return { sources: null, pending: list };
+	const sources = [];
+	for (const entry of matched) {
+		if (Array.isArray(entry.sources)) sources.push(...entry.sources);
+	}
+	return {
+		sources: sources.length ? sources : null,
+		pending: remaining
+	};
+}
+
+function liveItemMessageKey(item) {
+	if (!item) return '';
+	if (item.kind === 'transcript') {
+		return item.id ? `voice-${item.id}` : '';
+	}
+	return item.id ? String(item.id) : '';
+}
+
+/**
+ * After hangup, GPT-Live transcripts are inserted into chat history after
+ * any cards that were added mid-call. Rebuild the map so escalation,
+ * booking, Stripe, and custom-button cards stay on the turn they were
+ * shown on in the live transcript instead of sitting under the greeting.
+ */
+export function orderVoiceHangupMessages(messages, transcripts, actionEntries) {
+	const current =
+		messages && typeof messages === 'object' && !Array.isArray(messages)
+			? { ...messages }
+			: {};
+	for (const entry of Array.isArray(actionEntries) ? actionEntries : []) {
+		if (
+			!entry?.id ||
+			!entry?.message ||
+			typeof entry.message !== 'object'
+		) {
+			continue;
+		}
+		if (entry.message.type === 'lookup_answer') continue;
+		if (!current[entry.id]) current[entry.id] = entry.message;
+	}
+	const liveItems = interleaveVoiceLiveItems(transcripts, actionEntries);
+	const liveKeys = [];
+	const liveKeySet = new Set();
+	for (const item of liveItems) {
+		const key = liveItemMessageKey(item);
+		if (!key || liveKeySet.has(key)) continue;
+		liveKeySet.add(key);
+		liveKeys.push(key);
+	}
+
+	const ordered = {};
+	for (const key of Object.keys(current)) {
+		if (liveKeySet.has(key)) continue;
+		ordered[key] = current[key];
+	}
+	for (const key of liveKeys) {
+		if (current[key]) ordered[key] = current[key];
+	}
+	for (const key of Object.keys(current)) {
+		if (ordered[key]) continue;
+		ordered[key] = current[key];
+	}
+
+	const currentKeys = Object.keys(current);
+	const nextKeys = Object.keys(ordered);
+	if (
+		currentKeys.length === nextKeys.length &&
+		currentKeys.every((key, index) => key === nextKeys[index])
+	) {
+		return current;
+	}
+	return ordered;
 }
 
 /**

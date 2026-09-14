@@ -3,6 +3,7 @@ export default {
   "name": "한국어 (Korean)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "응답 중지",
     "poweredBy": "제공자",
     "inputPlaceholder": "메시지를 보내세요...",
     "firstMessage": "어떻게 도와드릴까요?",

@@ -3,6 +3,7 @@ export default {
   "name": "עברית (Hebrew)",
   "isRTL": true,
   "labels": {
+    "stopResponse": "עצירת התשובה",
     "poweredBy": "מופעל על ידי",
     "inputPlaceholder": "שלח הודעה...",
     "firstMessage": "איך אני יכול לעזור לך?",

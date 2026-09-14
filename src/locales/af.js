@@ -3,6 +3,7 @@ export default {
   "name": "Afrikaans (Afrikaans)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Stop antwoord",
     "poweredBy": "Aangedryf deur",
     "inputPlaceholder": "Stuur ’n boodskap...",
     "firstMessage": "Hoe kan ek jou help?",

@@ -1621,6 +1621,16 @@ export const BotChatMessage = ({
 									if (
 										leadCollectMode === 'before_escalation'
 									) {
+										let endedVoiceCall = false;
+										if (payload.voiceCall) {
+											// Snapshot the current voice transcript before the
+											// lead form is appended to canonical chat history.
+											// Otherwise teardown inserts transcript rows after
+											// the form and leaves it stranded farther up-chat.
+											setVoiceEscalationResolved(true);
+											onEndVoiceCall?.();
+											endedVoiceCall = true;
+										}
 										const didOpen =
 											typeof onLeadCollectRequest ===
 												'function' &&
@@ -1628,14 +1638,13 @@ export const BotChatMessage = ({
 												history: state.chatHistory || []
 											});
 										if (didOpen) {
-											// End voice first so chat can show
-											// the lead form (same UI as text).
-											if (payload.voiceCall) {
-												setVoiceEscalationResolved(
-													true
-												);
-												onEndVoiceCall?.();
-											}
+											return;
+										}
+										if (endedVoiceCall) {
+											void runSupportCallback(
+												e,
+												state.chatHistory || []
+											);
 											return;
 										}
 									}

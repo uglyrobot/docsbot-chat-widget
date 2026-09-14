@@ -14,6 +14,7 @@ import {
 } from '../../utils/voiceCallSession.mjs';
 import {
 	composeVoiceConversationGroups,
+	finalizeVoiceTranscriptsWithSources,
 	interleaveVoiceLiveItems,
 	flushPendingVoiceActions,
 	queuePendingVoiceAction
@@ -193,6 +194,7 @@ export function VoiceCallView({
 	historyItems = [],
 	onConversationId,
 	onTranscriptFinal,
+	onHangupMessageOrder,
 	onClientAction,
 	onSchedulerBookingMetadata,
 	fetchAnswer,
@@ -212,7 +214,7 @@ export function VoiceCallView({
 	const pendingActionsRef = useRef([]);
 	/** Fires docsbot_voice_call_start once per successful connect. */
 	const voiceCallStartedEventRef = useRef(false);
-	/** Dedupes public docsbot_tool_call DOM events by Realtime call id. */
+	/** Dedupes public docsbot_tool_call DOM events by voice call id. */
 	const emittedToolCallIdsRef = useRef(new Set());
 	const toolWorkingChimeRef = useRef(null);
 	const toolSearchingChimeRef = useRef(null);
@@ -224,6 +226,8 @@ export function VoiceCallView({
 	}
 	const [voiceState, setVoiceState] = useState(createVoiceRealtimeState);
 	const [actionMessages, setActionMessages] = useState([]);
+	const actionMessagesRef = useRef([]);
+	actionMessagesRef.current = actionMessages;
 	const [errorDetail, setErrorDetail] = useState('');
 	/** True after the data channel opens; keeps connection errors on the large orb. */
 	const [hasConnected, setHasConnected] = useState(false);
@@ -256,12 +260,41 @@ export function VoiceCallView({
 
 	const onExitRef = useRef(onExit);
 	onExitRef.current = onExit;
+	const onTranscriptFinalRef = useRef(onTranscriptFinal);
+	onTranscriptFinalRef.current = onTranscriptFinal;
+	const onHangupMessageOrderRef = useRef(onHangupMessageOrder);
+	onHangupMessageOrderRef.current = onHangupMessageOrder;
 	const exitLifecycleRef = useRef(false);
+	const handleRealtimeEventRef = useRef(null);
 	// session.close() sets closed=true before teardown, so the 'closed' callback is
 	// suppressed. Parent unmount / pagehide / hangup must still run onExit once.
 	const endCallLifecycle = useCallback(() => {
 		if (exitLifecycleRef.current) return;
 		exitLifecycleRef.current = true;
+		const voiceState = voiceStateRef.current;
+		const transcripts = orderedVoiceTranscripts(voiceState);
+		let actions = actionMessagesRef.current;
+		if (pendingActionsRef.current.length) {
+			const flushed = flushPendingVoiceActions(
+				actions,
+				pendingActionsRef.current,
+				transcripts[transcripts.length - 1]?.itemId ?? null
+			);
+			pendingActionsRef.current = [];
+			actions = flushed.actions;
+			actionMessagesRef.current = actions;
+		}
+		const onFinal = onTranscriptFinalRef.current;
+		for (const transcript of finalizeVoiceTranscriptsWithSources(
+			transcripts,
+			actions
+		)) {
+			onFinal?.({
+				...transcript,
+				consumePendingLookupSources: false
+			});
+		}
+		onHangupMessageOrderRef.current?.(transcripts, actions);
 		cleanupSession();
 		onExitRef.current?.();
 	}, [cleanupSession]);
@@ -308,19 +341,52 @@ export function VoiceCallView({
 						}
 					})
 				);
+				void sessionRef.current
+					?.waitForToolResult(toolCall.callId)
+					.then((toolResultEvent) => {
+						if (!toolResultEvent || exitLifecycleRef.current) return;
+						handleRealtimeEventRef.current?.(toolResultEvent);
+					});
 			}
 
 			const clientAction = voiceClientActionFromEvent(event);
 			if (clientAction) {
-				const message = onClientAction?.(clientAction);
+				const transcripts = orderedVoiceTranscripts(next);
+				const lastTranscript = transcripts[transcripts.length - 1];
+				const message = onClientAction?.(clientAction, {
+					afterItemId: lastTranscript?.itemId ?? null,
+					afterRole: lastTranscript?.role ?? null
+				});
 				if (message) {
-					// Wait for the spoken handoff after the tool before showing
-					// the card, so buttons land under the post-tool reply.
 					pendingActionsRef.current = queuePendingVoiceAction(
 						pendingActionsRef.current,
 						message
 					);
+					if (event.type === 'docsbot.tool_result') {
+						// Live tool results arrive over the app-owned result channel,
+						// which can race behind the model's short spoken follow-up.
+						// Render immediately after the latest turn instead of depending
+						// on another transcript. The latest turn can be the caller's
+						// repeated request, so anchoring only to an agent row would move
+						// the new controls back beside the previous escalation.
+						flushPendingActions(lastTranscript?.itemId ?? null);
+					}
 				}
+			}
+
+			// GPT-Live intentionally has no authoritative transcript-completed
+			// event. Once the spoken handoff starts, attach any queued visual tool
+			// action to that growing assistant row instead of waiting forever for
+			// Realtime's response.output_audio_transcript.done.
+			if (
+				event.type === 'session.output_transcript.delta' &&
+				pendingActionsRef.current.length
+			) {
+				const transcripts = orderedVoiceTranscripts(next);
+				const agentTranscript = [...transcripts]
+					.reverse()
+					.find((entry) => entry.role === 'agent');
+				flushPendingActions(agentTranscript?.itemId ?? null);
 			}
 
 			const finalTranscript = finalVoiceTranscriptFromEvent(event);
@@ -349,6 +415,7 @@ export function VoiceCallView({
 		},
 		[flushPendingActions, onClientAction, onTranscriptFinal]
 	);
+	handleRealtimeEventRef.current = handleRealtimeEvent;
 
 	const startCall = useCallback(async () => {
 		cleanupSession();
@@ -548,6 +615,7 @@ export function VoiceCallView({
 		!isMuted &&
 		micLevel >= 0.08 &&
 		!voiceState.agentAudioPlaying &&
+		!voiceState.liveOutputActive &&
 		(voiceState.status === VOICE_CALL_STATUS.LISTENING ||
 			voiceState.status === VOICE_CALL_STATUS.USER_SPEAKING ||
 			voiceState.status === VOICE_CALL_STATUS.THINKING);

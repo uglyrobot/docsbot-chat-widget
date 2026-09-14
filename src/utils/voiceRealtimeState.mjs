@@ -23,6 +23,16 @@ export function createVoiceRealtimeState() {
 		// WebRTC audio keeps playing after response.done, so track the real
 		// playback window via output_audio_buffer.* instead of transcript end.
 		agentAudioPlaying: false,
+		// GPT-Live transcript deltas do not include item ids or a completion
+		// event. Keep application-owned row ids stable while each speaker's
+		// caption grows, and start a new row when the speaker changes.
+		liveTranscriptSpeaker: '',
+		liveInputTranscriptId: '',
+		liveOutputTranscriptId: '',
+		liveTranscriptSequence: 0,
+		// Live WebRTC audio is delivered on the remote media track, so it has no
+		// data-channel audio-buffer lifecycle events like Realtime.
+		liveOutputActive: false,
 		error: false
 	};
 }
@@ -34,6 +44,41 @@ function cleanText(value) {
 function eventItemId(event) {
 	const value = event?.item_id || event?.item?.id;
 	return typeof value === 'string' && value.trim() ? value.trim() : '';
+}
+
+function unwrapLiveResponseEvent(event) {
+	let current = event;
+	while (
+		current?.type === 'response.event' &&
+		current.event &&
+		typeof current.event === 'object'
+	) {
+		current = current.event;
+	}
+	return current;
+}
+
+function beginLiveTranscriptRow(state, role) {
+	const idKey =
+		role === 'caller' ? 'liveInputTranscriptId' : 'liveOutputTranscriptId';
+	const currentId = state[idKey];
+	if (state.liveTranscriptSpeaker === role && currentId) {
+		return { state, itemId: currentId };
+	}
+
+	const sequence = Number.isInteger(state.liveTranscriptSequence)
+		? state.liveTranscriptSequence + 1
+		: 1;
+	const itemId = `live-${role}-${sequence}`;
+	return {
+		state: {
+			...state,
+			liveTranscriptSpeaker: role,
+			liveTranscriptSequence: sequence,
+			[idKey]: itemId
+		},
+		itemId
+	};
 }
 
 function pendingToolCallIds(state) {
@@ -144,6 +189,7 @@ function parseVoiceToolCallData(params) {
 }
 
 export function voiceToolNameFromEvent(event) {
+	event = unwrapLiveResponseEvent(event);
 	const isToolItem =
 		(event?.type === 'response.output_item.added' ||
 			event?.type === 'response.output_item.done') &&
@@ -162,6 +208,7 @@ export function voiceToolNameFromEvent(event) {
  * when a safe tool name is available.
  */
 export function voiceToolCallFromEvent(event) {
+	event = unwrapLiveResponseEvent(event);
 	if (!event || typeof event.type !== 'string') return null;
 
 	if (
@@ -203,6 +250,7 @@ export function voiceToolCallFromEvent(event) {
 }
 
 export function finalVoiceTranscriptFromEvent(event) {
+	event = unwrapLiveResponseEvent(event);
 	const itemId = eventItemId(event);
 	if (!itemId) return null;
 
@@ -452,9 +500,34 @@ function sanitizeLookupAnswerClientAction(action, callId) {
  * `function_call_output` items. Raw tool output is never retained.
  */
 export function voiceClientActionFromEvent(event) {
+	if (event?.type === 'docsbot.tool_result') {
+		const callId = functionCallId({ call_id: event.call_id });
+		const action = event.client_action;
+		if (!callId || !action || typeof action !== 'object') return null;
+		const type = typeof action.type === 'string' ? action.type.trim() : '';
+		if (BOOKING_CLIENT_ACTION_TYPES.has(type)) {
+			return sanitizeBookingClientAction({ ...action, type }, callId);
+		}
+		if (type === 'custom_button') {
+			return sanitizeCustomButtonClientAction(action, callId);
+		}
+		if (type === 'support_escalation') {
+			return sanitizeSupportEscalationClientAction(action, callId);
+		}
+		if (type === 'stripe_billing') {
+			return sanitizeStripeBillingClientAction(action, callId);
+		}
+		if (type === 'lookup_answer') {
+			return sanitizeLookupAnswerClientAction(action, callId);
+		}
+		return null;
+	}
+	const isLiveResponseEvent = event?.type === 'response.event';
+	event = unwrapLiveResponseEvent(event);
 	if (
 		event?.type !== 'conversation.item.created' &&
-		event?.type !== 'conversation.item.done'
+		event?.type !== 'conversation.item.done' &&
+		(!isLiveResponseEvent || event?.type !== 'response.output_item.done')
 	) {
 		return null;
 	}
@@ -496,6 +569,78 @@ export function reduceVoiceRealtimeEvent(state, event) {
 	if (!state || !event || typeof event.type !== 'string') return state;
 
 	switch (event.type) {
+		case 'session.started':
+			return {
+				...state,
+				status: VOICE_CALL_STATUS.LISTENING,
+				error: false
+			};
+		case 'session.input_transcript.delta': {
+			const text = cleanText(event.delta);
+			if (!text) return state;
+			const row = beginLiveTranscriptRow(state, 'caller');
+			return upsertTranscript(
+				{
+					...row.state,
+					status: VOICE_CALL_STATUS.USER_SPEAKING,
+					liveOutputActive: false,
+					error: false
+				},
+				{
+					itemId: row.itemId,
+					role: 'caller',
+					text,
+					append: true,
+					isFinal: false
+				}
+			);
+		}
+		case 'session.output_transcript.delta': {
+			const text = cleanText(event.delta);
+			if (!text) return state;
+			const row = beginLiveTranscriptRow(state, 'agent');
+			return upsertTranscript(
+				{
+					...row.state,
+					status: VOICE_CALL_STATUS.AGENT_SPEAKING,
+					liveOutputActive: true,
+					// Long tool waits can include spoken progress updates. Keep
+					// pending tools so we return to USING_TOOL afterward.
+					...(isAwaitingVoiceToolResult(state)
+						? {}
+						: {
+								pendingToolCallIds: [],
+								activeToolName: ''
+							}),
+					error: false
+				},
+				{
+					itemId: row.itemId,
+					role: 'agent',
+					text,
+					append: true,
+					isFinal: false
+				}
+			);
+		}
+		case 'session.delegation.created':
+			return {
+				...state,
+				status: isAwaitingVoiceToolResult(state)
+					? VOICE_CALL_STATUS.USING_TOOL
+					: VOICE_CALL_STATUS.THINKING,
+				error: false
+			};
+		case 'response.event': {
+			const nested = unwrapLiveResponseEvent(event);
+			return nested === event
+				? state
+				: reduceVoiceRealtimeEvent(state, nested);
+		}
+		case 'docsbot.tool_result':
+			return withoutPendingToolCall(state, functionCallId({
+				call_id: event.call_id
+			}));
 		case 'input_audio_buffer.speech_started':
 			return upsertTranscript(
 				{
@@ -593,6 +738,7 @@ export function reduceVoiceRealtimeEvent(state, event) {
 			return {
 				...state,
 				agentAudioPlaying: false,
+				liveOutputActive: false,
 				status: idleStatusAfterSpeech(state),
 				...(isAwaitingVoiceToolResult(state)
 					? {}
@@ -631,6 +777,9 @@ export function reduceVoiceRealtimeEvent(state, event) {
 					functionCallId(event.item),
 					voiceToolNameFromEvent(event)
 				);
+			}
+			if (event?.item?.type === 'function_call_output') {
+				return withoutPendingToolCall(state, functionCallId(event.item));
 			}
 			if (event?.item?.type !== 'message') return state;
 			return upsertTranscript(state, {
@@ -684,7 +833,16 @@ export function reduceVoiceRealtimeEvent(state, event) {
 				pendingToolCallIds: [],
 				activeToolName: '',
 				agentAudioPlaying: false,
+				liveOutputActive: false,
 				error: true
+			};
+		case 'session.closed':
+			return {
+				...state,
+				status: VOICE_CALL_STATUS.ENDED,
+				agentAudioPlaying: false,
+				liveOutputActive: false,
+				error: false
 			};
 		default:
 			return state;
@@ -696,6 +854,18 @@ export function orderedVoiceTranscripts(state) {
 	return state.transcriptOrder
 		.map((itemId) => state.transcriptsById[itemId])
 		.filter((entry) => entry?.text);
+}
+
+export function voiceTranscriptSnapshots(state) {
+	const transcriptOrder = Array.isArray(state?.transcriptOrder)
+		? state.transcriptOrder
+		: [];
+	return orderedVoiceTranscripts(state).map((entry) => ({
+		itemId: entry.itemId,
+		role: entry.role,
+		text: entry.text,
+		transcriptOrder
+	}));
 }
 
 /**

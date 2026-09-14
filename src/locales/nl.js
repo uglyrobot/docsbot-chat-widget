@@ -3,6 +3,7 @@ export default {
   "name": "Nederlands (Dutch)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Antwoord stoppen",
     "poweredBy": "Aangeboden door",
     "inputPlaceholder": "Stuur een bericht...",
     "firstMessage": "Hoe kan ik je helpen?",
