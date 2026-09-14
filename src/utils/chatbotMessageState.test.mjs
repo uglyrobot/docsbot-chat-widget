@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  appendInterruptedChatHistory,
   stopResponseMessages,
   getVisibleMessageKeys,
   sanitizeRestoredConversation,
@@ -140,4 +141,78 @@ test('stopping preserves partial text and clears activity without changing compl
 	assert.equal(result.audio.loading, false);
 	assert.equal(messages.partial.streaming, true);
 	assert.deepEqual(stopResponseMessages(result), result);
+});
+
+test('stopping drops unresolved audio transcription placeholders', () => {
+	const messages = {
+		audio: {
+			variant: 'user',
+			loading: true,
+			audio: true,
+			message: 'Transcribing audio…'
+		},
+		pending: { variant: 'chatbot', loading: true, message: null }
+	};
+	const result = stopResponseMessages(messages);
+	assert.equal(result.audio, undefined);
+	assert.equal(result.pending, undefined);
+});
+
+test('appendInterruptedChatHistory saves the visible turn before the next request', () => {
+	const messages = {
+		greeting: { variant: 'chatbot', message: 'Hi' },
+		user: { variant: 'user', message: 'What is pricing?' },
+		bot: {
+			variant: 'chatbot',
+			message: 'Pricing starts at',
+			streaming: true
+		}
+	};
+	assert.deepEqual(
+		appendInterruptedChatHistory([], messages),
+		[
+			{ role: 'user', message: 'What is pricing?' },
+			{ role: 'assistant', message: 'Pricing starts at' }
+		]
+	);
+	assert.deepEqual(
+		appendInterruptedChatHistory(
+			[{ role: 'user', message: 'Earlier' }],
+			messages
+		),
+		[
+			{ role: 'user', message: 'Earlier' },
+			{ role: 'user', message: 'What is pricing?' },
+			{ role: 'assistant', message: 'Pricing starts at' }
+		]
+	);
+});
+
+test('appendInterruptedChatHistory does not duplicate an already saved turn', () => {
+	const history = [
+		{ role: 'user', message: 'What is pricing?' },
+		{ role: 'assistant', message: 'Pricing starts at' }
+	];
+	const messages = {
+		user: { variant: 'user', message: 'What is pricing?' },
+		bot: {
+			variant: 'chatbot',
+			message: 'Pricing starts at',
+			streaming: true
+		}
+	};
+	assert.equal(appendInterruptedChatHistory(history, messages), history);
+});
+
+test('appendInterruptedChatHistory skips unresolved audio placeholders', () => {
+	const messages = {
+		audio: {
+			variant: 'user',
+			loading: true,
+			audio: true,
+			message: 'Transcribing audio…'
+		},
+		bot: { variant: 'chatbot', message: '', loading: true }
+	};
+	assert.deepEqual(appendInterruptedChatHistory([], messages), []);
 });

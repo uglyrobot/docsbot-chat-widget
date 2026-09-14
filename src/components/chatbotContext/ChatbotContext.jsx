@@ -1,4 +1,7 @@
-import { stopResponseMessages } from "../../utils/chatbotMessageState.mjs"
+import {
+  appendInterruptedChatHistory,
+  stopResponseMessages,
+} from "../../utils/chatbotMessageState.mjs"
 import React from "react"
 import { v4 as uuidv4 } from "uuid"
 import {
@@ -11,8 +14,17 @@ const ChatbotContext = React.createContext()
 
 function chatbotReducer(state, action) {
   switch (action.type) {
-    case "stop_response":
-      return { ...state, messages: stopResponseMessages(state.messages) }
+    case "stop_response": {
+      const chatHistory = appendInterruptedChatHistory(
+        state.chatHistory,
+        state.messages
+      )
+      return {
+        ...state,
+        messages: stopResponseMessages(state.messages),
+        chatHistory,
+      }
+    }
     case "save_history":
       return {
         ...state,

@@ -1618,49 +1618,32 @@ export const BotChatMessage = ({
 								type="button"
 								disabled={isSupportLoading}
 								onClick={(e) => {
+									let history = state.chatHistory || [];
+									if (payload.voiceCall) {
+										setVoiceEscalationResolved(true);
+										const finalized = onEndVoiceCall?.();
+										if (Array.isArray(finalized)) {
+											history = finalized;
+										}
+									}
 									if (
 										leadCollectMode === 'before_escalation'
 									) {
-										let endedVoiceCall = false;
-										if (payload.voiceCall) {
-											// Snapshot the current voice transcript before the
-											// lead form is appended to canonical chat history.
-											// Otherwise teardown inserts transcript rows after
-											// the form and leaves it stranded farther up-chat.
-											setVoiceEscalationResolved(true);
-											onEndVoiceCall?.();
-											endedVoiceCall = true;
-										}
 										const didOpen =
 											typeof onLeadCollectRequest ===
 												'function' &&
 											onLeadCollectRequest({
-												history: state.chatHistory || []
+												history
 											});
 										if (didOpen) {
 											return;
 										}
-										if (endedVoiceCall) {
-											void runSupportCallback(
-												e,
-												state.chatHistory || []
-											);
-											return;
-										}
 									}
 									if (payload.voiceCall) {
-										setVoiceEscalationResolved(true);
-										onEndVoiceCall?.();
-										void runSupportCallback(
-											e,
-											state.chatHistory || []
-										);
+										void runSupportCallback(e, history);
 										return;
 									}
-									runSupportCallback(
-										e,
-										state.chatHistory || []
-									);
+									runSupportCallback(e, history);
 								}}
 							>
 								{isSupportLoading ? (

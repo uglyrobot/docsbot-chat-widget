@@ -296,7 +296,7 @@ export function VoiceCallView({
 		}
 		onHangupMessageOrderRef.current?.(transcripts, actions);
 		cleanupSession();
-		onExitRef.current?.();
+		return onExitRef.current?.();
 	}, [cleanupSession]);
 	const endCallLifecycleRef = useRef(endCallLifecycle);
 	endCallLifecycleRef.current = endCallLifecycle;
@@ -695,7 +695,7 @@ export function VoiceCallView({
 	const leaveCall = () => {
 		toolWorkingChimeRef.current?.setActive(false);
 		toolSearchingChimeRef.current?.setActive(false);
-		endCallLifecycle();
+		return endCallLifecycle();
 	};
 	const sendVoiceUserText = useCallback(
 		(text) => {

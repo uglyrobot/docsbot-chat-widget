@@ -416,6 +416,39 @@ test('mergeVoiceLookupSourcesIntoMessages falls back to the prior agent turn', (
 	]);
 });
 
+test('mergeVoiceLookupSourcesIntoMessages concatenates lookup sources on the same agent turn', () => {
+	const merged = mergeVoiceLookupSourcesIntoMessages({
+		agent1: {
+			id: 'agent1',
+			variant: 'chatbot',
+			voiceCall: true,
+			message: 'Pricing starts at $99 and billing is monthly.'
+		},
+		sources1: {
+			id: 'sources1',
+			variant: 'chatbot',
+			type: 'lookup_answer',
+			voiceCall: true,
+			message: '',
+			sources: [{ title: 'Pricing', url: 'https://example.com/pricing' }]
+		},
+		sources2: {
+			id: 'sources2',
+			variant: 'chatbot',
+			type: 'lookup_answer',
+			voiceCall: true,
+			message: '',
+			sources: [{ title: 'Billing', url: 'https://example.com/billing' }]
+		}
+	});
+
+	assert.deepEqual(Object.keys(merged), ['agent1']);
+	assert.deepEqual(merged.agent1.sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' },
+		{ title: 'Billing', url: 'https://example.com/billing' }
+	]);
+});
+
 test('mergeVoiceLookupSourcesIntoMessages preserves text answers before feedback prompts', () => {
 	const messages = {
 		user1: {
@@ -481,6 +514,45 @@ test('composeVoiceConversationGroups merges lookup sources into the prior agent 
 		{ title: 'Pricing', url: 'https://example.com/pricing' }
 	]);
 	assert.equal(groups[0].message.message, 'Pricing starts at $99.');
+});
+
+test('composeVoiceConversationGroups concatenates lookup sources on the same agent turn', () => {
+	const groups = composeVoiceConversationGroups([
+		{
+			id: 'agent-1',
+			message: {
+				id: 'agent-1',
+				variant: 'chatbot',
+				message: 'Pricing starts at $99 and billing is monthly.'
+			}
+		},
+		{
+			id: 'voice-action-lookup-1',
+			message: {
+				id: 'voice-action-lookup-1',
+				variant: 'chatbot',
+				type: 'lookup_answer',
+				message: '',
+				sources: [{ title: 'Pricing', url: 'https://example.com/pricing' }]
+			}
+		},
+		{
+			id: 'voice-action-lookup-2',
+			message: {
+				id: 'voice-action-lookup-2',
+				variant: 'chatbot',
+				type: 'lookup_answer',
+				message: '',
+				sources: [{ title: 'Billing', url: 'https://example.com/billing' }]
+			}
+		}
+	]);
+
+	assert.equal(groups.length, 1);
+	assert.deepEqual(groups[0].message.sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' },
+		{ title: 'Billing', url: 'https://example.com/billing' }
+	]);
 });
 
 test('composeVoiceConversationGroups keeps escalation controls on the agent turn', () => {
@@ -729,6 +801,51 @@ test('finalizeVoiceTranscriptsWithSources merges lookup sources into the prior a
 	assert.equal(finalized[0].sources, undefined);
 	assert.deepEqual(finalized[1].sources, [
 		{ title: 'Pricing', url: 'https://example.com/pricing' }
+	]);
+});
+
+test('finalizeVoiceTranscriptsWithSources concatenates lookup sources on the same agent turn', () => {
+	const finalized = finalizeVoiceTranscriptsWithSources(
+		[
+			{
+				itemId: 'agent-answer',
+				role: 'agent',
+				text: 'Pricing starts at $99 and billing is monthly.'
+			}
+		],
+		[
+			{
+				id: 'voice-action-lookup-1',
+				afterItemId: 'agent-answer',
+				message: {
+					id: 'voice-action-lookup-1',
+					variant: 'chatbot',
+					type: 'lookup_answer',
+					message: '',
+					sources: [
+						{ title: 'Pricing', url: 'https://example.com/pricing' }
+					]
+				}
+			},
+			{
+				id: 'voice-action-lookup-2',
+				afterItemId: 'agent-answer',
+				message: {
+					id: 'voice-action-lookup-2',
+					variant: 'chatbot',
+					type: 'lookup_answer',
+					message: '',
+					sources: [
+						{ title: 'Billing', url: 'https://example.com/billing' }
+					]
+				}
+			}
+		]
+	);
+
+	assert.deepEqual(finalized[0].sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' },
+		{ title: 'Billing', url: 'https://example.com/billing' }
 	]);
 });
 

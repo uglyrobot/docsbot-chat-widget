@@ -6,6 +6,28 @@ const INTERACTIVE_VOICE_HISTORY_TYPES = new Set([
 	'lookup_answer'
 ]);
 
+function lookupSourceKey(source) {
+	if (!source || typeof source !== 'object') return '';
+	return `${source.url || ''}\0${source.title || ''}`;
+}
+
+function mergeLookupSourceLists(existing, incoming) {
+	const left = Array.isArray(existing) ? existing : [];
+	const right = Array.isArray(incoming) ? incoming : [];
+	if (!left.length) return right;
+	if (!right.length) return left;
+	const seen = new Set();
+	const merged = [];
+	for (const source of [...left, ...right]) {
+		if (!source || typeof source !== 'object') continue;
+		const key = lookupSourceKey(source);
+		if (key && seen.has(key)) continue;
+		if (key) seen.add(key);
+		merged.push(source);
+	}
+	return merged;
+}
+
 function isAttachableVoiceAction(message) {
 	if (!message || typeof message !== 'object') return false;
 	if (message.variant === 'user') return false;
@@ -356,7 +378,13 @@ export function mergeVoiceLookupSourcesIntoMessages(messages) {
 		}
 
 		if (!targetKey) continue;
-		sourcesByTarget.set(targetKey, message.sources);
+		sourcesByTarget.set(
+			targetKey,
+			mergeLookupSourceLists(
+				sourcesByTarget.get(targetKey),
+				message.sources
+			)
+		);
 		drop.add(key);
 	}
 
@@ -367,7 +395,13 @@ export function mergeVoiceLookupSourcesIntoMessages(messages) {
 		if (drop.has(key)) continue;
 		const message = messages[key];
 		next[key] = sourcesByTarget.has(key)
-			? { ...message, sources: sourcesByTarget.get(key) }
+			? {
+					...message,
+					sources: mergeLookupSourceLists(
+						message.sources,
+						sourcesByTarget.get(key)
+					)
+				}
 			: message;
 	}
 	return next;
@@ -407,7 +441,10 @@ export function composeVoiceConversationGroups(messages) {
 			// Spoken answer is already on the transcript bubble.
 			last.message = {
 				...last.message,
-				sources: message.sources
+				sources: mergeLookupSourceLists(
+					last.message.sources,
+					message.sources
+				)
 			};
 			continue;
 		}
@@ -470,27 +507,35 @@ export function finalizeVoiceTranscriptsWithSources(transcripts, actionEntries) 
 		if (isSpokenTranscript) {
 			const role = message.variant === 'user' ? 'caller' : 'agent';
 			const sources =
-				role === 'agent' ? groupSources || heldSources : null;
+				role === 'agent'
+					? mergeLookupSourceLists(groupSources, heldSources)
+					: null;
 			if (role === 'agent') heldSources = null;
 			finalized.push({
 				itemId,
 				role,
 				text: typeof message.message === 'string' ? message.message : '',
-				...(sources ? { sources } : {}),
+				...(sources && sources.length ? { sources } : {}),
 				transcriptOrder
 			});
 			continue;
 		}
 
 		if (message?.type === 'lookup_answer' && groupSources) {
-			heldSources = groupSources;
+			heldSources = mergeLookupSourceLists(heldSources, groupSources);
 		}
 	}
 
 	if (heldSources) {
 		for (let i = finalized.length - 1; i >= 0; i -= 1) {
 			if (finalized[i].role === 'agent') {
-				finalized[i] = { ...finalized[i], sources: heldSources };
+				finalized[i] = {
+					...finalized[i],
+					sources: mergeLookupSourceLists(
+						finalized[i].sources,
+						heldSources
+					)
+				};
 				break;
 			}
 		}

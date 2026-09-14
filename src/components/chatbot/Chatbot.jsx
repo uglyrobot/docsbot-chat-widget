@@ -83,6 +83,7 @@ import {
 	orderVoiceHangupMessages,
 	queuePendingVoiceLookupSources,
 	takePendingVoiceLookupSourcesForAgent,
+	upsertVoiceTranscriptHistory,
 	upsertVoiceTranscriptMessageMap
 } from '../../utils/voiceCallHistory.mjs';
 import { VOICE_CALL_STATUS } from '../../utils/voiceRealtimeState.mjs';
@@ -333,6 +334,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const piiRedactionBypassedRef = useRef(false);
 	const piiRedactionSessionKeyRef = useRef('');
 	const stateMessagesRef = useRef(state.messages);
+	const chatHistoryRef = useRef(state.chatHistory);
+	const voiceHistoryItemIndicesRef = useRef(
+		state.voiceHistoryItemIndices || {}
+	);
 	/** lookup_answer sources wait for the agent turn they were shown on. */
 	const pendingVoiceLookupSourcesRef = useRef([]);
 	const hasRestoredConversationRef = useRef(false);
@@ -372,6 +377,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	useEffect(() => {
 		stateMessagesRef.current = state.messages;
 	}, [state.messages]);
+
+	useEffect(() => {
+		chatHistoryRef.current = state.chatHistory;
+		voiceHistoryItemIndicesRef.current =
+			state.voiceHistoryItemIndices || {};
+	}, [state.chatHistory, state.voiceHistoryItemIndices]);
 
 	useEffect(() => {
 		piiRedactionGuardRef.current = null;
@@ -1059,7 +1070,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		const leadMessage = buildLeadFormMessage('before_escalation');
 		if (!leadMessage) return false;
 
-		const history = data?.history || state.chatHistory || [];
+		const history =
+			data?.history ||
+			chatHistoryRef.current ||
+			state.chatHistory ||
+			[];
 		setPendingLeadCapture({
 			type: 'support',
 			history,
@@ -1489,6 +1504,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				transcriptOrder
 			}
 		);
+		const nextVoiceHistory = upsertVoiceTranscriptHistory(
+			chatHistoryRef.current,
+			voiceHistoryItemIndicesRef.current,
+			{ itemId, role, text, transcriptOrder },
+			transcriptOrder
+		);
+		chatHistoryRef.current = nextVoiceHistory.history;
+		voiceHistoryItemIndicesRef.current = nextVoiceHistory.itemIndices;
 		dispatch({
 			type: 'upsert_voice_history',
 			payload: { itemId, role, text, transcriptOrder }
@@ -1754,6 +1777,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		const conversationId = getConversationId();
 		setVoiceConversationId(conversationId);
 		dispatch({ type: 'start_voice_history' });
+		voiceHistoryItemIndicesRef.current = {};
 		// Fold any leftover sources-only rows before snapshotting history.
 		const historyMessages = mergeVoiceLookupSourcesIntoMessages(
 			stateMessagesRef.current
@@ -1772,22 +1796,26 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	};
 
 	const endVoiceCallView = () => {
-		if (!voiceCallActiveRef.current) return;
-		voiceCallActiveRef.current = false;
-		voiceStartRequestedRef.current = false;
-		// Hangup already copied live grouping onto the matching agent turns.
-		pendingVoiceLookupSourcesRef.current = [];
-		// Fold any legacy standalone lookup rows into their agent answers.
-		dispatch({ type: 'merge_voice_lookup_sources' });
-		const conversationId =
-			conversationIdRef.current || getStoredConversationId() || null;
-		document.dispatchEvent(
-			new CustomEvent('docsbot_voice_call_end', {
-				detail: { conversationId }
-			})
-		);
-		setIsVoiceCallView(false);
-		setVoiceCallHistoryItems([]);
+		if (voiceCallActiveRef.current) {
+			voiceCallActiveRef.current = false;
+			voiceStartRequestedRef.current = false;
+			// Hangup already copied live grouping onto the matching agent turns.
+			pendingVoiceLookupSourcesRef.current = [];
+			// Fold any legacy standalone lookup rows into their agent answers.
+			dispatch({ type: 'merge_voice_lookup_sources' });
+			const conversationId =
+				conversationIdRef.current || getStoredConversationId() || null;
+			document.dispatchEvent(
+				new CustomEvent('docsbot_voice_call_end', {
+					detail: { conversationId }
+				})
+			);
+			setIsVoiceCallView(false);
+			setVoiceCallHistoryItems([]);
+		}
+		return Array.isArray(chatHistoryRef.current)
+			? chatHistoryRef.current
+			: [];
 	};
 
 	const startVoiceCallRef = useRef(startVoiceCall);
