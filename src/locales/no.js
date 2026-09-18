@@ -3,6 +3,7 @@ export default {
   "name": "Norsk (Norwegian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Stopp svar",
     "poweredBy": "Levert av",
     "inputPlaceholder": "Send en melding...",
     "firstMessage": "Hvordan kan jeg hjelpe deg?",

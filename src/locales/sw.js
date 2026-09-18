@@ -3,6 +3,7 @@ export default {
   "name": "Kiswahili (Swahili)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Simamisha jibu",
     "poweredBy": "Inaendeshwa na",
     "inputPlaceholder": "Tuma ujumbe...",
     "firstMessage": "Ninaweza kukusaidiaje?",

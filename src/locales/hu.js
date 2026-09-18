@@ -3,6 +3,7 @@ export default {
   "name": "Magyar (Hungarian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Válasz leállítása",
     "poweredBy": "Szolgáltató",
     "inputPlaceholder": "Üzenet küldése...",
     "firstMessage": "Hogyan segíthetek?",

@@ -3,6 +3,7 @@ export default {
   "name": "தமிழ் (Tamil)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "பதிலை நிறுத்து",
     "poweredBy": "இயக்குவது",
     "inputPlaceholder": "செய்தி அனுப்புங்கள்...",
     "firstMessage": "நான் உங்களுக்கு எப்படி உதவலாம்?",

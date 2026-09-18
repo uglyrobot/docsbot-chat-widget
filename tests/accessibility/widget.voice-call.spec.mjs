@@ -866,7 +866,6 @@ test('voice support escalation: No stays on call; Yes ends call', async ({
 			}
 		});
 	});
-
 	await expect(
 		root.getByText('Would you like me to connect you with support?')
 	).toBeVisible();
@@ -958,6 +957,202 @@ test('voice support escalation: No stays on call; Yes ends call', async ({
 	);
 	expect(escalateRequest?.method).toBe('PUT');
 	expect(escalateRequest?.url).toContain('/escalate');
+});
+
+test('app-owned Live tool results keep repeated escalation and lead form at the conversation end', async ({
+	page
+}) => {
+	test.setTimeout(60_000);
+	await installVoiceBrowserMocks(page);
+	await installWidgetMocks(page, {
+		...mockWidgetConfig,
+		useVoiceAgent: true,
+		useEscalation: true,
+		supportLink: 'https://example.com/support',
+		leadCollect: {
+			enabled: true,
+			mode: 'before_escalation',
+			fields: [
+				{
+					key: 'email',
+					label: 'Email',
+					type: 'email',
+					required: true
+				}
+			]
+		}
+	});
+
+	await page.goto('/?visual=1');
+	const root = page.locator('#docsbotai-root');
+	await root.getByRole('button', { name: 'Help' }).click();
+	await page.evaluate(() => {
+		window.__docsbotVoiceStarted = false;
+		document.addEventListener(
+			'docsbot_voice_call_start',
+			() => {
+				window.__docsbotVoiceStarted = true;
+			},
+			{ once: true }
+		);
+	});
+	await root.getByRole('button', { name: 'Start voice call' }).click();
+	await expect(root.locator('.docsbot-voice-call-view')).toBeVisible();
+	await expect(root.getByRole('button', { name: 'Mute' })).toBeVisible();
+	await expect
+		.poll(() => page.evaluate(() => window.__docsbotVoiceStarted))
+		.toBe(true);
+
+	await page.evaluate(async () => {
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+		window.__emitDocsBotVoiceEvent({ type: 'session.started' });
+		window.__emitDocsBotVoiceEvent({
+			type: 'session.output_transcript.delta',
+			delta: 'Would you like me to connect you with support?'
+		});
+		window.__emitDocsBotVoiceEvent({
+			type: 'docsbot.tool_result',
+			call_id: 'live-support-first',
+			client_action: {
+				type: 'support_escalation',
+				responses: { yes: 'Yes, please', no: 'No, thanks' }
+			}
+		});
+	});
+	await expect(
+		root.getByText('Would you like me to connect you with support?')
+	).toBeVisible();
+	await root.getByRole('button', { name: 'No, thanks' }).click();
+	await expect(root.locator('.docsbot-voice-call-view')).toBeVisible();
+	await page.evaluate(() => {
+		window.__emitDocsBotVoiceEvent({
+			type: 'session.output_transcript.delta',
+			delta: 'No problem. We can keep talking.'
+		});
+		window.__emitDocsBotVoiceEvent({
+			type: 'session.input_transcript.delta',
+			delta: 'Actually, ask me again.'
+		});
+		window.__emitDocsBotVoiceEvent({
+			type: 'docsbot.tool_result',
+			call_id: 'live-support-second',
+			client_action: {
+				type: 'support_escalation',
+				responses: { yes: 'Yes, please', no: 'No, thanks' }
+			}
+		});
+	});
+
+	const activeYes = root.getByRole('button', { name: 'Yes, please' });
+	await expect(activeYes).toHaveCount(1);
+	const liveMessageTexts = await root
+		.locator('.docsbot-voice-conversation-message')
+		.allTextContents();
+	expect(liveMessageTexts.at(-2)).toContain('Actually, ask me again.');
+	expect(liveMessageTexts.at(-1)).toContain('Yes, please');
+
+	await activeYes.click();
+	await expect(root.locator('.docsbot-voice-call-view')).toHaveCount(0);
+	await expect(root.getByRole('textbox', { name: 'Email' })).toBeVisible();
+	const chatMessageTexts = await root
+		.locator('.docsbot-chat-message-container > *')
+		.allTextContents();
+	const callerIndex = chatMessageTexts.findIndex((text) =>
+		text.includes('Actually, ask me again.')
+	);
+	const leadFormIndex = chatMessageTexts.findIndex((text) =>
+		text.includes('Before we continue, could you share a few details?')
+	);
+	expect(callerIndex).toBeGreaterThanOrEqual(0);
+	expect(leadFormIndex).toBeGreaterThan(callerIndex);
+	expect(leadFormIndex).toBe(chatMessageTexts.length - 1);
+});
+
+test('voice lookup sources stay on the answering turn after hangup', async ({
+	page
+}) => {
+	test.setTimeout(120_000);
+	await installVoiceBrowserMocks(page);
+	await installWidgetMocks(page, {
+		...mockWidgetConfig,
+		useVoiceAgent: true,
+		color: '#7c3aed'
+	});
+
+	await page.goto('/?visual=1');
+	const root = page.locator('#docsbotai-root');
+	await root.getByRole('button', { name: 'Help' }).click();
+	await page.evaluate(() => {
+		window.__docsbotVoiceStarted = false;
+		document.addEventListener(
+			'docsbot_voice_call_start',
+			() => {
+				window.__docsbotVoiceStarted = true;
+			},
+			{ once: true }
+		);
+	});
+	await root.getByRole('button', { name: 'Start voice call' }).click();
+	await expect(root.locator('.docsbot-voice-call-view')).toBeVisible();
+	await expect
+		.poll(() => page.evaluate(() => window.__docsbotVoiceStarted))
+		.toBe(true);
+
+	await page.evaluate(async () => {
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+		window.__emitDocsBotVoiceEvent({ type: 'session.started' });
+		window.__emitDocsBotVoiceEvent({
+			type: 'session.output_transcript.delta',
+			delta: 'Hi, I can help with your docs.'
+		});
+		window.__emitDocsBotVoiceEvent({
+			type: 'session.input_transcript.delta',
+			delta: 'What is the pricing?'
+		});
+		window.__emitDocsBotVoiceEvent({
+			type: 'docsbot.tool_result',
+			call_id: 'live-lookup-pricing',
+			client_action: {
+				type: 'lookup_answer',
+				sources: [
+					{
+						title: 'Pricing guide',
+						url: 'https://example.com/pricing',
+						type: 'url'
+					}
+				]
+			}
+		});
+		window.__emitDocsBotVoiceEvent({
+			type: 'session.output_transcript.delta',
+			delta: 'Pricing starts at $99 a month.'
+		});
+	});
+
+	await expect(root.getByText('Hi, I can help with your docs.')).toBeVisible();
+	await expect(root.getByText('What is the pricing?')).toBeVisible();
+	await expect(root.getByText('Pricing starts at $99 a month.')).toBeVisible();
+	await expect(root.getByText('Pricing guide')).toBeVisible();
+	const liveGreeting = root
+		.locator('.docsbot-voice-conversation-message')
+		.filter({ hasText: 'Hi, I can help with your docs.' });
+	await expect(liveGreeting.locator('.docsbot-sources')).toHaveCount(0);
+
+	await root.getByRole('button', { name: 'End call' }).click();
+	await expect(root.locator('.docsbot-voice-call-view')).toHaveCount(0);
+
+	const chatAnswer = root
+		.locator('.docsbot-chat-bot-message')
+		.filter({ hasText: 'Pricing starts at $99 a month.' });
+	await expect(chatAnswer.getByText('Pricing guide')).toBeVisible();
+	const chatGreeting = root
+		.locator('.docsbot-chat-bot-message')
+		.filter({ hasText: 'Hi, I can help with your docs.' });
+	await expect(chatGreeting.locator('.docsbot-sources')).toHaveCount(0);
+	const chatWelcome = root
+		.locator('.docsbot-chat-bot-message')
+		.filter({ hasText: 'Welcome to the accessibility demo.' });
+	await expect(chatWelcome.locator('.docsbot-sources')).toHaveCount(0);
 });
 
 test('DocsBotAI.startVoiceCall opens the widget into live voice mode', async ({

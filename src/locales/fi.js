@@ -3,6 +3,7 @@ export default {
   "name": "Suomi (Finnish)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Pysäytä vastaus",
     "poweredBy": "Tarjoaa",
     "inputPlaceholder": "Lähetä viesti...",
     "firstMessage": "Miten voin auttaa sinua?",

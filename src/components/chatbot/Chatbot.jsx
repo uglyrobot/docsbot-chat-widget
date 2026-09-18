@@ -80,6 +80,10 @@ import { VoiceOrb } from '../voiceCall/VoiceOrb';
 import {
 	buildVoiceCallHistoryItems,
 	mergeVoiceLookupSourcesIntoMessages,
+	orderVoiceHangupMessages,
+	queuePendingVoiceLookupSources,
+	takePendingVoiceLookupSourcesForAgent,
+	upsertVoiceTranscriptHistory,
 	upsertVoiceTranscriptMessageMap
 } from '../../utils/voiceCallHistory.mjs';
 import { VOICE_CALL_STATUS } from '../../utils/voiceRealtimeState.mjs';
@@ -330,7 +334,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const piiRedactionBypassedRef = useRef(false);
 	const piiRedactionSessionKeyRef = useRef('');
 	const stateMessagesRef = useRef(state.messages);
-	/** lookup_answer sources wait for the next agent transcript (same as voice UI). */
+	const chatHistoryRef = useRef(state.chatHistory);
+	const voiceHistoryItemIndicesRef = useRef(
+		state.voiceHistoryItemIndices || {}
+	);
+	/** lookup_answer sources wait for the agent turn they were shown on. */
 	const pendingVoiceLookupSourcesRef = useRef([]);
 	const hasRestoredConversationRef = useRef(false);
 	const refreshChatHistoryRef = useRef(null);
@@ -369,6 +377,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	useEffect(() => {
 		stateMessagesRef.current = state.messages;
 	}, [state.messages]);
+
+	useEffect(() => {
+		chatHistoryRef.current = state.chatHistory;
+		voiceHistoryItemIndicesRef.current =
+			state.voiceHistoryItemIndices || {};
+	}, [state.chatHistory, state.voiceHistoryItemIndices]);
 
 	useEffect(() => {
 		piiRedactionGuardRef.current = null;
@@ -1056,7 +1070,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		const leadMessage = buildLeadFormMessage('before_escalation');
 		if (!leadMessage) return false;
 
-		const history = data?.history || state.chatHistory || [];
+		const history =
+			data?.history ||
+			chatHistoryRef.current ||
+			state.chatHistory ||
+			[];
 		setPendingLeadCapture({
 			type: 'support',
 			history,
@@ -1424,30 +1442,30 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		setVoiceConversationId(conversationId);
 	};
 
-	const takePendingVoiceLookupSources = () => {
-		const pending = pendingVoiceLookupSourcesRef.current;
-		if (!pending.length) return null;
-		pendingVoiceLookupSourcesRef.current = [];
-		const sources = [];
-		for (const entry of pending) {
-			if (Array.isArray(entry?.sources)) {
-				sources.push(...entry.sources);
-			}
-		}
-		return sources.length ? sources : null;
-	};
-
 	const upsertVoiceTranscriptMessage = ({
 		itemId,
 		role,
 		text,
-		transcriptOrder
+		transcriptOrder,
+		sources: explicitSources,
+		consumePendingLookupSources = true
 	}) => {
 		if (!itemId || !text || (role !== 'caller' && role !== 'agent')) return;
 		const messageId = `voice-${itemId}`;
 		const existing = stateMessagesRef.current?.[messageId];
-		const pendingSources =
-			role === 'agent' ? takePendingVoiceLookupSources() : null;
+		let pendingSources = null;
+		if (role === 'agent') {
+			if (Array.isArray(explicitSources) && explicitSources.length) {
+				pendingSources = explicitSources;
+			} else if (consumePendingLookupSources) {
+				const taken = takePendingVoiceLookupSourcesForAgent(
+					pendingVoiceLookupSourcesRef.current,
+					{ itemId, transcriptOrder }
+				);
+				pendingVoiceLookupSourcesRef.current = taken.pending;
+				pendingSources = taken.sources;
+			}
+		}
 		const payload = {
 			id: messageId,
 			variant: role === 'caller' ? 'user' : 'chatbot',
@@ -1486,13 +1504,32 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				transcriptOrder
 			}
 		);
+		const nextVoiceHistory = upsertVoiceTranscriptHistory(
+			chatHistoryRef.current,
+			voiceHistoryItemIndicesRef.current,
+			{ itemId, role, text, transcriptOrder },
+			transcriptOrder
+		);
+		chatHistoryRef.current = nextVoiceHistory.history;
+		voiceHistoryItemIndicesRef.current = nextVoiceHistory.itemIndices;
 		dispatch({
 			type: 'upsert_voice_history',
 			payload: { itemId, role, text, transcriptOrder }
 		});
 	};
 
-	const upsertVoiceClientActionMessage = (action) => {
+	const reorderVoiceHangupMessages = (transcripts, actions) => {
+		const next = orderVoiceHangupMessages(
+			stateMessagesRef.current,
+			transcripts,
+			actions
+		);
+		if (next === stateMessagesRef.current) return;
+		stateMessagesRef.current = next;
+		dispatch({ type: 'replace_messages', payload: next });
+	};
+
+	const upsertVoiceClientActionMessage = (action, anchor = {}) => {
 		if (!action?.callId || !action?.type) return null;
 		const messageId = `voice-action-${action.callId}`;
 		const existing = stateMessagesRef.current?.[messageId];
@@ -1629,11 +1666,16 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				timestamp: existing?.timestamp || Date.now()
 			};
 			if (sources.length) {
-				const pending = pendingVoiceLookupSourcesRef.current.filter(
-					(entry) => entry.callId !== action.callId
-				);
-				pending.push({ callId: action.callId, sources });
-				pendingVoiceLookupSourcesRef.current = pending;
+				pendingVoiceLookupSourcesRef.current =
+					queuePendingVoiceLookupSources(
+						pendingVoiceLookupSourcesRef.current,
+						{
+							callId: action.callId,
+							sources,
+							afterItemId: anchor.afterItemId,
+							afterRole: anchor.afterRole
+						}
+					);
 			}
 			// Do not persist a standalone lookup row in chat message state.
 			if (existing) {
@@ -1645,7 +1687,43 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			return payload;
 		}
 
-		return null;
+		// Future sanitized client_actions persist the same way: live view
+		// queues them, hangup reorders by afterItemId, no per-type branch.
+		const payload = {
+			id: messageId,
+			variant: 'chatbot',
+			type: action.type,
+			message: typeof action.message === 'string' ? action.message : '',
+			loading: false,
+			streaming: false,
+			voiceCall: true,
+			realtimeItemId: action.callId,
+			conversationId,
+			timestamp: existing?.timestamp || Date.now()
+		};
+		for (const [key, value] of Object.entries(action)) {
+			if (
+				key === 'kind' ||
+				key === 'callId' ||
+				key === 'type' ||
+				key === 'message'
+			) {
+				continue;
+			}
+			payload[key] = value;
+		}
+		dispatch({
+			type: existing ? 'update_message' : 'add_message',
+			payload
+		});
+		stateMessagesRef.current = {
+			...(stateMessagesRef.current || {}),
+			[messageId]: {
+				...(existing || {}),
+				...payload
+			}
+		};
+		return payload;
 	};
 
 	const voiceStartRequestedRef = useRef(false);
@@ -1699,6 +1777,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		const conversationId = getConversationId();
 		setVoiceConversationId(conversationId);
 		dispatch({ type: 'start_voice_history' });
+		voiceHistoryItemIndicesRef.current = {};
 		// Fold any leftover sources-only rows before snapshotting history.
 		const historyMessages = mergeVoiceLookupSourcesIntoMessages(
 			stateMessagesRef.current
@@ -1717,42 +1796,26 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	};
 
 	const endVoiceCallView = () => {
-		if (!voiceCallActiveRef.current) return;
-		voiceCallActiveRef.current = false;
-		voiceStartRequestedRef.current = false;
-		// If lookup arrived after the agent transcript finalized, attach now.
-		const pendingSources = takePendingVoiceLookupSources();
-		if (pendingSources) {
-			const messages = stateMessagesRef.current || {};
-			const keys = Object.keys(messages);
-			for (let i = keys.length - 1; i >= 0; i -= 1) {
-				const message = messages[keys[i]];
-				if (
-					message?.variant === 'chatbot' &&
-					message?.voiceCall &&
-					typeof message.message === 'string' &&
-					message.message.trim() &&
-					message.type !== 'lookup_answer'
-				) {
-					dispatch({
-						type: 'update_message',
-						payload: { id: message.id, sources: pendingSources }
-					});
-					break;
-				}
-			}
+		if (voiceCallActiveRef.current) {
+			voiceCallActiveRef.current = false;
+			voiceStartRequestedRef.current = false;
+			// Hangup already copied live grouping onto the matching agent turns.
+			pendingVoiceLookupSourcesRef.current = [];
+			// Fold any legacy standalone lookup rows into their agent answers.
+			dispatch({ type: 'merge_voice_lookup_sources' });
+			const conversationId =
+				conversationIdRef.current || getStoredConversationId() || null;
+			document.dispatchEvent(
+				new CustomEvent('docsbot_voice_call_end', {
+					detail: { conversationId }
+				})
+			);
+			setIsVoiceCallView(false);
+			setVoiceCallHistoryItems([]);
 		}
-		// Fold any legacy standalone lookup rows into their agent answers.
-		dispatch({ type: 'merge_voice_lookup_sources' });
-		const conversationId =
-			conversationIdRef.current || getStoredConversationId() || null;
-		document.dispatchEvent(
-			new CustomEvent('docsbot_voice_call_end', {
-				detail: { conversationId }
-			})
-		);
-		setIsVoiceCallView(false);
-		setVoiceCallHistoryItems([]);
+		return Array.isArray(chatHistoryRef.current)
+			? chatHistoryRef.current
+			: [];
 	};
 
 	const startVoiceCallRef = useRef(startVoiceCall);
@@ -2023,6 +2086,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		}
 
 		return mapChatHistoryStringsSync(history, revealTextFromResponse);
+	};
+
+	const stopResponse = () => {
+		if (!isFetching) return;
+		activeRequestIdRef.current = null;
+		const controller = streamControllerRef.current;
+		streamControllerRef.current = null;
+		setStreamController(null);
+		controller?.abort?.();
+		controller?.close?.();
+		dispatch({ type: 'stop_response' });
+		setIsFetching(false);
 	};
 
 	const refreshChatHistory = async () => {
@@ -2318,6 +2393,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		const safeQuestion = audio
 			? question
 			: await protectTextForRequest(question);
+		if (!isCurrentRequest()) return;
 		// Use metadataOverride if provided (e.g. from lead form submission) to avoid
 		// stale closure over identify that hasn't re-rendered yet.
 		const metadata =
@@ -2768,6 +2844,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			const history = await protectHistoryForRequest(
 				state.chatHistory || []
 			);
+			if (!isCurrentRequest()) return;
 			const req = {
 				question: safeQuestion,
 				markdown: true,
@@ -2788,10 +2865,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
 			// Send message to server when connection is established
 			ws.onopen = function (event) {
+				if (!isCurrentRequest()) return;
 				ws.send(JSON.stringify(req));
 			};
 
 			ws.onerror = function (event) {
+				if (!isCurrentRequest()) return;
 				console.error('DOCSBOT: WebSocket error', event);
 				dispatch({
 					type: 'update_message',
@@ -2811,6 +2890,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			};
 
 			ws.onclose = function (event) {
+				if (!isCurrentRequest()) return;
 				if (!event.wasClean) {
 					dispatch({
 						type: 'update_message',
@@ -2834,6 +2914,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
 			// Receive message from server word by word. Display the words as they are received.
 			ws.onmessage = async function (event) {
+				if (!isCurrentRequest()) return;
 				const data = JSON.parse(event.data);
 				if (data.sender === 'bot') {
 					if (data.type === 'stream') {
@@ -3313,6 +3394,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							historyItems={voiceCallHistoryItems}
 							onConversationId={handleVoiceConversationId}
 							onTranscriptFinal={upsertVoiceTranscriptMessage}
+							onHangupMessageOrder={reorderVoiceHangupMessages}
 							onClientAction={upsertVoiceClientActionMessage}
 							onSchedulerBookingMetadata={async (metadata) => {
 								if (!metadata || typeof metadata !== 'object') {
@@ -3785,7 +3867,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 											</div>
 										)}
 										<form
-											className={`docsbot-chat-input-form ${hasDisabledSubmit ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''}`}
+											className={`docsbot-chat-input-form ${hasDisabledSubmit && !isFetching ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''}`}
 											onSubmit={handleSubmit}
 											onDragEnter={
 												useImageUpload
@@ -4142,7 +4224,25 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 												</button>
 											)}
 
-											{showVoiceCallOrbButton ? (
+											{isFetching ? (
+												<button
+													type="button"
+													className="docsbot-chat-btn-send docsbot-chat-btn-stop"
+													onClick={stopResponse}
+													aria-label={
+														labels.stopResponse
+													}
+													title={labels.stopResponse}
+												>
+													<span
+														className="docsbot-stop-response-icon"
+														aria-hidden="true"
+													>
+														<span className="docsbot-stop-response-ring" />
+														<span className="docsbot-stop-response-square" />
+													</span>
+												</button>
+											) : showVoiceCallOrbButton ? (
 												<button
 													type="button"
 													onClick={startVoiceCall}

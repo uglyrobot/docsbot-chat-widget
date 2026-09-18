@@ -3,6 +3,7 @@ export default {
   "name": "Íslenska (Icelandic)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Stöðva svar",
     "poweredBy": "Knúið af",
     "inputPlaceholder": "Sendu skilaboð...",
     "firstMessage": "Hvernig get ég aðstoðað?",

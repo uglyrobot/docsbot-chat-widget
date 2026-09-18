@@ -3,6 +3,7 @@ export default {
   "name": "Latviešu (Latvian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Apturēt atbildi",
     "poweredBy": "Darbina",
     "inputPlaceholder": "Sūtīt ziņu...",
     "firstMessage": "Kā varu palīdzēt?",

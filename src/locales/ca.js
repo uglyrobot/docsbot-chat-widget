@@ -3,6 +3,7 @@ export default {
   "name": "Català (Catalan)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Atura la resposta",
     "poweredBy": "Impulsat per",
     "inputPlaceholder": "Envia un missatge...",
     "firstMessage": "En què et puc ajudar?",

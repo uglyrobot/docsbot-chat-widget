@@ -3,6 +3,7 @@ export default {
   "name": "Български (Bulgarian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Спиране на отговора",
     "poweredBy": "Осъществено от",
     "inputPlaceholder": "Изпратете съобщение...",
     "firstMessage": "С какво мога да помогна?",

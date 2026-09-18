@@ -3,6 +3,7 @@ export default {
   "name": "नेपाली (Nepali)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "जवाफ रोक्नुहोस्",
     "poweredBy": "द्वारा सञ्चालित",
     "inputPlaceholder": "सन्देश पठाउनुहोस्...",
     "firstMessage": "म तपाईंलाई कसरी मद्दत गर्न सक्छु?",

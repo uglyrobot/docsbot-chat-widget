@@ -3,6 +3,7 @@ export default {
   "name": "ไทย (Thai)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "หยุดการตอบ",
     "poweredBy": "ขับเคลื่อนโดย",
     "inputPlaceholder": "ส่งข้อความ...",
     "firstMessage": "ฉันสามารถช่วยคุณอย่างไร?",

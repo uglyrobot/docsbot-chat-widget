@@ -3,6 +3,7 @@ export default {
   "name": "Bahasa Indonesia (Indonesian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Hentikan respons",
     "poweredBy": "Didukung oleh",
     "inputPlaceholder": "Kirim pesan...",
     "firstMessage": "Bagaimana saya bisa membantu Anda?",

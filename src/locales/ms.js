@@ -3,6 +3,7 @@ export default {
   "name": "Bahasa Melayu (Malay)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Hentikan respons",
     "poweredBy": "Dikuasakan oleh",
     "inputPlaceholder": "Hantar mesej...",
     "firstMessage": "Bagaimana saya boleh membantu anda?",

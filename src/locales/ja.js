@@ -3,6 +3,7 @@ export default {
   "name": "日本語 (Japanese)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "応答を停止",
     "poweredBy": "提供元：",
     "inputPlaceholder": "メッセージを送信...",
     "firstMessage": "どのようにお手伝いしましょうか？",

@@ -3,10 +3,14 @@ import test from 'node:test';
 import {
 	buildVoiceCallHistoryItems,
 	composeVoiceConversationGroups,
+	finalizeVoiceTranscriptsWithSources,
 	flushPendingVoiceActions,
 	interleaveVoiceLiveItems,
 	mergeVoiceLookupSourcesIntoMessages,
+	orderVoiceHangupMessages,
 	queuePendingVoiceAction,
+	queuePendingVoiceLookupSources,
+	takePendingVoiceLookupSourcesForAgent,
 	upsertVoiceTranscriptHistory,
 	upsertVoiceTranscriptMessageMap
 } from './voiceCallHistory.mjs';
@@ -412,6 +416,39 @@ test('mergeVoiceLookupSourcesIntoMessages falls back to the prior agent turn', (
 	]);
 });
 
+test('mergeVoiceLookupSourcesIntoMessages concatenates lookup sources on the same agent turn', () => {
+	const merged = mergeVoiceLookupSourcesIntoMessages({
+		agent1: {
+			id: 'agent1',
+			variant: 'chatbot',
+			voiceCall: true,
+			message: 'Pricing starts at $99 and billing is monthly.'
+		},
+		sources1: {
+			id: 'sources1',
+			variant: 'chatbot',
+			type: 'lookup_answer',
+			voiceCall: true,
+			message: '',
+			sources: [{ title: 'Pricing', url: 'https://example.com/pricing' }]
+		},
+		sources2: {
+			id: 'sources2',
+			variant: 'chatbot',
+			type: 'lookup_answer',
+			voiceCall: true,
+			message: '',
+			sources: [{ title: 'Billing', url: 'https://example.com/billing' }]
+		}
+	});
+
+	assert.deepEqual(Object.keys(merged), ['agent1']);
+	assert.deepEqual(merged.agent1.sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' },
+		{ title: 'Billing', url: 'https://example.com/billing' }
+	]);
+});
+
 test('mergeVoiceLookupSourcesIntoMessages preserves text answers before feedback prompts', () => {
 	const messages = {
 		user1: {
@@ -477,6 +514,45 @@ test('composeVoiceConversationGroups merges lookup sources into the prior agent 
 		{ title: 'Pricing', url: 'https://example.com/pricing' }
 	]);
 	assert.equal(groups[0].message.message, 'Pricing starts at $99.');
+});
+
+test('composeVoiceConversationGroups concatenates lookup sources on the same agent turn', () => {
+	const groups = composeVoiceConversationGroups([
+		{
+			id: 'agent-1',
+			message: {
+				id: 'agent-1',
+				variant: 'chatbot',
+				message: 'Pricing starts at $99 and billing is monthly.'
+			}
+		},
+		{
+			id: 'voice-action-lookup-1',
+			message: {
+				id: 'voice-action-lookup-1',
+				variant: 'chatbot',
+				type: 'lookup_answer',
+				message: '',
+				sources: [{ title: 'Pricing', url: 'https://example.com/pricing' }]
+			}
+		},
+		{
+			id: 'voice-action-lookup-2',
+			message: {
+				id: 'voice-action-lookup-2',
+				variant: 'chatbot',
+				type: 'lookup_answer',
+				message: '',
+				sources: [{ title: 'Billing', url: 'https://example.com/billing' }]
+			}
+		}
+	]);
+
+	assert.equal(groups.length, 1);
+	assert.deepEqual(groups[0].message.sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' },
+		{ title: 'Billing', url: 'https://example.com/billing' }
+	]);
 });
 
 test('composeVoiceConversationGroups keeps escalation controls on the agent turn', () => {
@@ -564,3 +640,374 @@ test('queue and flush pending voice actions after the post-tool agent turn', () 
 		]
 	);
 });
+
+test('repeated voice actions can anchor after the latest caller turn', () => {
+	const transcripts = [
+		{ itemId: 'agent-before', role: 'agent', text: 'Would you like help?' },
+		{ itemId: 'caller-again', role: 'caller', text: 'Ask me again.' }
+	];
+	const first = {
+		id: 'voice-action-first',
+		message: { id: 'voice-action-first', type: 'support_escalation' },
+		afterItemId: 'agent-before'
+	};
+	const { actions } = flushPendingVoiceActions(
+		[first],
+		[
+			{
+				id: 'voice-action-second',
+				type: 'support_escalation'
+			}
+		],
+		'caller-again'
+	);
+
+	assert.deepEqual(
+		interleaveVoiceLiveItems(transcripts, actions).map((entry) => entry.id),
+		[
+			'agent-before',
+			'voice-action-first',
+			'caller-again',
+			'voice-action-second'
+		]
+	);
+});
+
+test('takePendingVoiceLookupSourcesForAgent does not dump sources onto an earlier agent', () => {
+	const pending = queuePendingVoiceLookupSources([], {
+		callId: 'lookup-1',
+		sources: [{ title: 'Pricing', url: 'https://example.com/pricing' }],
+		afterItemId: 'caller-1',
+		afterRole: 'caller'
+	});
+	const order = ['agent-greeting', 'caller-1', 'agent-answer'];
+
+	const greeting = takePendingVoiceLookupSourcesForAgent(pending, {
+		itemId: 'agent-greeting',
+		transcriptOrder: order
+	});
+	assert.equal(greeting.sources, null);
+	assert.equal(greeting.pending.length, 1);
+
+	const answer = takePendingVoiceLookupSourcesForAgent(greeting.pending, {
+		itemId: 'agent-answer',
+		transcriptOrder: order
+	});
+	assert.deepEqual(answer.sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' }
+	]);
+	assert.deepEqual(answer.pending, []);
+});
+
+test('takePendingVoiceLookupSourcesForAgent keeps sources on the anchored agent turn', () => {
+	const pending = queuePendingVoiceLookupSources([], {
+		callId: 'lookup-1',
+		sources: [{ title: 'Pricing', url: 'https://example.com/pricing' }],
+		afterItemId: 'agent-answer',
+		afterRole: 'agent'
+	});
+	const order = ['agent-greeting', 'caller-1', 'agent-answer', 'caller-2'];
+
+	const greeting = takePendingVoiceLookupSourcesForAgent(pending, {
+		itemId: 'agent-greeting',
+		transcriptOrder: order
+	});
+	assert.equal(greeting.sources, null);
+
+	const answer = takePendingVoiceLookupSourcesForAgent(greeting.pending, {
+		itemId: 'agent-answer',
+		transcriptOrder: order
+	});
+	assert.deepEqual(answer.sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' }
+	]);
+});
+
+test('finalizeVoiceTranscriptsWithSources keeps lookup sources on the answering turn', () => {
+	const finalized = finalizeVoiceTranscriptsWithSources(
+		[
+			{
+				itemId: 'agent-greeting',
+				role: 'agent',
+				text: 'Hi, how can I help?'
+			},
+			{
+				itemId: 'caller-1',
+				role: 'caller',
+				text: 'What is pricing?'
+			},
+			{
+				itemId: 'agent-answer',
+				role: 'agent',
+				text: 'Pricing starts at $99.'
+			}
+		],
+		[
+			{
+				id: 'voice-action-lookup',
+				afterItemId: 'caller-1',
+				message: {
+					id: 'voice-action-lookup',
+					variant: 'chatbot',
+					type: 'lookup_answer',
+					message: '',
+					sources: [
+						{ title: 'Pricing', url: 'https://example.com/pricing' }
+					]
+				}
+			}
+		]
+	);
+
+	assert.equal(finalized[0].sources, undefined);
+	assert.equal(finalized[1].sources, undefined);
+	assert.deepEqual(finalized[2].sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' }
+	]);
+	assert.equal(finalized[2].itemId, 'agent-answer');
+});
+
+test('finalizeVoiceTranscriptsWithSources merges lookup sources into the prior agent turn', () => {
+	const finalized = finalizeVoiceTranscriptsWithSources(
+		[
+			{
+				itemId: 'agent-greeting',
+				role: 'agent',
+				text: 'Hi, how can I help?'
+			},
+			{
+				itemId: 'agent-answer',
+				role: 'agent',
+				text: 'Pricing starts at $99.'
+			}
+		],
+		[
+			{
+				id: 'voice-action-lookup',
+				afterItemId: 'agent-answer',
+				message: {
+					id: 'voice-action-lookup',
+					variant: 'chatbot',
+					type: 'lookup_answer',
+					message: '',
+					sources: [
+						{ title: 'Pricing', url: 'https://example.com/pricing' }
+					]
+				}
+			}
+		]
+	);
+
+	assert.equal(finalized[0].sources, undefined);
+	assert.deepEqual(finalized[1].sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' }
+	]);
+});
+
+test('finalizeVoiceTranscriptsWithSources concatenates lookup sources on the same agent turn', () => {
+	const finalized = finalizeVoiceTranscriptsWithSources(
+		[
+			{
+				itemId: 'agent-answer',
+				role: 'agent',
+				text: 'Pricing starts at $99 and billing is monthly.'
+			}
+		],
+		[
+			{
+				id: 'voice-action-lookup-1',
+				afterItemId: 'agent-answer',
+				message: {
+					id: 'voice-action-lookup-1',
+					variant: 'chatbot',
+					type: 'lookup_answer',
+					message: '',
+					sources: [
+						{ title: 'Pricing', url: 'https://example.com/pricing' }
+					]
+				}
+			},
+			{
+				id: 'voice-action-lookup-2',
+				afterItemId: 'agent-answer',
+				message: {
+					id: 'voice-action-lookup-2',
+					variant: 'chatbot',
+					type: 'lookup_answer',
+					message: '',
+					sources: [
+						{ title: 'Billing', url: 'https://example.com/billing' }
+					]
+				}
+			}
+		]
+	);
+
+	assert.deepEqual(finalized[0].sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' },
+		{ title: 'Billing', url: 'https://example.com/billing' }
+	]);
+});
+
+test('mergeVoiceLookupSourcesIntoMessages does not attach voice sources to the widget greeting', () => {
+	const merged = mergeVoiceLookupSourcesIntoMessages({
+		greeting: {
+			id: 'greeting',
+			variant: 'chatbot',
+			message: 'Welcome to the demo.'
+		},
+		sources: {
+			id: 'sources',
+			variant: 'chatbot',
+			type: 'lookup_answer',
+			voiceCall: true,
+			message: '',
+			sources: [{ title: 'Pricing', url: 'https://example.com/pricing' }]
+		},
+		agent1: {
+			id: 'agent1',
+			variant: 'chatbot',
+			message: 'Pricing starts at $99.',
+			voiceCall: true
+		}
+	});
+
+	assert.equal(merged.greeting.sources, undefined);
+	assert.deepEqual(merged.agent1.sources, [
+		{ title: 'Pricing', url: 'https://example.com/pricing' }
+	]);
+});
+
+test('orderVoiceHangupMessages keeps current and future cards on the answering turn', () => {
+	const support = {
+		id: 'voice-action-support',
+		variant: 'chatbot',
+		type: 'support_escalation',
+		voiceCall: true,
+		message: '',
+		responses: { yes: 'Yes', no: 'No' }
+	};
+	const stripe = {
+		id: 'voice-action-stripe',
+		variant: 'chatbot',
+		type: 'stripe_billing',
+		voiceCall: true,
+		message: '',
+		stripeBilling: [{ type: 'invoices', items: [] }]
+	};
+	const futureCard = {
+		id: 'voice-action-future',
+		variant: 'chatbot',
+		type: 'new_widget_card',
+		voiceCall: true,
+		message: ''
+	};
+	const greetingTurn = {
+		id: 'voice-agent-greeting',
+		variant: 'chatbot',
+		message: 'Hi, how can I help?',
+		voiceCall: true,
+		realtimeItemId: 'agent-greeting'
+	};
+	const callerTurn = {
+		id: 'voice-caller-1',
+		variant: 'user',
+		message: 'I need help with billing.',
+		voiceCall: true,
+		realtimeItemId: 'caller-1'
+	};
+	const answerTurn = {
+		id: 'voice-agent-answer',
+		variant: 'chatbot',
+		message: 'I can connect you and show invoices.',
+		voiceCall: true,
+		realtimeItemId: 'agent-answer'
+	};
+	const ordered = orderVoiceHangupMessages(
+		{
+			greeting: {
+				id: 'greeting',
+				variant: 'chatbot',
+				message: 'Welcome to the demo.'
+			},
+			[support.id]: support,
+			[stripe.id]: stripe,
+			[futureCard.id]: futureCard,
+			[greetingTurn.id]: greetingTurn,
+			[callerTurn.id]: callerTurn,
+			[answerTurn.id]: answerTurn
+		},
+		[
+			{
+				itemId: 'agent-greeting',
+				role: 'agent',
+				text: greetingTurn.message
+			},
+			{
+				itemId: 'caller-1',
+				role: 'caller',
+				text: callerTurn.message
+			},
+			{
+				itemId: 'agent-answer',
+				role: 'agent',
+				text: answerTurn.message
+			}
+		],
+		[
+			{
+				id: support.id,
+				afterItemId: 'agent-answer',
+				message: support
+			},
+			{
+				id: stripe.id,
+				afterItemId: 'agent-answer',
+				message: stripe
+			},
+			{
+				id: futureCard.id,
+				afterItemId: 'agent-answer',
+				message: futureCard
+			}
+		]
+	);
+
+	assert.deepEqual(Object.keys(ordered), [
+		'greeting',
+		'voice-agent-greeting',
+		'voice-caller-1',
+		'voice-agent-answer',
+		'voice-action-support',
+		'voice-action-stripe',
+		'voice-action-future'
+	]);
+});
+
+test('composeVoiceConversationGroups attaches a future voice-action card to the prior agent turn', () => {
+	const groups = composeVoiceConversationGroups([
+		{
+			id: 'agent-1',
+			message: {
+				id: 'agent-1',
+				variant: 'chatbot',
+				message: 'I can take the next step on screen.'
+			}
+		},
+		{
+			id: 'voice-action-future',
+			message: {
+				id: 'voice-action-future',
+				variant: 'chatbot',
+				type: 'new_widget_card',
+				voiceCall: true,
+				message: ''
+			}
+		}
+	]);
+
+	assert.equal(groups.length, 1);
+	assert.equal(groups[0].attachments.length, 1);
+	assert.equal(groups[0].attachments[0].type, 'new_widget_card');
+});
+

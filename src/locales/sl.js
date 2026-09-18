@@ -3,6 +3,7 @@ export default {
   "name": "Slovenščina (Slovenian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Ustavi odgovor",
     "poweredBy": "Poganja",
     "inputPlaceholder": "Pošlji sporočilo...",
     "firstMessage": "Kako vam lahko pomagam?",

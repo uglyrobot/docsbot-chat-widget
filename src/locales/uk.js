@@ -3,6 +3,7 @@ export default {
   "name": "Українська (Ukrainian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Зупинити відповідь",
     "poweredBy": "На базі",
     "inputPlaceholder": "Надішліть повідомлення...",
     "firstMessage": "Чим я можу допомогти?",

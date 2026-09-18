@@ -3,6 +3,7 @@ export default {
   "name": "Ελληνικά (Greek)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Διακοπή απάντησης",
     "poweredBy": "Παρέχεται από",
     "inputPlaceholder": "Στείλτε ένα μήνυμα...",
     "firstMessage": "Πώς μπορώ να σας βοηθήσω;",

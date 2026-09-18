@@ -2,6 +2,8 @@ import { mergeIdentifyMetadata } from './identity.js';
 
 const MAX_SDP_BYTES = 512 * 1024;
 const SETUP_TIMEOUT_MS = 15 * 1000;
+const TOOL_RESULT_TIMEOUT_MS = 30 * 1000;
+const TOOL_RESULT_POLL_INTERVAL_MS = 350;
 const MICROPHONE_LEVEL_NOISE_FLOOR = 0.015;
 const MICROPHONE_LEVEL_RANGE = 0.16;
 
@@ -112,6 +114,46 @@ export function buildVoiceWebrtcRequest({
 		url: `${apiBase}/teams/${teamId}/bots/${botId}/voice`,
 		options: { method: 'POST', headers, body: sdp }
 	};
+}
+
+export function buildVoiceToolResultRequest({
+	apiBase,
+	teamId,
+	botId,
+	callId,
+	toolCallId,
+	eventToken
+}) {
+	return {
+		url:
+			`${apiBase}/teams/${encodeURIComponent(teamId)}` +
+			`/bots/${encodeURIComponent(botId)}` +
+			`/voice/${encodeURIComponent(callId)}/tool-result` +
+			`?tool_call_id=${encodeURIComponent(toolCallId)}`,
+		options: {
+			method: 'GET',
+			headers: { 'X-DocsBot-Voice-Event-Token': eventToken }
+		}
+	};
+}
+
+function waitForPollInterval(milliseconds, signal) {
+	return new Promise((resolve, reject) => {
+		let timeoutId = null;
+		const cleanup = () => {
+			if (timeoutId !== null) globalThis.clearTimeout(timeoutId);
+			signal?.removeEventListener('abort', handleAbort);
+		};
+		const handleAbort = () => {
+			cleanup();
+			reject(new DOMException('Cancelled', 'AbortError'));
+		};
+		timeoutId = globalThis.setTimeout(() => {
+			cleanup();
+			resolve();
+		}, milliseconds);
+		signal?.addEventListener('abort', handleAbort, { once: true });
+	});
 }
 
 export function sdpByteLength(sdp) {
@@ -287,6 +329,11 @@ export class DocsBotVoiceCallSession {
 		this.setupController = null;
 		this.callId = null;
 		this.conversationId = conversationId || null;
+		this.widgetEventToken = '';
+		this.toolResultRequests = new Map();
+		// GPT-Live identifies itself with session.started and uses the Responses
+		// command namespace for typed input; Realtime uses conversation.item.*.
+		this.isLiveSession = false;
 		this.closed = false;
 	}
 
@@ -464,6 +511,9 @@ export class DocsBotVoiceCallSession {
 				try {
 					const event = JSON.parse(messageEvent.data);
 					if (event && typeof event.type === 'string') {
+						if (event.type === 'session.started') {
+							this.isLiveSession = true;
+						}
 						this.onRealtimeEvent(event);
 					}
 				} catch {
@@ -517,6 +567,8 @@ export class DocsBotVoiceCallSession {
 			}
 			await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
 			this.callId = response.headers.get('X-DocsBot-Voice-Call-Id');
+			this.widgetEventToken =
+				response.headers.get('X-DocsBot-Voice-Event-Token') || '';
 			this.conversationId =
 				response.headers.get('X-DocsBot-Conversation-Id') ||
 				this.config.conversationId ||
@@ -530,6 +582,75 @@ export class DocsBotVoiceCallSession {
 			this.close();
 			throw error;
 		}
+	}
+
+	waitForToolResult(
+		toolCallId,
+		{
+			timeoutMs = TOOL_RESULT_TIMEOUT_MS,
+			pollIntervalMs = TOOL_RESULT_POLL_INTERVAL_MS
+		} = {}
+	) {
+		const normalizedCallId =
+			typeof toolCallId === 'string' ? toolCallId.trim() : '';
+		if (
+			this.closed ||
+			!this.isLiveSession ||
+			!this.callId ||
+			!this.widgetEventToken ||
+			!normalizedCallId
+		) {
+			return Promise.resolve(null);
+		}
+		const existing = this.toolResultRequests.get(normalizedCallId);
+		if (existing) return existing.promise;
+
+		const controller = new AbortController();
+		const request = buildVoiceToolResultRequest({
+			...this.config,
+			callId: this.callId,
+			toolCallId: normalizedCallId,
+			eventToken: this.widgetEventToken
+		});
+		const promise = (async () => {
+			const deadline = Date.now() + Math.max(1, timeoutMs);
+			try {
+				while (!this.closed && Date.now() < deadline) {
+					const response = await this.fetchImpl(request.url, {
+						...request.options,
+						signal: controller.signal
+					});
+					if (response.status === 202) {
+						await waitForPollInterval(
+							Math.max(1, pollIntervalMs),
+							controller.signal
+						);
+						continue;
+					}
+					if (!response.ok) return null;
+					const payload = await response.json();
+					if (payload?.completed !== true) return null;
+					return {
+						type: 'docsbot.tool_result',
+						call_id: normalizedCallId,
+						client_action:
+							payload.clientAction &&
+							typeof payload.clientAction === 'object'
+								? payload.clientAction
+								: null
+					};
+				}
+			} catch (error) {
+				if (error?.name !== 'AbortError') {
+					return null;
+				}
+			}
+			return null;
+		})().finally(() => {
+			this.toolResultRequests.delete(normalizedCallId);
+		});
+		this.toolResultRequests.set(normalizedCallId, { controller, promise });
+		return promise;
 	}
 
 	setMuted(muted) {
@@ -557,14 +678,19 @@ export class DocsBotVoiceCallSession {
 		};
 
 		try {
-			// Best-effort: stop in-flight agent speech before the decline turn.
-			try {
-				sendEvent({ type: 'response.cancel' });
-			} catch {
-				// Cancel may fail if no response is active; continue.
+			// Realtime accepts response.cancel before a typed decline. Live is
+			// full duplex and uses the Responses item namespace instead.
+			if (!this.isLiveSession) {
+				try {
+					sendEvent({ type: 'response.cancel' });
+				} catch {
+					// Cancel may fail if no response is active; continue.
+				}
 			}
 			sendEvent({
-				type: 'conversation.item.create',
+				type: this.isLiveSession
+					? 'response.item.create'
+					: 'conversation.item.create',
 				item: {
 					type: 'message',
 					role: 'user',
@@ -583,6 +709,10 @@ export class DocsBotVoiceCallSession {
 		this.closed = true;
 		this.setupController?.abort();
 		this.setupController = null;
+		for (const request of this.toolResultRequests.values()) {
+			request.controller.abort();
+		}
+		this.toolResultRequests.clear();
 		this.stopMicrophoneLevelMeter();
 		this.stopOutputLevelMeter();
 

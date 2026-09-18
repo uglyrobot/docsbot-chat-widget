@@ -3,6 +3,7 @@ export default {
   "name": "Dansk (Danish)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Stop svar",
     "poweredBy": "Drevet af",
     "inputPlaceholder": "Send en besked...",
     "firstMessage": "Hvordan kan jeg hjælpe dig?",

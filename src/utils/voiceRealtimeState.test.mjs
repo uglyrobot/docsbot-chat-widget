@@ -7,6 +7,7 @@ import {
 	orderedVoiceTranscripts,
 	reduceVoiceRealtimeEvent,
 	voiceClientActionFromEvent,
+	voiceTranscriptSnapshots,
 	voiceToolCallFromEvent,
 	voiceToolNameFromEvent
 } from './voiceRealtimeState.mjs';
@@ -113,6 +114,186 @@ test('asynchronous caller and agent transcripts reconcile by item_id', () => {
 		}),
 		{ itemId: 'caller-1', role: 'caller', text: 'Final caller text' }
 	);
+});
+
+test('GPT-Live transcript deltas use stable rows and nested Responses events', () => {
+	let state = createVoiceRealtimeState();
+	state = reduceVoiceRealtimeEvent(state, { type: 'session.started' });
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'session.input_transcript.delta',
+		start_ms: 1000,
+		end_ms: 1200,
+		delta: 'What is'
+	});
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'session.input_transcript.delta',
+		start_ms: 1200,
+		end_ms: 1400,
+		delta: ' the return policy?'
+	});
+	assert.equal(state.status, VOICE_CALL_STATUS.USER_SPEAKING);
+	assert.deepEqual(orderedVoiceTranscripts(state), [
+		{
+			itemId: 'live-caller-1',
+			role: 'caller',
+			text: 'What is the return policy?',
+			isFinal: false
+		}
+	]);
+
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'session.delegation.created',
+		delegation: { id: 'item-delegation', target: 'responses' }
+	});
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'response.event',
+		delegation_id: 'item-delegation',
+		event: {
+			type: 'response.output_item.done',
+			item: {
+				id: 'fc-item-1',
+				call_id: 'call-1',
+				type: 'function_call',
+				name: 'search_documentation',
+				arguments: '{"query":"returns"}'
+			}
+		}
+	});
+	assert.equal(state.status, VOICE_CALL_STATUS.USING_TOOL);
+	assert.deepEqual(state.pendingToolCallIds, ['call-1']);
+
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'response.event',
+		delegation_id: 'item-delegation',
+		event: {
+			type: 'response.output_item.done',
+			item: {
+				id: 'fco-item-1',
+				call_id: 'call-1',
+				type: 'function_call_output',
+				output: '{"status":"ok"}'
+			}
+		}
+	});
+	assert.deepEqual(state.pendingToolCallIds, []);
+
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'session.output_transcript.delta',
+		start_ms: 2000,
+		end_ms: 2200,
+		delta: 'The policy is '
+	});
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'session.output_transcript.delta',
+		start_ms: 2200,
+		end_ms: 2400,
+		delta: '30 days.'
+	});
+	assert.equal(state.status, VOICE_CALL_STATUS.AGENT_SPEAKING);
+
+	// A later caller turn and resumed assistant speech get new display rows.
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'session.input_transcript.delta',
+		start_ms: 3000,
+		end_ms: 3200,
+		delta: 'Does that include '
+	});
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'session.output_transcript.delta',
+		start_ms: 3300,
+		end_ms: 3500,
+		delta: 'Yes.'
+	});
+	assert.deepEqual(orderedVoiceTranscripts(state), [
+		{
+			itemId: 'live-caller-1',
+			role: 'caller',
+			text: 'What is the return policy?',
+			isFinal: false
+		},
+		{
+			itemId: 'live-agent-2',
+			role: 'agent',
+			text: 'The policy is 30 days.',
+			isFinal: false
+		},
+		{
+			itemId: 'live-caller-3',
+			role: 'caller',
+			text: 'Does that include ',
+			isFinal: false
+		},
+		{
+			itemId: 'live-agent-4',
+			role: 'agent',
+			text: 'Yes.',
+			isFinal: false
+		}
+	]);
+});
+
+test('GPT-Live app-owned tool results clear tool wait and expose booking UI', () => {
+	let state = reduceVoiceRealtimeEvent(createVoiceRealtimeState(), {
+		type: 'response.event',
+		event: {
+			type: 'response.output_item.done',
+			item: {
+				type: 'function_call',
+				call_id: 'call-booking',
+				name: 'book_calcom',
+				arguments: '{}'
+			}
+		}
+	});
+	assert.deepEqual(state.pendingToolCallIds, ['call-booking']);
+
+	const event = {
+		type: 'docsbot.tool_result',
+		call_id: 'call-booking',
+		client_action: {
+			type: 'calcom',
+			eventPath: 'docsbot/demo',
+			hideEventDetails: true
+		}
+	};
+	state = reduceVoiceRealtimeEvent(state, event);
+	assert.deepEqual(state.pendingToolCallIds, []);
+	assert.deepEqual(voiceClientActionFromEvent(event), {
+		kind: 'booking',
+		callId: 'call-booking',
+		type: 'calcom',
+		message: '',
+		eventPath: 'docsbot/demo',
+		hideEventDetails: true,
+		hideCookieBanner: false,
+		hideEventDetail: false
+	});
+});
+
+test('GPT-Live transcript snapshots preserve growing rows during teardown', () => {
+	let state = createVoiceRealtimeState();
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'session.input_transcript.delta',
+		delta: 'Book a demo'
+	});
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'session.output_transcript.delta',
+		delta: 'I opened the calendar.'
+	});
+	assert.deepEqual(voiceTranscriptSnapshots(state), [
+		{
+			itemId: 'live-caller-1',
+			role: 'caller',
+			text: 'Book a demo',
+			transcriptOrder: ['live-caller-1', 'live-agent-2']
+		},
+		{
+			itemId: 'live-agent-2',
+			role: 'agent',
+			text: 'I opened the calendar.',
+			transcriptOrder: ['live-caller-1', 'live-agent-2']
+		}
+	]);
 });
 
 test('tool state accepts only a safe name and never retains internals', () => {
@@ -223,6 +404,27 @@ test('voiceToolCallFromEvent mirrors chat-agent docsbot_tool_call detail shape',
 		null,
 		'outputs are not tool invocations'
 	);
+
+	assert.deepEqual(
+		voiceToolCallFromEvent({
+			type: 'response.event',
+			delegation_id: 'item-delegation',
+			event: {
+				type: 'response.output_item.done',
+				item: {
+					call_id: 'call-live',
+					type: 'function_call',
+					name: 'search_documentation',
+					arguments: '{"query":"live"}'
+				}
+			}
+		}),
+		{
+			callId: 'call-live',
+			name: 'search_documentation',
+			data: { query: 'live' }
+		}
+	);
 });
 
 test('USING_TOOL survives response.done until function_call_output', () => {
@@ -317,6 +519,36 @@ test('voiceClientActionFromEvent whitelists booking, custom_button, support, and
 			hideEventDetails: true,
 			hideCookieBanner: false,
 			hideEventDetail: false
+		}
+	);
+
+	assert.deepEqual(
+		voiceClientActionFromEvent({
+			type: 'response.event',
+			delegation_id: 'item-delegation',
+			event: {
+				type: 'response.output_item.done',
+				item: {
+					call_id: 'call-live-action',
+					type: 'function_call_output',
+					output: JSON.stringify({
+						client_action: {
+							type: 'custom_button',
+							buttonText: 'Open account',
+							url: 'https://example.com/account'
+						}
+					})
+				}
+			}
+		}),
+		{
+			kind: 'custom_button',
+			callId: 'call-live-action',
+			type: 'custom_button',
+			message: '',
+			url: 'https://example.com/account',
+			functionKey: '',
+			buttonText: 'Open account'
 		}
 	);
 

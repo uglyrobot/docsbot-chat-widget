@@ -3,6 +3,7 @@ export default {
   "name": "Српски (Serbian)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "Заустави одговор",
     "poweredBy": "Подржано од",
     "inputPlaceholder": "Пошаљи поруку...",
     "firstMessage": "Како могу да вам помогнем?",

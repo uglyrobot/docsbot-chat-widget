@@ -3,6 +3,7 @@ export default {
   "name": "فارسی (Persian)",
   "isRTL": true,
   "labels": {
+    "stopResponse": "توقف پاسخ",
     "poweredBy": "قدرت گرفته از",
     "inputPlaceholder": "پیامی بفرستید...",
     "firstMessage": "چطور می‌توانم کمکتان کنم؟",

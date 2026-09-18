@@ -3,6 +3,7 @@ export default {
   "name": "हिन्दी (Hindi)",
   "isRTL": false,
   "labels": {
+    "stopResponse": "जवाब रोकें",
     "poweredBy": "द्वारा संचालित",
     "inputPlaceholder": "एक संदेश भेजें...",
     "firstMessage": "मैं आपकी किस प्रकार सहायता कर सकता हूं?",
