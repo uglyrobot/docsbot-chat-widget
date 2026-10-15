@@ -60,3 +60,18 @@ test("mapChatHistoryStringsSync preserves tuple history entries", () => {
 	assert.deepEqual(mapped, [["email@example.com", "answer"]]);
 	assert.equal(Array.isArray(mapped[0]), true);
 });
+
+test("chat history PII transforms include the generated UI payload", async () => {
+	const history = [{ AI: "A readable reply", generativeUI: { response: 'root = Stack([card])\ncard = TextBlock("[pii-1]")', libraryVersion: "1.0.0" } }];
+	const mapped = await mapChatHistoryStrings(history, async (text) => text.replace("[pii-1]", "[safe]"));
+	assert.equal(mapped[0].AI, "A readable reply");
+	assert.equal(mapped[0].generativeUI.response.includes("[safe]"), true);
+	assert.equal(mapped[0].generativeUI.libraryVersion, "1.0.0");
+});
+
+test("chat history PII restoration includes the generated UI payload", () => {
+	const history = [{ AI: "A readable reply", generativeUI: { response: 'root = Stack([card])\ncard = TextBlock("[pii-1]")', libraryVersion: "1.0.0" } }];
+	const mapped = mapChatHistoryStringsSync(history, (text) => text.replace("[pii-1]", "person@example.com"));
+	assert.equal(mapped[0].generativeUI.response.includes("person@example.com"), true);
+	assert.equal(mapped[0].generativeUI.libraryVersion, "1.0.0");
+});

@@ -1,0 +1,197 @@
+{
+  "root": "Stack",
+  "components": {
+    "Stack": {
+      "signature": "Stack(children: (TextBlock | Callout | Metric | BulletList | DataTable)[])",
+      "description": "The required root container for a generated interface."
+    },
+    "TextBlock": {
+      "signature": "TextBlock(text: string, heading?: boolean)",
+      "description": "Readable text content. Use for headings, explanations, and labels."
+    },
+    "Callout": {
+      "signature": "Callout(title: string, text: string)",
+      "description": "A short informational callout with plain text."
+    },
+    "Metric": {
+      "signature": "Metric(label: string, value: string, context?: string)",
+      "description": "A single named metric with a value and optional context."
+    },
+    "BulletList": {
+      "signature": "BulletList(items: string[])",
+      "description": "A short list of plain-text items."
+    },
+    "DataTable": {
+      "signature": "DataTable(columns: string[], rows: string[][])",
+      "description": "A compact data table. Each row must have one value per column."
+    }
+  },
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "Stack": {
+        "$ref": "#/$defs/Stack"
+      },
+      "TextBlock": {
+        "$ref": "#/$defs/TextBlock"
+      },
+      "Callout": {
+        "$ref": "#/$defs/Callout"
+      },
+      "Metric": {
+        "$ref": "#/$defs/Metric"
+      },
+      "BulletList": {
+        "$ref": "#/$defs/BulletList"
+      },
+      "DataTable": {
+        "$ref": "#/$defs/DataTable"
+      }
+    },
+    "required": [
+      "Stack",
+      "TextBlock",
+      "Callout",
+      "Metric",
+      "BulletList",
+      "DataTable"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+      "Stack": {
+        "type": "object",
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TextBlock"
+                },
+                {
+                  "$ref": "#/$defs/Callout"
+                },
+                {
+                  "$ref": "#/$defs/Metric"
+                },
+                {
+                  "$ref": "#/$defs/BulletList"
+                },
+                {
+                  "$ref": "#/$defs/DataTable"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "children"
+        ],
+        "additionalProperties": false,
+        "id": "Stack",
+        "description": "The required root container for a generated interface."
+      },
+      "TextBlock": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "heading": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false,
+        "id": "TextBlock",
+        "description": "Readable text content. Use for headings, explanations, and labels."
+      },
+      "Callout": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "text"
+        ],
+        "additionalProperties": false,
+        "id": "Callout",
+        "description": "A short informational callout with plain text."
+      },
+      "Metric": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "context": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "additionalProperties": false,
+        "id": "Metric",
+        "description": "A single named metric with a value and optional context."
+      },
+      "BulletList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false,
+        "id": "BulletList",
+        "description": "A short list of plain-text items."
+      },
+      "DataTable": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "columns",
+          "rows"
+        ],
+        "additionalProperties": false,
+        "id": "DataTable",
+        "description": "A compact data table. Each row must have one value per column."
+      }
+    }
+  }
+}

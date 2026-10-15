@@ -65,6 +65,7 @@
     "@huggingface/transformers": "^4.2.0",
     "@microsoft/fetch-event-source": "^2.0.1",
     "@nationaldesignstudio/rampart": "^0.1.2",
+    "@openuidev/react-lang": "1.0.1",
     "@streamdown/cjk": "^1.0.1",
     "@streamdown/code": "^1.0.1",
     "@streamdown/math": "^1.0.1",

@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "componentLibraryVersion": "1.0.0",
+  "rendererPackage": {
+    "name": "@openuidev/react-lang",
+    "version": "1.0.1"
+  },
+  "generatorPackage": {
+    "name": "@openuidev/cli",
+    "version": "0.6.0"
+  },
+  "specSha256": "ba70f60f9bd97423254845af800e777292a62abce5256cf9f3c48ca4275f5311",
+  "generatedPromptSha256": "c38817f07cb45cb294bd1ed28adfbfc1340d30140ab4a146f487c251d9dc0819",
+  "backendPromptSha256": "834962b3074257383865d0b218688ecf449ae128f6b0b3be7c21c2f6fb2970c0"
+}

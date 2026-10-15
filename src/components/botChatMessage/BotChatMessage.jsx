@@ -28,6 +28,7 @@ import { CalendlyEmbed } from '../calendlyEmbed/CalendlyEmbed';
 import { CalComEmbed } from '../calComEmbed/CalComEmbed';
 import { TidyCalEmbed } from '../tidyCalEmbed/TidyCalEmbed';
 import { ImageLightbox } from '../imageLightbox/ImageLightbox';
+import { OpenUIResponse } from '../generativeUi/OpenUIResponse';
 
 /**
  * Config `labels` keys when agent activity uses configKey (all tools except reasoning).
@@ -1312,6 +1313,7 @@ export const BotChatMessage = ({
 							return (
 								<>
 									<div dir="auto" ref={contentRef}>
+										<OpenUIResponse payload={payload.generativeUI} isStreaming={payload.streaming} />
 										<Suspense fallback={<Loader />}>
 											<LazyStreamdown
 												className="docsbot-streamdown"

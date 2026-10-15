@@ -39,6 +39,12 @@ async function mapChatHistoryEntryStrings(entry, mapString) {
 			nextEntry[key] = await mapString(nextEntry[key]);
 		}
 	}
+	if (typeof nextEntry.generativeUI?.response === "string") {
+		nextEntry.generativeUI = {
+			...nextEntry.generativeUI,
+			response: await mapString(nextEntry.generativeUI.response),
+		};
+	}
 	return nextEntry;
 }
 
@@ -60,6 +66,12 @@ function mapChatHistoryEntryStringsSync(entry, mapString) {
 		if (typeof nextEntry[key] === "string") {
 			nextEntry[key] = mapString(nextEntry[key]);
 		}
+	}
+	if (typeof nextEntry.generativeUI?.response === "string") {
+		nextEntry.generativeUI = {
+			...nextEntry.generativeUI,
+			response: mapString(nextEntry.generativeUI.response),
+		};
 	}
 	return nextEntry;
 }

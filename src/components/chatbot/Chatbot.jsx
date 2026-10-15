@@ -2067,6 +2067,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			...(typeof payload.message === 'string' && {
 				message: revealTextFromResponse(payload.message)
 			}),
+			...(payload.generativeUI?.response && {
+				generativeUI: {
+					...payload.generativeUI,
+					response: revealTextFromResponse(payload.generativeUI.response)
+				}
+			}),
 			...(Array.isArray(payload.history) && {
 				history: revealHistoryFromResponse(payload.history)
 			})
@@ -2388,6 +2394,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		);
 
 		let answer = '';
+		let generativeUI = '';
 		let pendingSchedulerEmbed = null;
 		let currentAgentActivity = null;
 		let hasStartedStreaming = false;
@@ -2650,6 +2657,26 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							return;
 						}
 
+						if (data.event === 'generative_ui_delta') {
+							generativeUI += data.data || '';
+						const uiPayload = {
+							response: revealTextFromResponse(generativeUI),
+							libraryVersion: '1.0.0',
+							specSha256: 'ba70f60f9bd97423254845af800e777292a62abce5256cf9f3c48ca4275f5311'
+						};
+						const cleanedPayload = revealResponsePayload({ generativeUI: uiPayload }).generativeUI;
+						dispatch({
+							type: 'update_message',
+							payload: {
+								id,
+								generativeUI: cleanedPayload,
+								loading: false,
+								streaming: true
+							}
+						});
+						return;
+						}
+
 						if (data.event === 'stream') {
 							hasStartedStreaming = true;
 							// Handle empty data fields as line breaks to preserve formatting
@@ -2730,6 +2757,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 											}
 										}),
 										sources: finalData.sources || null,
+									generativeUI: finalData.generativeUI || null,
 										answerId:
 											answerId || finalData.id || null, // use saved prev id for feedback button
 										conversationId: requestConversationId,
