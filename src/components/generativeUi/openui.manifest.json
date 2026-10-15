@@ -1,15 +1,19 @@
 {
   "formatVersion": 1,
-  "componentLibraryVersion": "1.0.0",
+  "componentLibraryVersion": "2.0.0",
   "rendererPackage": {
     "name": "@openuidev/react-lang",
     "version": "1.0.1"
+  },
+  "componentPackage": {
+    "name": "@openuidev/react-ui",
+    "version": "0.18.1"
   },
   "generatorPackage": {
     "name": "@openuidev/cli",
     "version": "0.6.0"
   },
-  "specSha256": "ba70f60f9bd97423254845af800e777292a62abce5256cf9f3c48ca4275f5311",
-  "generatedPromptSha256": "c38817f07cb45cb294bd1ed28adfbfc1340d30140ab4a146f487c251d9dc0819",
-  "backendPromptSha256": "834962b3074257383865d0b218688ecf449ae128f6b0b3be7c21c2f6fb2970c0"
+  "specSha256": "5b3fbf97b97a798a82d1a1c3e7b10bb1eca39936d0fc5a9c97aa08811248f073",
+  "generatedPromptSha256": "d4b0be8eba8911bdea197608e3b661a791aa1e97f4bf28f2e2e9c803f3a721d4",
+  "backendPromptSha256": "acc710568752f27eac59708fda0864e6111be67d1e1237bc716fb9970edf8e93"
 }

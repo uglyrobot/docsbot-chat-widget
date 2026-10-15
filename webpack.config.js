@@ -3,6 +3,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
+const { IgnorePlugin } = require("webpack");
 
 module.exports = (_, { mode }) => {
   const isProduction = mode === 'production';
@@ -21,6 +22,9 @@ module.exports = (_, { mode }) => {
       libraryTarget: "window",
     },
     plugins: [
+      // react-ui's shared entry exports an optional AI SDK chat transport. DocsBot
+      // uses its existing transport, so keep that unused optional peer out.
+      new IgnorePlugin({ resourceRegExp: /^ai$/, contextRegExp: /@openuidev[\\/]react-headless/ }),
       new HtmlWebpackPlugin({
         template: path.join(__dirname, "public", "index.html"),
       }),

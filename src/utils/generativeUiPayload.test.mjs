@@ -1,16 +1,17 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { cleanGenerativeUiPayload } from './generativeUiPayload.mjs'
+import { manifest } from '../components/generativeUi/contract.mjs'
 
 const payload = (response) => ({
 	response,
-	libraryVersion: '1.0.0',
-	specSha256: 'ba70f60f9bd97423254845af800e777292a62abce5256cf9f3c48ca4275f5311'
+	libraryVersion: '2.0.0',
+	specSha256: '5b3fbf97b97a798a82d1a1c3e7b10bb1eca39936d0fc5a9c97aa08811248f073'
 })
 
 test('accepts the pinned display-only library and trims the response', () => {
 	const cleaned = cleanGenerativeUiPayload(
-		payload('  root = Stack([heading])\nheading = TextBlock("Status", true)  ')
+		payload('  root = Stack([heading])\nheading = TextContent("Status", "large-heavy")  ')
 	)
 	assert.equal(cleaned.response.startsWith('root = Stack('), true)
 })
@@ -25,5 +26,13 @@ test('rejects malformed, unpinned, action-capable, and oversized payloads', () =
 		payload(`root = Stack([])\n${'x'.repeat(16001)}`)
 	]) {
 		assert.equal(cleanGenerativeUiPayload(value), null)
+	}
+})
+
+test('official forms accept email data and conversation actions but reject remote functions', () => {
+	const value = response => ({ response, libraryVersion: manifest.componentLibraryVersion, specSha256: manifest.specSha256 })
+	assert.ok(cleanGenerativeUiPayload(value('root = Stack([Form("demo", Buttons([Button("Save", @ToAssistant("Save"))]), [FormControl("Email", Input("email", "demo@example.invalid", "email"))])])')))
+	for (const action of ['@Fetch("https://example.invalid")', '@Run("delete")', '@OpenUrl("https://example.invalid")']) {
+		assert.equal(cleanGenerativeUiPayload(value(`root = Stack([Button("Run", ${action})])`)), null)
 	}
 })

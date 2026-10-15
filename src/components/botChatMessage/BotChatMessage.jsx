@@ -1313,7 +1313,7 @@ export const BotChatMessage = ({
 							return (
 								<>
 									<div dir="auto" ref={contentRef}>
-										<OpenUIResponse payload={payload.generativeUI} isStreaming={payload.streaming} />
+
 										<Suspense fallback={<Loader />}>
 											<LazyStreamdown
 												className="docsbot-streamdown"
@@ -1402,6 +1402,10 @@ export const BotChatMessage = ({
 						})()}
 					</div>
 					) : null}
+                    <OpenUIResponse payload={payload.generativeUI} isStreaming={payload.streaming} onSend={message => {
+                      dispatch({type:'add_message', payload:{id:uuidv4(), variant:'user', message, timestamp:Date.now(), loading:false}});
+                      fetchAnswer(message);
+                    }} />
 					{payload.type === 'custom_button' &&
 						payload.customButton?.buttonText &&
 						!payload.loading && (

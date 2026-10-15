@@ -1,3 +1,5 @@
+import { preloadOpenUIRenderer } from '../generativeUi/OpenUIResponse';
+import { manifest as openuiManifest } from '../generativeUi/contract.mjs';
 /** @format */
 
 import {
@@ -335,6 +337,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const piiRedactionBypassedRef = useRef(false);
 	const piiRedactionSessionKeyRef = useRef('');
 	const stateMessagesRef = useRef(state.messages);
+	useEffect(() => {
+		if (useGenerativeUI === true) preloadOpenUIRenderer().catch(() => {});
+	}, [useGenerativeUI]);
+
 	const chatHistoryRef = useRef(state.chatHistory);
 	const voiceHistoryItemIndicesRef = useRef(
 		state.voiceHistoryItemIndices || {}
@@ -2661,8 +2667,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							generativeUI += data.data || '';
 						const uiPayload = {
 							response: revealTextFromResponse(generativeUI),
-							libraryVersion: '1.0.0',
-							specSha256: 'ba70f60f9bd97423254845af800e777292a62abce5256cf9f3c48ca4275f5311'
+							libraryVersion: openuiManifest.componentLibraryVersion,
+							specSha256: openuiManifest.specSha256
 						};
 						const cleanedPayload = revealResponsePayload({ generativeUI: uiPayload }).generativeUI;
 						dispatch({

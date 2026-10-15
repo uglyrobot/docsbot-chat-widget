@@ -1,41 +1,13 @@
-import React from 'react'
-import { Renderer } from '@openuidev/react-lang'
-import { library } from './library'
-import { cleanGenerativeUiPayload } from '../../utils/generativeUiPayload.mjs'
-
-class OpenUIErrorBoundary extends React.Component {
-	constructor(props) {
-		super(props)
-		this.state = { failed: false }
-	}
-
-	static getDerivedStateFromError() {
-		return { failed: true }
-	}
-
-	render() {
-		return this.state.failed ? null : this.props.children
-	}
+import React, { lazy, Suspense } from 'react'
+let rendererPromise
+export function preloadOpenUIRenderer() {
+  // Suppress the renderer's development-only CDN inspector before loading it.
+  globalThis[Symbol.for('openui.devtools.autoMount')] = true
+  if (!rendererPromise) rendererPromise = import(/* webpackChunkName: "docsbot-openui" */ './OpenUIRenderer')
+  return rendererPromise
 }
-
-export function OpenUIResponse({ payload, isStreaming = false }) {
-	const safePayload = cleanGenerativeUiPayload(payload)
-	if (!safePayload) return null
-
-	return (
-		<div
-			className="docsbot-openui-response"
-			role="group"
-			aria-label="Generated interface"
-			aria-busy={isStreaming}
-		>
-			<OpenUIErrorBoundary>
-				<Renderer
-					response={safePayload.response}
-					library={library}
-					isStreaming={isStreaming}
-				/>
-			</OpenUIErrorBoundary>
-		</div>
-	)
+const Renderer = lazy(preloadOpenUIRenderer)
+export function OpenUIResponse(props) {
+  if (!props.payload?.response) return null
+  return <Suspense fallback={null}><Renderer {...props} /></Suspense>
 }

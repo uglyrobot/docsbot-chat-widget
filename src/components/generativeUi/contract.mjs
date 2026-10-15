@@ -1,0 +1,20 @@
+export const manifest = {
+  "formatVersion": 1,
+  "componentLibraryVersion": "2.0.0",
+  "rendererPackage": {
+    "name": "@openuidev/react-lang",
+    "version": "1.0.1"
+  },
+  "componentPackage": {
+    "name": "@openuidev/react-ui",
+    "version": "0.18.1"
+  },
+  "generatorPackage": {
+    "name": "@openuidev/cli",
+    "version": "0.6.0"
+  },
+  "specSha256": "5b3fbf97b97a798a82d1a1c3e7b10bb1eca39936d0fc5a9c97aa08811248f073",
+  "generatedPromptSha256": "d4b0be8eba8911bdea197608e3b661a791aa1e97f4bf28f2e2e9c803f3a721d4",
+  "backendPromptSha256": "acc710568752f27eac59708fda0864e6111be67d1e1237bc716fb9970edf8e93"
+};
+export const componentNames = ["Card","CardHeader","TextContent","MarkDownRenderer","Callout","TextCallout","Image","ImageBlock","ImageGallery","CodeBlock","InlineHeader","Table","Col","EditableTable","BarChart","LineChart","AreaChart","RadarChart","HorizontalBarChart","Series","PieChart","RadialChart","SingleStackedBarChart","Slice","ScatterChart","ScatterSeries","Point","Form","FormControl","Label","Input","TextArea","Select","SelectItem","DatePicker","Slider","CheckBoxGroup","CheckBoxItem","RadioGroup","RadioItem","SwitchGroup","SwitchItem","ChipItem","Chips","OptionCard","OptionCards","Button","Buttons","IconButton","Stack","Tabs","TabItem","Accordion","AccordionItem","Steps","StepsItem","Carousel","Separator","TagBlock","Tag","Icon","EntityList","ListBlock","ListItem","Text","BoldText","IconText","ImageText","ImageTextLarge","MetricIndicatorInline","MetricIndicatorWithStrikethrough","SnippetCardItem","SnippetCardBlock","OverviewCardItem","OverviewCardBlock","ContextCardItem","ContextCardBlock","CompositeCardItem","CompositeCardBlock","VisualCardItem","VisualCardBlock","Modal"];
