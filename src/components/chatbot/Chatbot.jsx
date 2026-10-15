@@ -268,6 +268,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		useVoiceAgent, // Server-gated browser Realtime voice calling
 		useWebSearch, // If agent web search tool is enabled (API)
 		useCustomButtons, // Agent API: request custom_button terminal events
+		useGenerativeUI, // Opt-in OpenUI Lang output from the Agent API
 		useCalendly,
 		useCalCom,
 		useTidyCal,
@@ -2429,7 +2430,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 						reasoning_effort: reasoningEffort
 					}),
 				...(useWebSearch && { web_search: true }),
-				...(useCustomButtons && { custom_buttons: true })
+				...(useCustomButtons && { custom_buttons: true }),
+				...(useGenerativeUI === true && { generative_ui: true })
 			};
 
 			// Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
