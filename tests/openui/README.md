@@ -35,3 +35,16 @@ Coverage:
 Screenshots, test results, and failure traces are written to
 `output/playwright/openui/`. These checks verify rendering and client transport
 handling. They do not verify live model generation or retrieval quality.
+
+## Full component screenshot gallery
+
+After the browser suite, run `node scripts/openui-gallery.mjs`. Open
+`http://localhost:3005/openui-gallery/index.html` for 25 full-resolution widget
+screenshots and an index of all 82 registered component names. Child/data
+components are represented through their parents. Upstream `Slice` renders null
+and has no standalone visual appearance. Generated gallery assets are ignored.
+
+Eight catalogue cases add the typography primitives, image variants, structured
+lists, editable table, all five card-block families, carousel, button variants
+and modal dialog. Fixture shells expand for screenshots so lower rows remain
+visible; runtime widget dimensions are unchanged.

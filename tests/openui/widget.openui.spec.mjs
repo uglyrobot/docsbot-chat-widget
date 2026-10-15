@@ -136,7 +136,9 @@ async function finish(page, generativeUI, text = answer) {
 async function screenshot(page, name, testInfo) {
   await mkdir(artifactDir, { recursive: true });
   const file = path.join(artifactDir, `${name}.png`);
-  await page.screenshot({ path: file, fullPage: true });
+  const surface = page.getByRole('group', {name:'Generated interface'});
+  if (await surface.count()) await surface.first().evaluate(el=>{for(let parent=el;parent;parent=parent.parentElement || parent.getRootNode()?.host){parent.style.maxHeight='none';parent.style.height='auto';parent.style.overflow='visible';} const embed=document.querySelector('#docsbot-widget-embed'); if(embed) embed.style.height='auto';});
+  await page.screenshot({ path: file, fullPage: true, animations:'disabled' });
   await testInfo.attach(name, { path: file, contentType: 'image/png' });
 }
 
@@ -414,3 +416,30 @@ test('enabled floating widget prewarms OpenUI only after opening', async ({page}
   await expect.poll(()=>chunks.length).toBeGreaterThan(0);
   expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(0);
 });
+
+// Visual catalogue uses the same isolated transport and real widget as regression tests.
+const galleryPhoto = `${devOrigin}/__fixture-photo.svg`;
+const galleryCases = {
+  typography: `root = Stack([CardHeader("Typography and feedback", "Official component styles"), TextContent("TextContent: readable body copy"), MarkDownRenderer("**Markdown** with a short ordered list:\n1. First step\n2. Second step"), InlineHeader("Inline header", "Supporting description"), Label("Standalone label"), Text("text", "Text primitive", "Supporting detail"), BoldText("number", "42", "Resolved tickets"), Callout("success", "Callout", "The fictional task completed."), TextCallout("warning", "TextCallout", "Sample warning message"), CodeBlock("javascript", "const answer = 42;"), Separator(), TagBlock(["Documentation", "Sample"]), Tag("Available", Icon("check"), "md", "success"), IconText(Icon("star"), "info", "m", "Icon text", "Official icon styling"), MetricIndicatorInline("98%", "Satisfaction", {direction:"up", value:4}), MetricIndicatorWithStrikethrough("$79", "Demo offer", "$99", {direction:"down", value:20})])`,
+  imagery: `root = Stack([CardHeader("Image components"), Image("Image", "${galleryPhoto}"), ImageBlock("${galleryPhoto}", "ImageBlock"), ImageGallery([{src:"${galleryPhoto}",alt:"Gallery alpine cabin",details:"First gallery image"},{src:"${galleryPhoto}",alt:"Gallery second cabin",details:"Second gallery image"}]), ImageText("${galleryPhoto}", "Cabin", "ImageText", "Compact image and text"), ImageTextLarge("${galleryPhoto}", "Cabin", "ImageTextLarge", "Large image and text")])`,
+  structured: `root = Stack([CardHeader("Lists, steps and editable data"), Steps([StepsItem("Create workspace", "Start with sample data"), StepsItem("Review result", "Check the generated interface")]), EntityList([{left:"Open tickets",right:"8",rightVariant:"number"},{left:"Resolved",right:"42",rightVariant:"number"}], "default", {left:"Status",right:"Count"}), ListBlock([ListItem("Alpine Cabin", "Fictional listing", {src:"${galleryPhoto}",alt:"Cabin"}), ListItem("Forest Lodge", "Another fictional listing", {src:"${galleryPhoto}",alt:"Lodge"})], "image"), EditableTable("demoTable", [{type:"text",key:"team",header:"Team"},{type:"number",key:"resolved",header:"Resolved"}], [{id:"a",values:["Alpha",42]},{id:"b",values:["Beta",31]}])])`,
+  snippetOverview: `root = Stack([CardHeader("Snippet and overview cards"), SnippetCardBlock([SnippetCardItem("one", IconText(Icon("inbox"), "info", "m", "Inbox", "Support queue"), BoldText("number", "42", "resolved")),SnippetCardItem("two", ImageText("${galleryPhoto}", "Cabin", "Alpine Cabin", "Fictional listing"), Text("number", "$99", "per night"))]), OverviewCardBlock([OverviewCardItem("one", IconText(Icon("star"), "success", "m", "Satisfaction", "Fictional result"), MetricIndicatorInline("98%", "This week", {direction:"up",value:4})), OverviewCardItem("two", Text("number", "73", "Tickets resolved"), MetricIndicatorInline("+12", "vs. last week"))])])`,
+  contextVisual: `root = Stack([CardHeader("Context and visual cards"), ContextCardBlock([ContextCardItem("one", Tag("Featured", Icon("star")), "A fictional cabin retreat", "gray", "${galleryPhoto}", "Cabin"),ContextCardItem("two", "Planning notes", "Bring a jacket and enjoy the view.", "gray")]), VisualCardBlock([VisualCardItem(BoldText("text", "Alpine Cabin", "$99 per night"), "one", "${galleryPhoto}", Tag("Demo"), "Cabin")])])`,
+  composite: `root = Stack([CardHeader("Composite cards"), CompositeCardBlock([CompositeCardItem("one", ImageTextLarge("${galleryPhoto}", "Cabin", "Alpine Cabin", "Fictional booking example"), [Text("text", "Quiet mountain retreat"), TagBlock(["Wi-Fi", "Mountain view"]), EntityList([{left:"Guests",right:"4"}])], {price:MetricIndicatorWithStrikethrough("$79", "per night", "$99"),button:Button("Ask about this cabin")})])])`,
+  carouselButtons: `root = Stack([CardHeader("Carousel and button variants"), Carousel([[CardHeader("First slide"),TextContent("A fictional overview")],[CardHeader("Second slide"),TextContent("More fictional details")]]), Buttons([Button("Primary"),Button("Secondary", @ToAssistant("Show more fictional details"), "secondary"),Button("Tertiary", @ToAssistant("Explain fictional data"), "tertiary")]), IconButton("Favorite",Icon("star")), Card([TextContent("Sunk card variant")], "sunk")])`,
+  modal: `root = Stack([TextContent("Dialog example below"), Modal("Demo dialog", true, [TextContent("This is an official OpenUI modal inside the widget integration."), Callout("info", "Local UI", "Close with Escape or the close button.")], "md")])`,
+};
+for (const [name, response] of Object.entries(galleryCases)) {
+  test(`visual catalogue ${name}`, async ({page}, testInfo) => {
+    const network = await openFixture(page); await ask(page); await finish(page,payload(response));
+    const ui = page.getByRole('group',{name:'Generated interface'});
+    await expect(ui).toBeVisible();
+    await expect(ui.getByText('Unable to display',{exact:false})).toHaveCount(0);
+    // Expand the fixture's scroll shell so screenshots show every rendered row.
+    await ui.evaluate(el=>{for(let parent=el;parent;parent=parent.parentElement || parent.getRootNode()?.host){parent.style.maxHeight='none';parent.style.height='auto';parent.style.overflow='visible';} document.querySelector('#docsbot-widget-embed').style.height='auto';});
+    if(name==='modal') await expect(page.getByRole('dialog')).toBeVisible();
+    await expect.poll(()=>ui.textContent()).not.toBe('');
+    await page.screenshot({path:path.join(artifactDir,`catalogue-${name}.png`),fullPage:true,animations:'disabled'});
+    expect(network.liveApiRequests).toEqual([]);
+  });
+}
