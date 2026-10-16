@@ -428,7 +428,7 @@ const galleryCases = {
   structured: `root = Stack([CardHeader("Lists, steps and editable data"), Steps([StepsItem("Create workspace", "Start with sample data"), StepsItem("Review result", "Check the generated interface")]), EntityList([{left:"Open tickets",right:"8",rightVariant:"number"},{left:"Resolved",right:"42",rightVariant:"number"}], "default", {left:"Status",right:"Count"}), ListBlock([ListItem("Alpine Cabin", "Fictional listing", {src:"${galleryPhoto}",alt:"Cabin"}), ListItem("Forest Lodge", "Another fictional listing", {src:"${galleryPhoto}",alt:"Lodge"})], "image"), EditableTable("demoTable", [{type:"text",key:"team",header:"Team"},{type:"number",key:"resolved",header:"Resolved"}], [{id:"a",values:["Alpha",42]},{id:"b",values:["Beta",31]}])])`,
   snippetOverview: `root = Stack([CardHeader("Snippet and overview cards"), SnippetCardBlock([SnippetCardItem("one", IconText(Icon("inbox"), "info", "m", "Inbox", "Support queue"), BoldText("number", "42", "resolved")),SnippetCardItem("two", ImageText("${galleryPhoto}", "Cabin", "Alpine Cabin", "Fictional listing"), Text("number", "$99", "per night"))]), OverviewCardBlock([OverviewCardItem("one", IconText(Icon("star"), "success", "m", "Satisfaction", "Fictional result"), MetricIndicatorInline("98%", "This week", {direction:"up",value:4})), OverviewCardItem("two", Text("number", "73", "Tickets resolved"), MetricIndicatorInline("+12", "vs. last week"))])])`,
   contextVisual: `root = Stack([CardHeader("Context and visual cards"), ContextCardBlock([ContextCardItem("one", Tag("Featured", Icon("star")), "A fictional cabin retreat", "gray", "${galleryPhoto}", "Cabin"),ContextCardItem("two", "Planning notes", "Bring a jacket and enjoy the view.", "gray")]), VisualCardBlock([VisualCardItem(BoldText("text", "Alpine Cabin", "$99 per night"), "one", "${galleryPhoto}", Tag("Demo"), "Cabin")])])`,
-  composite: `root = Stack([CardHeader("Composite cards"), CompositeCardBlock([CompositeCardItem("one", ImageTextLarge("${galleryPhoto}", "Cabin", "Alpine Cabin", "Fictional booking example"), [Text("text", "Quiet mountain retreat"), TagBlock(["Wi-Fi", "Mountain view"]), EntityList([{left:"Guests",right:"4"}])], {price:MetricIndicatorWithStrikethrough("$79", "per night", "$99"),button:Button("Ask about this cabin")})])])`,
+  composite: `root = Stack([CardHeader("Composite cards"), CompositeCardBlock([CompositeCardItem("one", ImageTextLarge("${galleryPhoto}", "Cabin", "Alpine Cabin", "Fictional booking example"), [Text("text", "Quiet mountain retreat"), TagBlock(["Wi-Fi", "Mountain view"]), EntityList([{left:"Guests",right:"4"}])], {price:MetricIndicatorWithStrikethrough("$79", "per night", "$99"),button:Button("Ask about this cabin")}), CompositeCardItem("two", ImageTextLarge("${galleryPhoto}", "Forest lodge", "Forest Lodge", "Fictional family retreat"), [Text("text", "A quiet woodland escape"), TagBlock(["Trail access", "Family friendly"]), EntityList([{left:"Guests",right:"6"}])], {price:BoldText("number", "$119", "per night"),button:Button("Ask about this lodge")})])])`,
   carouselButtons: `root = Stack([CardHeader("Carousel and button variants"), Carousel([[CardHeader("First slide"),TextContent("A fictional overview")],[CardHeader("Second slide"),TextContent("More fictional details")]]), Buttons([Button("Primary"),Button("Secondary", @ToAssistant("Show more fictional details"), "secondary"),Button("Tertiary", @ToAssistant("Explain fictional data"), "tertiary")]), IconButton("Favorite",Icon("star")), Card([TextContent("Sunk card variant")], "sunk")])`,
   modal: `root = Stack([TextContent("Dialog example below"), Modal("Demo dialog", true, [TextContent("This is an official OpenUI modal inside the widget integration."), Callout("info", "Local UI", "Close with Escape or the close button.")], "md")])`,
 };
@@ -536,4 +536,17 @@ for(const mode of ['light','dark'])test(`narrow floating widget typography ${mod
  await ui.getByText('Support overview',{exact:true}).scrollIntoViewIfNeeded();
  await page.screenshot({path:path.join(artifactDir,`brand-floating-${mode}-viewport.png`),animations:'disabled'});
  await screenshot(page,`brand-floating-${mode}`,testInfo);
+});
+
+for(const size of ['narrow','wide'])for(const mode of ['light','dark'])test(`composite grid ${size} ${mode}`,async({page},testInfo)=>{
+ await installFixture(page);await page.goto(`/__openui-fixture?theme=${mode}`);
+ await page.locator('main').evaluate((el,width)=>{el.style.maxWidth=width+'px';el.style.width=width+'px';},size==='narrow'?448:740);
+ await expect(page.getByRole('textbox',{name:'Send a message...'})).toBeVisible();await ask(page);await finish(page,payload(galleryCases.composite));
+ const ui=page.getByRole('group',{name:'Generated interface'});
+ await expect(ui.getByText('Alpine Cabin',{exact:true})).toBeVisible();await expect(ui.getByText('Forest Lodge',{exact:true})).toBeVisible();
+ const items=ui.locator('[data-card-type="CompositeCard"] .openui-medium-card-block__item');await expect(items).toHaveCount(2);
+ const a=await items.nth(0).boundingBox(),b=await items.nth(1).boundingBox();
+ if(size==='wide'){expect(Math.abs(a.y-b.y)).toBeLessThan(2);expect(b.x).toBeGreaterThan(a.x+a.width-1);}
+ else{expect(b.y).toBeGreaterThan(a.y+a.height-1);expect(Math.abs(a.x-b.x)).toBeLessThan(2);}
+ await screenshot(page,`composite-grid-${size}-${mode}`,testInfo);
 });

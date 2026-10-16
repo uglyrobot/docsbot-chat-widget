@@ -29,7 +29,9 @@ const spec=prefix+`\nimport {readFile} from 'node:fs/promises';\nconst matrixCas
 const specPath='tests/openui/matrix.generated.spec.mjs';await fs.writeFile(specPath,spec);
 const log=await fs.open('/tmp/docsbot-openui-component-matrix.log','w');
 try{
- const child=spawn(process.execPath,['node_modules/@playwright/test/cli.js','test','--config','playwright.openui.config.mjs',specPath,'--workers=2','--reporter=list'],{stdio:['ignore',log.fd,log.fd]});
+ const args=['node_modules/@playwright/test/cli.js','test','--config','playwright.openui.config.mjs',specPath,'--workers=2','--reporter=list'];
+ if(process.env.OPENUI_MATRIX_FILTER)args.push('--grep',process.env.OPENUI_MATRIX_FILTER);
+ const child=spawn(process.execPath,args,{stdio:['ignore',log.fd,log.fd]});
  const code=await new Promise(resolve=>child.on('exit',resolve));
  console.log('Captured',cases.length,'component combinations × 4 views; exit:',code);
  process.exitCode=code||0;
