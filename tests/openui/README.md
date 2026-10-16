@@ -68,3 +68,15 @@ copy, 15px card headings, and larger display headings capped at 22px. Text-entry
 fields use 16px below 640px viewport width to match the widget's existing iOS
 zoom safeguard. Narrow floating-widget checks compare input/body font family
 and size against surrounding chat in light/dark mode.
+
+## Every combination in four views
+
+Run `node scripts/capture-openui-matrix.mjs`, then
+`node scripts/openui-matrix-gallery.mjs`. The first script reuses the existing
+checked-in synthetic fixture programs to render 24 component combinations at
+448px and 740px, each light/dark (96 captures). It uses a temporary generated
+Playwright spec, removes it afterwards, and blocks nonlocal requests. The
+second script writes `public/openui-gallery/combos/index.html` with combination
+and view filters. Captures contain the full widget, expanded vertically so
+all generated rows remain visible. The catalogue covers 81 visual/child names;
+upstream `Slice` returns null and has no standalone appearance.
