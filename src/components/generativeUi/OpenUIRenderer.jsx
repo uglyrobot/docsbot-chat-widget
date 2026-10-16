@@ -2,6 +2,8 @@ import React, { useLayoutEffect, useRef } from 'react'
 import { Renderer } from '@openuidev/react-lang'
 import { ThemeProvider, useTheme } from '@openuidev/react-ui'
 import { library } from './library'
+import { createOpenUITheme } from './theme.mjs'
+import surfaceStyles from '!raw-loader!./surface.css'
 import { cleanGenerativeUiPayload } from '../../utils/generativeUiPayload.mjs'
 import openuiStyles from '!raw-loader!@openuidev/react-ui/styles/index.css'
 import { useConfig } from '../configContext/ConfigContext'
@@ -24,7 +26,7 @@ function ThemeSurface({ children, isStreaming }) {
       if (!target?.querySelector || target.querySelector('style[data-docsbot-openui]')) continue
       const style = document.createElement('style')
       style.dataset.docsbotOpenui = ''
-      style.textContent = openuiStyles
+      style.textContent = openuiStyles + surfaceStyles
       target.appendChild(style)
     }
     // Upstream TextArea/Select controls do not consistently connect their
@@ -48,8 +50,10 @@ function ThemeSurface({ children, isStreaming }) {
 }
 
 export default function OpenUIRenderer({ payload, isStreaming = false, onSend }) {
-  const { effectiveTheme } = useConfig()
+  const { effectiveTheme, color } = useConfig()
   const mode = effectiveTheme === 'dark' ? 'dark' : 'light'
+  const lightTheme = React.useMemo(() => createOpenUITheme(color, 'light'), [color])
+  const darkTheme = React.useMemo(() => createOpenUITheme(color, 'dark'), [color])
   const safePayload = cleanGenerativeUiPayload(payload)
   if (!safePayload) return null
   const onAction = event => {
@@ -61,5 +65,5 @@ export default function OpenUIRenderer({ payload, isStreaming = false, onSend })
     if (values.length > 10000) return
     onSend(values ? label + '\nForm values: ' + values : label)
   }
-  return <ThemeProvider mode={mode} cssSelector=".docsbot-openui-surface"><ThemeSurface isStreaming={isStreaming}><OpenUIErrorBoundary response={safePayload.response}><Renderer response={safePayload.response} library={library} isStreaming={isStreaming} onAction={onAction} /></OpenUIErrorBoundary></ThemeSurface></ThemeProvider>
+  return <ThemeProvider mode={mode} lightTheme={lightTheme} darkTheme={darkTheme} cssSelector=".docsbot-openui-surface"><ThemeSurface isStreaming={isStreaming}><OpenUIErrorBoundary response={safePayload.response}><Renderer response={safePayload.response} library={library} isStreaming={isStreaming} onAction={onAction} /></OpenUIErrorBoundary></ThemeSurface></ThemeProvider>
 }

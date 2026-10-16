@@ -48,3 +48,23 @@ Eight catalogue cases add the typography primitives, image variants, structured
 lists, editable table, all five card-block families, carousel, button variants
 and modal dialog. Fixture shells expand for screenshots so lower rows remain
 visible; runtime widget dimensions are unchanged.
+
+## Brand styling review
+
+The browser suite includes six brand colors in both light and dark mode, mobile
+forms/cards, disabled streaming actions, secondary hover and keyboard focus.
+Axe checks cover serious/critical issues inside the generated Shadow DOM surface.
+`node --test src/components/generativeUi/theme.test.mjs` checks text (4.5:1) and
+action/focus/chart accent (3:1) contrast for the theme tokens. The same token
+helper and scoped CSS are used by dashboard chat and question/conversation logs.
+
+The gallery now includes the brand matrix and compact component screenshots;
+click a tile for the full widget capture. Optional baseline images in
+`output/playwright/openui-before/` enable before/after comparisons. These local
+images are not committed. No live model requests are made by these checks.
+
+Typography follows the widget's native font stack: 14px body, 13px labels/table
+copy, 15px card headings, and larger display headings capped at 22px. Text-entry
+fields use 16px below 640px viewport width to match the widget's existing iOS
+zoom safeguard. Narrow floating-widget checks compare input/body font family
+and size against surrounding chat in light/dark mode.

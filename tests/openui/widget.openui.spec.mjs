@@ -44,6 +44,7 @@ document.addEventListener('docsbot_tool_call',event=>window.fixtureEvents.push({
 document.addEventListener('docsbot_fetching_answer_complete',()=>window.fixtureEvents.push({type:'done'}));
 DocsBotAI.mount({id:'fixture-team/fixture-bot',options:{localDev:true,localApiBase:'http://127.0.0.1:9000',
 isAgent:true,useGenerativeUI:new URLSearchParams(location.search).get('enabled')!=='0',
+color:new URLSearchParams(location.search).get('brand')||'#0e7490',
 useWebSearch:false,useCustomButtons:false,useCalendly:false,useCalCom:false,useTidyCal:false,
 useFeedback:false,useEscalation:false,useVoiceAgent:false,useImageUpload:false,useAudioUpload:false,
 piiRedaction:false,leadCollect:false,testing:true,theme:new URLSearchParams(location.search).get('theme')||'light',questions:[]}});
@@ -137,8 +138,10 @@ async function screenshot(page, name, testInfo) {
   await mkdir(artifactDir, { recursive: true });
   const file = path.join(artifactDir, `${name}.png`);
   const surface = page.getByRole('group', {name:'Generated interface'});
-  if (await surface.count()) await surface.first().evaluate(el=>{for(let parent=el;parent;parent=parent.parentElement || parent.getRootNode()?.host){parent.style.maxHeight='none';parent.style.height='auto';parent.style.overflow='visible';} const embed=document.querySelector('#docsbot-widget-embed'); if(embed) embed.style.height='auto';});
+  if (await surface.count()) await surface.first().evaluate(el=>{for(let parent=el;parent;parent=parent.parentElement || parent.getRootNode()?.host){if(getComputedStyle(parent).position==='fixed'){const width=parent.getBoundingClientRect().width;parent.style.position='relative';parent.style.inset='auto';parent.style.width=width+'px';parent.style.margin='20px auto';}parent.style.maxHeight='none';parent.style.height='auto';parent.style.overflow='visible';} const embed=document.querySelector('#docsbot-widget-embed'); if(embed) embed.style.height='auto';});
   await page.screenshot({ path: file, fullPage: true, animations:'disabled' });
+  const surfaceBox = await surface.count() ? await surface.first().boundingBox() : null;
+  if (surfaceBox?.width > 0 && surfaceBox?.height > 0) await surface.first().screenshot({path:path.join(artifactDir, `${name}-surface.png`),animations:'disabled'});
   await testInfo.attach(name, { path: file, contentType: 'image/png' });
 }
 
@@ -439,7 +442,98 @@ for (const [name, response] of Object.entries(galleryCases)) {
     await ui.evaluate(el=>{for(let parent=el;parent;parent=parent.parentElement || parent.getRootNode()?.host){parent.style.maxHeight='none';parent.style.height='auto';parent.style.overflow='visible';} document.querySelector('#docsbot-widget-embed').style.height='auto';});
     if(name==='modal') await expect(page.getByRole('dialog')).toBeVisible();
     await expect.poll(()=>ui.textContent()).not.toBe('');
-    await page.screenshot({path:path.join(artifactDir,`catalogue-${name}.png`),fullPage:true,animations:'disabled'});
+    await screenshot(page,`catalogue-${name}`,testInfo);
     expect(network.liveApiRequests).toEqual([]);
   });
 }
+
+const brandReviewProgram = [
+ 'root = Stack([header, actions, formCard, chartCard])',
+ 'header = CardHeader("Support overview", "Fictional sample data · branded controls")',
+ 'actions = Buttons([Button("Primary action"), Button("Secondary action", @ToAssistant("Secondary sample"), "secondary"), Button("Text action", @ToAssistant("Text sample"), "tertiary")])',
+ 'formCard = Card([CardHeader("Your preferences", "Changes are local until you submit"), form])',
+ 'form = Form("brandReview", Buttons([Button("Save preferences")]), [name, priority, contact, notes])',
+ 'name = FormControl("Name", Input("name", "Sample name"))',
+ 'priority = FormControl("Priority", Select("priority", [SelectItem("normal", "Normal"), SelectItem("high", "High")], "Choose priority"))',
+ 'contact = FormControl("Updates", CheckBoxGroup("updates", [CheckBoxItem("Product updates", "Occasional news", "product", true)]))',
+ 'notes = FormControl("Notes", TextArea("notes", "Optional notes", 2))',
+ 'chartCard = Card([CardHeader("Resolved tickets", "Synthetic comparison"), graph])',
+ 'graph = BarChart(["Alpha", "Beta", "Gamma"], [Series("Resolved", [42, 31, 25])], "grouped", "Team", "Tickets", 220)',
+].join('\n');
+for(const [brandName,brand] of [['teal','#0e7490'],['purple','#7c3aed'],['yellow','#facc15'],['white','#ffffff'],['black','#000000'],['red','#ef4444']]){
+ for(const mode of ['light','dark']){
+  test(`brand theme ${brandName} ${mode}`,async({page},testInfo)=>{
+   const network=await installFixture(page);
+   await page.goto(`/__openui-fixture?brand=${encodeURIComponent(brand)}&theme=${mode}`);
+   await expect(page.getByRole('textbox',{name:'Send a message...'})).toBeVisible();
+   await ask(page);await finish(page,payload(brandReviewProgram));
+   const ui=page.getByRole('group',{name:'Generated interface'});
+   const primary=ui.getByRole('button',{name:'Primary action',exact:true});
+   await expect(primary).toBeVisible();
+   const expected= (await import('../../src/components/generativeUi/theme.mjs')).createOpenUITheme(brand,mode);
+   const style=await primary.evaluate(el=>({bg:getComputedStyle(el).backgroundColor,color:getComputedStyle(el).color}));
+   const normalize=v=>v.replaceAll(' ','');
+   await expect.poll(async()=>normalize(await primary.evaluate(el=>getComputedStyle(el).backgroundColor))).toBe(normalize(expected.interactiveAccentDefault));
+   await primary.hover();
+   await expect.poll(async()=>normalize(await primary.evaluate(el=>getComputedStyle(el).backgroundColor))).toBe(normalize(expected.interactiveAccentHover));
+   await primary.focus();
+   await ui.getByRole('textbox',{name:'Name',exact:true}).focus();
+   await ui.getByRole('textbox',{name:'Name',exact:true}).click();
+   await page.keyboard.press('Tab');
+   await screenshot(page,`brand-${brandName}-${mode}`,testInfo);
+   const axe=await new AxeBuilder({page}).include(['#docsbotai-root', '.docsbot-openui-surface']).analyze();
+   expect(axe.violations.filter(v=>['critical','serious'].includes(v.impact))).toEqual([]);
+   expect(network.liveApiRequests).toEqual([]);
+  });
+ }
+}
+test('mobile generated cards stack vertically',async({page},testInfo)=>{
+ await page.setViewportSize({width:390,height:844});await openFixture(page);await ask(page);await finish(page,payload(imageCards));
+ const ui=page.getByRole('group',{name:'Generated interface'});
+ const cards=ui.locator('.openui-card');
+ const first=await cards.nth(0).boundingBox(),second=await cards.nth(1).boundingBox();
+ expect(second.y).toBeGreaterThan(first.y+first.height-1);
+ expect(first.width).toBeGreaterThan(290);
+ await screenshot(page,'brand-mobile-cards',testInfo);
+});
+
+test('branded disabled, hover and keyboard-focus states remain distinct',async({page},testInfo)=>{
+ await openFixture(page);await ask(page);await push(page,sse('generative_ui_delta',brandReviewProgram));
+ const ui=page.getByRole('group',{name:'Generated interface'});
+ const primary=ui.getByRole('button',{name:'Primary action',exact:true});
+ await expect(primary).toBeDisabled();
+ await screenshot(page,'brand-disabled-streaming',testInfo);
+ await finish(page,payload(brandReviewProgram));await expect(primary).toBeEnabled();
+ const secondary=ui.getByRole('button',{name:'Secondary action',exact:true});
+ await secondary.hover();await screenshot(page,'brand-secondary-hover',testInfo);
+ await primary.focus();
+ const outline=await primary.evaluate(el=>getComputedStyle(el).outlineStyle);expect(outline).toBe('solid');
+ await screenshot(page,'brand-keyboard-focus',testInfo);
+});
+for(const mode of ['light','dark'])test(`branded mobile form ${mode}`,async({page},testInfo)=>{
+ await page.setViewportSize({width:390,height:844});await installFixture(page);
+ await page.goto(`/__openui-fixture?brand=%237c3aed&theme=${mode}`);
+ await expect(page.getByRole('textbox',{name:'Send a message...'})).toBeVisible();
+ await ask(page);await finish(page,payload(brandReviewProgram));
+ const ui=page.getByRole('group',{name:'Generated interface'});
+ expect(await ui.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+ await screenshot(page,`brand-mobile-form-${mode}`,testInfo);
+});
+
+for(const mode of ['light','dark'])test(`narrow floating widget typography ${mode}`,async({page},testInfo)=>{
+ await installFixture(page);await page.goto(`/__openui-fixture?floating=1&theme=${mode}`);
+ await page.getByRole('button',{name:'Help',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Send a message...'})).toBeVisible();await ask(page);
+ await finish(page,payload(brandReviewProgram));
+ const ui=page.getByRole('group',{name:'Generated interface'});
+ const box=await ui.boundingBox();expect(box.width).toBeLessThan(420);expect(box.width).toBeGreaterThan(300);
+ const body=await page.getByText('The fictional teams resolved 73 tickets.',{exact:false}).evaluate(el=>({size:getComputedStyle(el).fontSize,font:getComputedStyle(el).fontFamily}));
+ const form=ui.getByRole('textbox',{name:'Name',exact:true});
+ expect(await form.evaluate(el=>getComputedStyle(el).fontSize)).toBe(body.size);
+ expect(await form.evaluate(el=>getComputedStyle(el).fontFamily)).toBe(body.font);
+ expect(await ui.getByText('Support overview',{exact:true}).evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeLessThanOrEqual(16);
+ expect(await ui.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+ await ui.getByText('Support overview',{exact:true}).scrollIntoViewIfNeeded();
+ await page.screenshot({path:path.join(artifactDir,`brand-floating-${mode}-viewport.png`),animations:'disabled'});
+ await screenshot(page,`brand-floating-${mode}`,testInfo);
+});
