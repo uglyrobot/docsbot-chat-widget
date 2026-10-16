@@ -1402,9 +1402,9 @@ export const BotChatMessage = ({
 						})()}
 					</div>
 					) : null}
-                    <OpenUIResponse payload={payload.generativeUI} messageId={payload.id} isStreaming={payload.streaming} onSend={message => {
+                    <OpenUIResponse payload={payload.generativeUI} messageId={payload.id} readOnly={payload.uiReadOnly} lifecycleState={payload.uiLifecycle} onLifecycleState={uiLifecycle => dispatch({type:"update_message",payload:{id:payload.id,uiLifecycle}})} requestPending={Object.values(state.messages || {}).some(item => item.loading || item.streaming)} isStreaming={payload.streaming} onSend={async message => {
                       dispatch({type:'add_message', payload:{id:uuidv4(), variant:'user', message, timestamp:Date.now(), loading:false}});
-                      fetchAnswer(message);
+                      return await fetchAnswer(message);
                     }} />
 					{payload.type === 'custom_button' &&
 						payload.customButton?.buttonText &&

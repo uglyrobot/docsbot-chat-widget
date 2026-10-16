@@ -950,14 +950,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			Emitter.emit('docsbot_add_user_message_complete');
 		});
 
-		Emitter.on('docsbot_add_bot_message', async ({ message, generativeUI }) => {
+		Emitter.on('docsbot_add_bot_message', async ({ message, generativeUI, uiReadOnly }) => {
 			await dispatch({
 				type: 'add_message',
 				payload: {
 					id: uuidv4(),
 					variant: 'chatbot',
 					message: message,
-					...(generativeUI ? { generativeUI } : {}),
+					...(generativeUI ? { generativeUI, uiReadOnly } : {}),
 					loading: false,
 					streaming: false,
 					timestamp: Date.now()
@@ -2329,6 +2329,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	}, [isTidyCalEnabled]);
 
 	async function fetchAnswer(question, image_urls = [], options = {}) {
+        let uiMessageAccepted = false;
 		if (!options.bypassLeadCollect && shouldRequireLeadBeforeSend()) {
 			setIsLeadCaptureLocked(true);
 			setPendingLeadCapture({
@@ -2782,7 +2783,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 								currentAgentActivity = null;
 
 								answerId = finalData.id || null; // save the answer id for the feedback button
-								let newChatHistory = finalData.history;
+								uiMessageAccepted = true;
+                                let newChatHistory = finalData.history;
 
 								dispatch({
 									type: 'save_history',
@@ -3024,6 +3026,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				}
 			};
 		}
+        return uiMessageAccepted;
 	}
 
 	async function handleSubmit(event) {

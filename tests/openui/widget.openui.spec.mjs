@@ -131,6 +131,7 @@ async function finish(page, generativeUI, text = answer) {
       { role: 'assistant', message: text, ...(generativeUI ? { generativeUI } : {}) },
     ],
   }));
+  await page.evaluate(() => window.fixtureController.close());
   await expect.poll(() => page.evaluate(() => window.fixtureEvents.some(event => event.type === 'done'))).toBe(true);
 }
 
@@ -608,4 +609,136 @@ for(const size of ['narrow','wide'])for(const mode of ['light','dark'])test(`com
  if(size==='wide'){expect(Math.abs(a.y-b.y)).toBeLessThan(2);expect(b.x).toBeGreaterThan(a.x+a.width-1);}
  else{expect(b.y).toBeGreaterThan(a.y+a.height-1);expect(Math.abs(a.x-b.x)).toBeLessThan(2);}
  await screenshot(page,`composite-grid-${size}-${mode}`,testInfo);
+});
+
+const lifecycleLabels = '{pending:"Sending your choice…", submitted:"Submitted — see the reply below", retry:"Response interrupted — review and retry"}';
+const lifecycleForm = policy => [
+ 'root = Stack([scope, tabs])',
+ `scope = ActionGroup("request", "${policy}", [card], ${lifecycleLabels})`,
+ 'card = Card([CardHeader("Demo support request", "Fictional data · explicit submission"), form])',
+ 'form = Form("request", Buttons([Button("Send request", @ToAssistant("Send support request"))]), [FormControl("Name", Input("name", "Your name")), FormControl("Issue", TextArea("issue", "Describe the issue", 3))])',
+ 'tabs = Tabs([TabItem("about", "About this demo", [TextContent("No external ticket is created.")]), TabItem("privacy", "Privacy notes", [TextContent("This example uses fictional data only.")])])',
+].join('\n');
+const lifecycleChoices = [
+ 'root = Stack([decision, extra])',
+ `decision = ActionGroup("decision", "once", [Card([CardHeader("Request a demo?", "Choose one alternative"), Buttons([Button("Request a demo", @ToAssistant("Request the fictional demo")), Button("Maybe later", @ToAssistant("Skip the fictional demo"), "secondary")])])], ${lifecycleLabels})`,
+ `extra = ActionGroup("details", "repeatable", [Buttons([Button("Explain the options", @ToAssistant("Explain the demo options"), "secondary")])], ${lifecycleLabels})`,
+].join('\n');
+const lifecycleProducts = [
+ 'root = Stack([cards])',
+ `cards = ActionGroup("browse", "repeatable", [Stack([first,second], "row", "m", "stretch", "start", true)], ${lifecycleLabels})`,
+ 'first = Card([Image("Fictional Alpine Cabin", "http://127.0.0.1:3005/__fixture-photo.svg"), CardHeader("Alpine Cabin", "Two guests · sample listing"), Buttons([Button("Explore Alpine", @ToAssistant("Tell me about Alpine Cabin", {itemId:"alpine"}))])])',
+ 'second = Card([Image("Fictional Forest Lodge", "http://127.0.0.1:3005/__fixture-photo.svg"), CardHeader("Forest Lodge", "Four guests · sample listing"), Buttons([Button("Explore Forest", @ToAssistant("Tell me about Forest Lodge", {itemId:"forest"}))])])',
+].join('\n');
+const lifecycleHost = `root = Stack([ActionGroup("host", "once", [Card([CardHeader("Application-owned action", "Your website handles this selection"), Buttons([Button("Save demo choice", @ToAssistant("Save my demo choice", "host-demo"))])])], ${lifecycleLabels})])`;
+const lifecycleExamples = [
+ {id:'once-form',title:'One-time form',question:'Help me send a fictional support request.',program:lifecycleForm('once'),summary:'Describe the missing report, then send this demo request once.',button:'Send request',form:true,once:true,reply:'Your request was received in this demo. Reference DEMO-104. No external ticket was created.'},
+ {id:'once-choice',title:'One-time alternative choices',question:'Ask whether I want a fictional product demo.',program:lifecycleChoices,summary:'Choose one option. The two alternatives share a one-time group.',button:'Request a demo',once:true,reply:'You requested the fictional demo. This is a confirmation example; no meeting was booked.'},
+ {id:'repeat-products',title:'Repeatable image cards',question:'Show two fictional cabins that I can explore.',program:lifecycleProducts,summary:'Explore either sample cabin. These browsing actions remain available.',button:'Explore Alpine',second:'Explore Forest',reply:'Alpine Cabin is a fictional two-guest retreat with mountain views.',reply2:'Forest Lodge is a fictional four-guest cabin near woodland trails.'},
+ {id:'repeat-form',title:'Repeatable editable form',question:'Let me refine a fictional support request before sending another version.',program:lifecycleForm('repeatable'),summary:'You can submit this editable demo again after changing its values.',button:'Send request',form:true,second:'Send request',reply:'Received the first demo request: the monthly report is missing.',reply2:'Received the revised demo request: the weekly report is missing.'},
+ {id:'retry',title:'Interrupted request and explicit retry',question:'Demonstrate a fictional support submission with an interrupted response.',program:lifecycleForm('once'),summary:'This demo interrupts the first response so you can review and retry.',button:'Send request',form:true,once:true,retry:true,reply:'The retried demo request was received. No external ticket was created.'},
+ {id:'independent',title:'Independent action groups',question:'Show a one-time decision alongside a repeatable explanation button.',program:lifecycleChoices,summary:'The decision locks after use. Asking for an explanation remains available.',button:'Maybe later',second:'Explain the options',once:true,reply:'You chose to skip the fictional demo for now.',reply2:'Request a demo expresses interest; Maybe later skips it. This explanation is repeatable.'},
+ {id:'host',title:'Website handles the action',question:'Show a fictional action handled by my website JavaScript.',program:lifecycleHost,summary:'The host application will record the demo choice and add the visible conversation.',button:'Save demo choice',once:true,host:true,reply:'The demo application recorded your choice locally. No model request or external write was made.'},
+ {id:'frozen-log',title:'Frozen historical conversation',question:'Show a fictional support request and its read-only history.',program:lifecycleForm('once'),summary:'Submit once, then inspect the conversation as a frozen historical snapshot.',button:'Send request',form:true,once:true,frozen:true,reply:'Demo request received. The historical interface below will remain read-only.'},
+];
+for(const example of lifecycleExamples) for(const mode of ['light','dark']) for(const width of [448,900]) {
+ test(`lifecycle example ${example.id} ${width} ${mode}`, async({page},testInfo)=>{
+  const network=await openFixture(page);
+  await page.setViewportSize({width,height:1000});
+  await page.evaluate(mode=>DocsBotAI.updateOptions({theme:mode}),mode);
+  const input=page.getByRole('textbox',{name:'Send a message...'});
+  await input.fill(example.question);await input.press('Enter');
+  await expect.poll(()=>page.evaluate(()=>window.fixtureRequests.length)).toBe(1);
+  await finish(page,payload(example.program),example.summary);
+  const ui=page.getByRole('group',{name:'Generated interface'}).first();
+  await expect(ui.getByRole('button',{name:example.button,exact:true})).toBeVisible();
+  if(example.form){await ui.getByRole('textbox',{name:'Name',exact:true}).fill('Casey Demo');await ui.getByRole('textbox',{name:'Issue',exact:true}).fill('The monthly report is missing.');}
+  await screenshot(page,`lifecycle-${example.id}-${width}-${mode}-before`,testInfo);
+  if(example.host)await page.evaluate(reply=>{
+   document.addEventListener('docsbot_ui_action',event=>{
+    if(event.detail.actionGroup?.name!=='host')return;
+    event.preventDefault();
+    event.detail.respondWith((async()=>{await DocsBotAI.addUserMessage(event.detail.message,false);await DocsBotAI.addBotMessage(reply);return true})());
+   });
+  },example.reply);
+  await ui.getByRole('button',{name:example.button,exact:true}).click();
+  if(!example.host){
+   await expect.poll(()=>page.evaluate(()=>window.fixtureRequests.length)).toBe(2);
+   await expect(ui.locator('[data-action-status="pending"]')).toHaveCount(1);
+   await expect(ui.getByRole('button',{name:example.button,exact:true})).toBeDisabled();
+   // A programmatic repeated click is also guarded, not only visually disabled.
+   await ui.getByRole('button',{name:example.button,exact:true}).dispatchEvent('click');
+   expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(2);
+   await screenshot(page,`lifecycle-${example.id}-${width}-${mode}-pending`,testInfo);
+   if(example.retry){
+    await page.evaluate(()=>window.fixtureController.error(new Error('Synthetic response interrupted')));
+    await expect(ui.locator('[data-action-status="retry"]')).toHaveCount(1);
+    await expect(ui.getByRole('button',{name:example.button,exact:true})).toBeEnabled();
+    await screenshot(page,`lifecycle-${example.id}-${width}-${mode}-retry`,testInfo);
+    await ui.getByRole('button',{name:example.button,exact:true}).click();
+    await expect.poll(()=>page.evaluate(()=>window.fixtureRequests.length)).toBe(3);
+   }
+   await finish(page,null,example.reply);
+  }
+  await expect(ui.locator('[data-action-status="submitted"]')).toHaveCount(1);
+  if(example.once)await expect(ui.getByRole('button',{name:example.button,exact:true})).toBeDisabled();
+  if(example.form){
+   const bubble=page.locator('.docsbot-user-chat-message').filter({hasText:'Send support request'}).last();
+   await bubble.locator('summary').click();
+   await expect(bubble.getByText('Casey Demo',{exact:true})).toBeVisible();
+   await expect(ui.getByRole('textbox',{name:'Name',exact:true})).toHaveValue('Casey Demo');
+  }
+  if(example.second){
+   if(example.form){
+    await expect(ui.getByRole('button',{name:example.second,exact:true})).toBeDisabled();
+    await expect(ui.getByRole('textbox',{name:'Issue',exact:true})).toBeEnabled();
+    await ui.getByRole('textbox',{name:'Issue',exact:true}).fill('The weekly report is missing.');
+   }
+   await expect(ui.getByRole('button',{name:example.second,exact:true})).toBeEnabled();
+   await ui.getByRole('button',{name:example.second,exact:true}).click();
+   await expect.poll(()=>page.evaluate(()=>window.fixtureRequests.length)).toBe(3);
+   await finish(page,null,example.reply2);
+   await expect(ui.locator('[data-action-status="pending"]')).toHaveCount(0);
+   if(example.form){const last=page.locator('.docsbot-user-chat-message').filter({hasText:'Send support request'}).last();await last.locator('summary').click();await expect(last.getByText('The weekly report is missing.',{exact:true})).toBeVisible();}
+  }
+  await screenshot(page,`lifecycle-${example.id}-${width}-${mode}-after`,testInfo);
+  if(example.once && !example.host){
+   await expect.poll(()=>page.evaluate(()=>localStorage.getItem('DocsBot_fixture-bot_chatHistory')||'')).toContain('uiLifecycle');
+   if(example.frozen)await page.evaluate(()=>{
+    const key='DocsBot_fixture-bot_chatHistory';const data=JSON.parse(localStorage.getItem(key));
+    for(const item of Object.values(data))if(item.generativeUI)item.uiReadOnly=true;
+    localStorage.setItem(key,JSON.stringify(data));
+   });
+   await page.reload();
+   const restored=page.getByRole('group',{name:'Generated interface'}).first();
+   await expect(restored.getByRole('button',{name:example.button,exact:true})).toBeDisabled();
+   if(example.form)await expect(restored.getByRole('textbox',{name:'Name',exact:true})).toHaveValue('Casey Demo');
+   if(example.frozen){await expect(restored.getByRole('tab',{name:'Privacy notes'})).toBeDisabled();await restored.getByRole('tab',{name:'Privacy notes'}).dispatchEvent('click');expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(0);await screenshot(page,`lifecycle-${example.id}-${width}-${mode}-frozen`,testInfo);}
+  }
+  expect(network.liveApiRequests).toEqual([]);
+ });
+}
+
+test('one-time group blocks same-tick double clicks and restores after explicit send failure',async({page})=>{
+ await openFixture(page);await ask(page);await finish(page,payload(lifecycleChoices));
+ const ui=page.getByRole('group',{name:'Generated interface'});
+ await ui.getByRole('button',{name:'Request a demo',exact:true}).evaluate(button=>{button.click();button.click()});
+ await expect.poll(()=>page.evaluate(()=>window.fixtureRequests.length)).toBe(2);
+ await page.waitForTimeout(100);
+ expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(2);
+ await page.evaluate(()=>window.fixtureController.error(new Error('Synthetic network failure')));
+ await expect(ui.locator('[data-action-status="retry"]')).toHaveCount(1);
+ await expect(ui.getByRole('button',{name:'Maybe later',exact:true})).toBeEnabled();
+});
+
+test('invalid or nested action policies cannot produce actionable controls',async({page})=>{
+ await openFixture(page);await ask(page);
+ await finish(page,payload(`root = Stack([ActionGroup("outer", "once", [ActionGroup("inner", "repeatable", [Buttons([Button("Nested action")])], ${lifecycleLabels})], ${lifecycleLabels})])`));
+ await expect(page.getByRole('button',{name:'Nested action',exact:true})).toHaveCount(0);
+ expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(1);
+ const invalid=`root = Stack([ActionGroup("invalid", "unknown", [Buttons([Button("Invalid policy action")])], ${lifecycleLabels})])`;
+ await page.evaluate(response=>DocsBotAI.addUIMessage({response}),invalid);
+ const button=page.getByRole('button',{name:'Invalid policy action',exact:true});
+ if(await button.count()){await expect(button).toBeDisabled();await button.dispatchEvent('click');}
+ expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(1);
 });

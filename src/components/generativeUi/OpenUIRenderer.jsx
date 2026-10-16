@@ -1,3 +1,5 @@
+import FrozenInterface from './FrozenInterface'
+import { ActionLifecycleProvider } from './ActionLifecycle'
 import React, { useLayoutEffect, useRef } from 'react'
 import { Renderer } from '@openuidev/react-lang'
 import { ThemeProvider, useTheme } from '@openuidev/react-ui'
@@ -50,21 +52,24 @@ function ThemeSurface({ children, isStreaming }) {
   return <div ref={ref} className="docsbot-openui-surface not-prose" role="group" aria-label="Generated interface" aria-busy={isStreaming} style={{...variables, width:'100%', minWidth:0, margin:'12px 0', color:'var(--openui-text-neutral-primary)', fontSize:14, lineHeight:1.5}}>{children}</div>
 }
 
-export default function OpenUIRenderer({ payload, isStreaming = false, onSend, messageId }) {
+export default function OpenUIRenderer({ payload, isStreaming = false, onSend, messageId, lifecycleState, onLifecycleState, requestPending = false, readOnly = false }) {
   const { effectiveTheme, color, teamId, botId } = useConfig()
   const mode = effectiveTheme === 'dark' ? 'dark' : 'light'
   const lightTheme = React.useMemo(() => createOpenUITheme(color, 'light'), [color])
   const darkTheme = React.useMemo(() => createOpenUITheme(color, 'dark'), [color])
   const safePayload = cleanGenerativeUiPayload(payload)
   if (!safePayload) return null
-  const onAction = event => {
+  const send = async (event, actionGroup) => {
     // Generated UIs can only add an explicit user turn to this conversation.
     // No tool registry, Query, Mutation, arbitrary code, or URL actions are supplied.
-    if (isStreaming) return
+    if (readOnly || isStreaming) return false
+    if (actionGroup) event = {...event, params:{...event.params, docsbotAction:{group:actionGroup.name, policy:actionGroup.policy}}}
     const message = buildOpenUIActionMessage(event)
-    if (!message) return
-    const proceed = dispatchOpenUIAction({ ...event, teamId, botId, messageId, response: safePayload.response, message })
-    if (proceed && typeof onSend === 'function') onSend(message)
+    if (!message) return false
+    let hostResult
+    const proceed = dispatchOpenUIAction({ ...event, actionGroup, teamId, botId, messageId, response: safePayload.response, message, respondWith: value => { hostResult = Promise.resolve(value) } })
+    if (!proceed) return hostResult ? await hostResult : 'cancelled'
+    return typeof onSend === 'function' ? await onSend(message) : false
   }
-  return <ThemeProvider mode={mode} lightTheme={lightTheme} darkTheme={darkTheme} cssSelector=".docsbot-openui-surface"><ThemeSurface isStreaming={isStreaming}><OpenUIErrorBoundary response={safePayload.response}><Renderer response={safePayload.response} library={library} isStreaming={isStreaming} onAction={onAction} /></OpenUIErrorBoundary></ThemeSurface></ThemeProvider>
+  return <ThemeProvider mode={mode} lightTheme={lightTheme} darkTheme={darkTheme} cssSelector=".docsbot-openui-surface"><ThemeSurface isStreaming={isStreaming}><FrozenInterface frozen={readOnly}><OpenUIErrorBoundary response={safePayload.response}><ActionLifecycleProvider initialState={lifecycleState} onSave={onLifecycleState} send={send} requestPending={requestPending} readOnly={readOnly}>{api => <Renderer response={safePayload.response} library={library} initialState={lifecycleState?.formState} onStateUpdate={api.onStateUpdate} isStreaming={isStreaming || requestPending} onAction={api.onAction} />}</ActionLifecycleProvider></OpenUIErrorBoundary></FrozenInterface></ThemeSurface></ThemeProvider>
 }

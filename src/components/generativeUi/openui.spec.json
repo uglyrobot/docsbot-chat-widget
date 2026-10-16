@@ -2,7 +2,7 @@
   "root": "Stack",
   "components": {
     "Card": {
-      "signature": "Card(children: (TextContent | MarkDownRenderer | CardHeader | Callout | TextCallout | CodeBlock | Image | ImageBlock | ImageGallery | Separator | HorizontalBarChart | RadarChart | PieChart | RadialChart | SingleStackedBarChart | ScatterChart | AreaChart | BarChart | LineChart | Table | TagBlock | Form | Buttons | IconButton | Steps | InlineHeader | EntityList | EditableTable | SnippetCardBlock | OverviewCardBlock | ContextCardBlock | CompositeCardBlock | VisualCardBlock | Tabs | Carousel | Stack)[], variant?: \"card\" | \"sunk\" | \"clear\", direction?: \"row\" | \"column\", gap?: \"none\" | \"xs\" | \"s\" | \"m\" | \"l\" | \"xl\" | \"2xl\", align?: \"start\" | \"center\" | \"end\" | \"stretch\" | \"baseline\", justify?: \"start\" | \"center\" | \"end\" | \"between\" | \"around\" | \"evenly\", wrap?: boolean)",
+      "signature": "Card(children: (TextContent | MarkDownRenderer | CardHeader | Callout | TextCallout | CodeBlock | Image | ImageBlock | ImageGallery | Separator | HorizontalBarChart | RadarChart | PieChart | RadialChart | SingleStackedBarChart | ScatterChart | AreaChart | BarChart | LineChart | Table | TagBlock | Form | Buttons | IconButton | Steps | InlineHeader | EntityList | EditableTable | SnippetCardBlock | OverviewCardBlock | ContextCardBlock | CompositeCardBlock | VisualCardBlock | Tabs | Carousel | Stack | ActionGroup)[], variant?: \"card\" | \"sunk\" | \"clear\", direction?: \"row\" | \"column\", gap?: \"none\" | \"xs\" | \"s\" | \"m\" | \"l\" | \"xl\" | \"2xl\", align?: \"start\" | \"center\" | \"end\" | \"stretch\" | \"baseline\", justify?: \"start\" | \"center\" | \"end\" | \"between\" | \"around\" | \"evenly\", wrap?: boolean)",
       "description": "Styled container. variant: \"card\" (default, elevated) | \"sunk\" (recessed) | \"clear\" (transparent). Always full width. Accepts all Stack flex params (default: direction \"column\"). Cards flex to share space in row/wrap layouts."
     },
     "CardHeader": {
@@ -328,6 +328,10 @@
     "Modal": {
       "signature": "Modal(title: string, open?: $binding<boolean>, children: (TextContent | MarkDownRenderer | CardHeader | Callout | TextCallout | CodeBlock | Image | ImageBlock | ImageGallery | Separator | HorizontalBarChart | RadarChart | PieChart | RadialChart | SingleStackedBarChart | ScatterChart | AreaChart | BarChart | LineChart | Table | TagBlock | Form | Buttons | IconButton | Steps | InlineHeader | EntityList | EditableTable | SnippetCardBlock | OverviewCardBlock | ContextCardBlock | CompositeCardBlock | VisualCardBlock)[], size?: \"sm\" | \"md\" | \"lg\")",
       "description": "Modal dialog. open is a reactive $boolean binding — set to true to open, X/Escape/backdrop auto-closes. Put Form with buttons inside children."
+    },
+    "ActionGroup": {
+      "signature": "ActionGroup(name: string, policy: \"once\" | \"repeatable\", children: any[], labels: {pending: string, submitted: string, retry: string})",
+      "description": "DocsBot action lifecycle group. Wrap a whole form or alternative choices. Use once for confirmations/submissions, repeatable for exploration or editable filters. Unwrapped actions are repeatable. Give each group a unique name within the response; never nest groups. Supply concise pending/submitted/retry labels in the user language. Submitted means the intent was sent, not that a booking/payment succeeded."
     }
   },
   "componentGroups": [
@@ -780,6 +784,9 @@
       },
       "Modal": {
         "$ref": "#/$defs/Modal"
+      },
+      "ActionGroup": {
+        "$ref": "#/$defs/ActionGroup"
       }
     },
     "required": [
@@ -864,7 +871,8 @@
       "CompositeCardBlock",
       "VisualCardItem",
       "VisualCardBlock",
-      "Modal"
+      "Modal",
+      "ActionGroup"
     ],
     "additionalProperties": false,
     "$defs": {
@@ -982,6 +990,9 @@
                 },
                 {
                   "$ref": "#/$defs/Stack"
+                },
+                {
+                  "$ref": "#/$defs/ActionGroup"
                 }
               ]
             }
@@ -4094,6 +4105,62 @@
         "additionalProperties": false,
         "id": "Stack",
         "description": "Flex container. direction: \"row\"|\"column\" (default \"column\"). gap: \"none\"|\"xs\"|\"s\"|\"m\"|\"l\"|\"xl\"|\"2xl\" (default \"m\"). align: \"start\"|\"center\"|\"end\"|\"stretch\"|\"baseline\". justify: \"start\"|\"center\"|\"end\"|\"between\"|\"around\"|\"evenly\"."
+      },
+      "ActionGroup": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "policy": {
+            "type": "string",
+            "enum": [
+              "once",
+              "repeatable"
+            ]
+          },
+          "children": {
+            "type": "array",
+            "items": {}
+          },
+          "labels": {
+            "type": "object",
+            "properties": {
+              "pending": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "submitted": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "retry": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              }
+            },
+            "required": [
+              "pending",
+              "submitted",
+              "retry"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "policy",
+          "children",
+          "labels"
+        ],
+        "additionalProperties": false,
+        "id": "ActionGroup",
+        "description": "DocsBot action lifecycle group. Wrap a whole form or alternative choices. Use once for confirmations/submissions, repeatable for exploration or editable filters. Unwrapped actions are repeatable. Give each group a unique name within the response; never nest groups. Supply concise pending/submitted/retry labels in the user language. Submitted means the intent was sent, not that a booking/payment succeeded."
       },
       "Slice": {
         "type": "object",

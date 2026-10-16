@@ -176,7 +176,7 @@ export default class EmbeddableWidget {
 
   // Host-authored OpenUI uses the same versioned allowlist and lazy renderer.
   // Display only: it does not make a model request or alter server history.
-  static async addUIMessage({ response, message = '' } = {}) {
+  static async addUIMessage({ response, message = '', readOnly = false } = {}) {
     const generativeUI = cleanGenerativeUiPayload({ response,
       libraryVersion: manifest.componentLibraryVersion, specSha256: manifest.specSha256 });
     if (!this._root || !generativeUI || typeof message !== 'string') return false;
@@ -186,7 +186,7 @@ export default class EmbeddableWidget {
     if (this._root !== mountedRoot || !Emitter.listenerCount('docsbot_add_bot_message')) return false;
     return new Promise(resolve => {
       Emitter.once('docsbot_add_bot_message_complete', resolve);
-      Emitter.emit('docsbot_add_bot_message', { message, generativeUI });
+      Emitter.emit('docsbot_add_bot_message', { message, generativeUI, uiReadOnly: Boolean(readOnly) });
     });
   }
 

@@ -250,3 +250,47 @@ References: [OpenUI custom chat actions](https://www.openui.com/docs/build-agent
 [conversation history and form state](https://www.openui.com/docs/build-agents/conversation-history).
 Offline regression captures can be regenerated with `npm run test:openui:browser`, then
 `node scripts/openui-actions-gallery.mjs`; preview `/openui-gallery/actions/index.html`.
+
+### One-time and repeatable action groups
+
+The pinned DocsBot library adds **ActionGroup** around the official components:
+
+```text
+root = Stack([decision])
+decision = ActionGroup("demo-choice", "once", [Card([CardHeader("Request a demo?"), choices])], {pending:"Sending…", submitted:"Submitted", retry:"Response interrupted — review and retry"})
+choices = Buttons([Button("Yes", @ToAssistant("Request a demo")), Button("Maybe later", @ToAssistant("Skip the demo"), "secondary")])
+```
+
+- `once` retires the entire form/choice group after an acknowledged conversation turn.
+- `repeatable` stays usable; a repeatable form prevents identical-value submission and
+  re-enables its action buttons after values change. Unwrapped official actions remain repeatable.
+- Supply all three status labels in the UI language. Use unique group names; groups cannot nest.
+- Pending requests prevent duplicate clicks. A failed/interrupted response restores retry.
+  The user should review the transcript before retrying an interrupted response: an external
+  operation may have completed even if the response was interrupted.
+- Submitted controls stay readable. Other groups, tabs, charts, images stay usable in a live chat.
+- Widget submission state and form snapshots are saved in its existing local transcript.
+  Reopening/reloading retains completed locks. This is browser-local interaction state,
+  not a backend idempotency guarantee or a cross-device transaction record.
+- Dashboard logs always override the lifecycle to read-only. Live dashboard chat keeps
+  lifecycle state for its current conversation; server-side draft/lock persistence is not added.
+
+Host actions may own asynchronous completion:
+
+```js
+document.addEventListener('docsbot_ui_action', event => {
+  if (event.detail.actionGroup?.name !== 'my-group') return;
+  event.preventDefault();
+  // Call synchronously; resolve true only after your application accepts the action.
+  event.detail.respondWith(handleKnownApplicationAction(event.detail));
+});
+```
+
+Cancellation without `respondWith` leaves the group available. A resolved false or
+rejection restores retry. `addUIMessage({response,message,readOnly:true})` can also
+show a completely frozen host-authored snapshot. Business operations must use their
+backend's own duplicate protection; no new mutation tools are introduced here.
+
+Run the offline browser suite and then `node scripts/openui-lifecycle-gallery.mjs`
+for eight full-conversation examples, four views, and before/pending/after/retry/history
+captures at `/openui-gallery/lifecycle/index.html`.

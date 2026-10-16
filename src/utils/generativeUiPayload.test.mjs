@@ -5,8 +5,8 @@ import { manifest } from '../components/generativeUi/contract.mjs'
 
 const payload = (response) => ({
 	response,
-	libraryVersion: '2.0.0',
-	specSha256: '5b3fbf97b97a798a82d1a1c3e7b10bb1eca39936d0fc5a9c97aa08811248f073'
+	libraryVersion: '3.0.0',
+	specSha256: 'a29e034f124e44a6631b072396158a0f93359129d05aa86646f90be709322f6b'
 })
 
 test('accepts the pinned display-only library and trims the response', () => {
