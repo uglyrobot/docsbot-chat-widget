@@ -7,6 +7,7 @@ import surfaceStyles from '!raw-loader!./surface.css'
 import { cleanGenerativeUiPayload } from '../../utils/generativeUiPayload.mjs'
 import openuiStyles from '!raw-loader!@openuidev/react-ui/styles/index.css'
 import { useConfig } from '../configContext/ConfigContext'
+import { buildOpenUIActionMessage, dispatchOpenUIAction } from '../../utils/openuiActions.mjs'
 
 class OpenUIErrorBoundary extends React.Component {
   state = { failed: false }
@@ -49,8 +50,8 @@ function ThemeSurface({ children, isStreaming }) {
   return <div ref={ref} className="docsbot-openui-surface not-prose" role="group" aria-label="Generated interface" aria-busy={isStreaming} style={{...variables, width:'100%', minWidth:0, margin:'12px 0', color:'var(--openui-text-neutral-primary)', fontSize:14, lineHeight:1.5}}>{children}</div>
 }
 
-export default function OpenUIRenderer({ payload, isStreaming = false, onSend }) {
-  const { effectiveTheme, color } = useConfig()
+export default function OpenUIRenderer({ payload, isStreaming = false, onSend, messageId }) {
+  const { effectiveTheme, color, teamId, botId } = useConfig()
   const mode = effectiveTheme === 'dark' ? 'dark' : 'light'
   const lightTheme = React.useMemo(() => createOpenUITheme(color, 'light'), [color])
   const darkTheme = React.useMemo(() => createOpenUITheme(color, 'dark'), [color])
@@ -59,11 +60,11 @@ export default function OpenUIRenderer({ payload, isStreaming = false, onSend })
   const onAction = event => {
     // Generated UIs can only add an explicit user turn to this conversation.
     // No tool registry, Query, Mutation, arbitrary code, or URL actions are supplied.
-    if (isStreaming || event.type !== 'continue_conversation' || typeof onSend !== 'function') return
-    const label = String(event.humanFriendlyMessage || 'Form submitted').slice(0,1000)
-    const values = event.formState ? JSON.stringify(event.formState) : ''
-    if (values.length > 10000) return
-    onSend(values ? label + '\nForm values: ' + values : label)
+    if (isStreaming) return
+    const message = buildOpenUIActionMessage(event)
+    if (!message) return
+    const proceed = dispatchOpenUIAction({ ...event, teamId, botId, messageId, response: safePayload.response, message })
+    if (proceed && typeof onSend === 'function') onSend(message)
   }
   return <ThemeProvider mode={mode} lightTheme={lightTheme} darkTheme={darkTheme} cssSelector=".docsbot-openui-surface"><ThemeSurface isStreaming={isStreaming}><OpenUIErrorBoundary response={safePayload.response}><Renderer response={safePayload.response} library={library} isStreaming={isStreaming} onAction={onAction} /></OpenUIErrorBoundary></ThemeSurface></ThemeProvider>
 }

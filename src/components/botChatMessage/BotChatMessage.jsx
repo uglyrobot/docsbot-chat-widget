@@ -1402,7 +1402,7 @@ export const BotChatMessage = ({
 						})()}
 					</div>
 					) : null}
-                    <OpenUIResponse payload={payload.generativeUI} isStreaming={payload.streaming} onSend={message => {
+                    <OpenUIResponse payload={payload.generativeUI} messageId={payload.id} isStreaming={payload.streaming} onSend={message => {
                       dispatch({type:'add_message', payload:{id:uuidv4(), variant:'user', message, timestamp:Date.now(), loading:false}});
                       fetchAnswer(message);
                     }} />

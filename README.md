@@ -195,3 +195,58 @@ Omitted keys stay unchanged. `labels` merges per key and accepts string values (
 Suggestions retain their existing visibility rule: they appear before the conversation gets underway. Updating `labels.firstMessage` affects the next chat reset or fresh chat, not messages already displayed. Runtime changes last for this mounted instance; pass page-specific initial options again after a full page load. Agent mode, locale, authentication, domain restrictions, and capability settings remain initialization-only.
 
 Verification: `npm run test:options` runs merge/validation tests. With `npm run dev:web` already running, `npm run test:options:browser` checks both widget surfaces without triggering a production build. Set `WIDGET_TEST_URL` to use another development-server URL.
+
+### Generated UI actions and host-authored interfaces
+
+OpenUI remains optional. Enabling generation preloads its renderer when the widget opens;
+when generation is disabled, adding/restoring an actual UI message loads it on demand.
+
+A submitted form keeps a visible user turn with the action label. Expand that turn to
+read the submitted field/value pairs. The existing API receives the label, form name,
+values and action parameters as plain text; raw JSON is not printed in the transcript.
+This is a submission snapshot, not an indication that a business operation succeeded.
+The bot or your application must confirm the result. Form drafts are not persisted by
+this action API. No Firestore schema or API request fields are added.
+
+Host JavaScript can render an interface without asking the model:
+
+```js
+await DocsBotAI.addUIMessage({
+  message: 'Choose an item.',
+  response: `root = Stack([Card([TextContent("Demo item"), choose])])
+choose = Button("Choose this item", @ToAssistant("Choose demo item", "item-42"))`,
+});
+```
+
+This returns a Promise (false for invalid input/unmounted widget), opens a floating
+widget if necessary, and uses the same official component allowlist and styles.
+It is display-only and makes no API call. It does not add that interface to server
+conversation history, so include the necessary item context in the action. Existing
+`addBotMessage(text)` and `addUserMessage(text, send)` work as before.
+
+Every supported generated action (buttons, forms, follow-ups, clickable cards/list
+items) dispatches a cancelable `docsbot_ui_action` event on `document`. It includes
+`type`, `humanFriendlyMessage`, `formName`, `formState`, `params`, `teamId`, `botId`,
+`messageId`, `response` (the UI program), and `message` (the model-facing text).
+
+```js
+document.addEventListener('docsbot_ui_action', async event => {
+  const { params, formState, messageId } = event.detail;
+  if (params?.context !== 'item-42') return; // Default: send a user turn to the bot.
+  event.preventDefault(); // Take ownership synchronously, before awaiting anything.
+  console.log('Selected item', { formState, messageId });
+  await DocsBotAI.addBotMessage('Your application handled this selection.');
+});
+```
+
+Without cancellation the widget adds the user turn and requests the next bot reply.
+Cancellation skips both. This hook handles explicitly clicked actions, not every
+keystroke or local tab/accordion change. Invalid form submits and streaming controls
+do not emit actions. The current contract supports `@ToAssistant` only: it does not
+execute model-supplied JavaScript, navigate arbitrary URLs, or register UI tools.
+Host code maps known contexts to its own application handlers.
+
+References: [OpenUI custom chat actions](https://www.openui.com/docs/build-agents/custom-chat-ui),
+[conversation history and form state](https://www.openui.com/docs/build-agents/conversation-history).
+Offline regression captures can be regenerated with `npm run test:openui:browser`, then
+`node scripts/openui-actions-gallery.mjs`; preview `/openui-gallery/actions/index.html`.

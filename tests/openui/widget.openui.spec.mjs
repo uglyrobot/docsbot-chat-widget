@@ -316,8 +316,67 @@ test('official form validates inputs and sends values only after an explicit sub
   expect(submitted).toContain('Casey Fixture');
   expect(submitted).toContain('casey@example.invalid');
   expect(submitted).toContain('Synthetic values only');
+  const bubble = page.locator('.docsbot-user-chat-message').filter({hasText:'Save demo preferences'});
+  await expect(bubble).not.toContainText('UI submission:');
+  await expect(bubble.getByText('Casey Fixture', {exact:true})).not.toBeVisible();
+  await bubble.locator('summary').click();
+  await expect(bubble.getByText('Casey Fixture', {exact:true})).toBeVisible();
+  await screenshot(page, 'official-form-submission', testInfo);
   expect(network.liveApiRequests).toEqual([]);
 });
+
+test('host UI works with UI generation disabled and can cancel the default conversational action', async ({page}, testInfo) => {
+  await openFixture(page, false);
+  const response = 'root = Stack([Card([TextContent("Host-created choice"), Button("Choose item", @ToAssistant("Choose item", "item-42"))])])';
+  const accepted = await page.evaluate(async response => {
+    window.uiActions = [];
+    document.addEventListener('docsbot_ui_action', event => {
+      window.uiActions.push(event.detail);
+      event.preventDefault();
+    });
+    return (await DocsBotAI.addUIMessage({response,message:'Choose a demo item.'})) !== false;
+  }, response);
+  expect(accepted).toBe(true);
+  await page.getByRole('button', {name:'Choose item',exact:true}).click();
+  const actions = await page.evaluate(() => window.uiActions);
+  expect(actions).toHaveLength(1);
+  expect(actions[0].type).toBe('continue_conversation');
+  expect(actions[0].teamId).toBe('fixture-team');
+  expect(actions[0].botId).toBe('fixture-bot');
+  expect(actions[0].messageId).toBeTruthy();
+  expect(actions[0].params.context).toBe('item-42');
+  expect(actions[0].response).toBe(response);
+  expect(await page.evaluate(() => window.fixtureRequests.length)).toBe(0);
+  await screenshot(page,'host-created-ui',testInfo);
+  expect(await page.evaluate(() => DocsBotAI.addUIMessage({response:'root = Stack([Query("x")])'}))).toBe(false);
+});
+
+for (const mode of ['light','dark']) for (const width of [448,900]) {
+  test(`compact submission persists ${mode} ${width}`, async ({page},testInfo) => {
+    await page.setViewportSize({width,height:1000});
+    await openFixture(page);
+    await page.evaluate(mode => DocsBotAI.updateOptions({theme:mode}), mode);
+    await ask(page); await finish(page,payload(formProgram));
+    const ui=page.getByRole('group',{name:'Generated interface'});
+    await ui.getByRole('textbox',{name:/^Name\*?$/}).fill('Casey Fixture');
+    await ui.getByRole('textbox',{name:/^Email\*?$/}).fill('casey@example.invalid');
+    await ui.getByRole('button',{name:'Save preferences'}).click();
+    await expect.poll(()=>page.evaluate(()=>window.fixtureRequests.length)).toBe(2);
+    const bubble=page.locator('.docsbot-user-chat-message').filter({hasText:'Save demo preferences'});
+    await expect(bubble.locator('summary')).toBeVisible();
+    await expect(bubble.getByText('Casey Fixture',{exact:true})).not.toBeVisible();
+    await finish(page,null,'Preferences received.');
+    await bubble.locator('summary').click();
+    await expect(bubble.getByText('Casey Fixture',{exact:true})).toBeVisible();
+    await screenshot(page,`submission-${width}-${mode}`,testInfo);
+    await expect.poll(()=>page.evaluate(()=>localStorage.getItem('DocsBot_fixture-bot_chatHistory')||'')).toContain('UI submission:');
+    await page.reload();
+    const restored=page.locator('.docsbot-user-chat-message').filter({hasText:'Save demo preferences'});
+    await expect(restored.locator('summary')).toBeVisible();
+    await restored.locator('summary').click();
+    await expect(restored.getByText('casey@example.invalid',{exact:true})).toBeVisible();
+  });
+}
 
 test('official tabs and accordion change local views without sending requests', async ({page}, testInfo) => {
   await openFixture(page); await ask(page);

@@ -950,13 +950,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			Emitter.emit('docsbot_add_user_message_complete');
 		});
 
-		Emitter.on('docsbot_add_bot_message', async ({ message }) => {
+		Emitter.on('docsbot_add_bot_message', async ({ message, generativeUI }) => {
 			await dispatch({
 				type: 'add_message',
 				payload: {
 					id: uuidv4(),
 					variant: 'chatbot',
 					message: message,
+					...(generativeUI ? { generativeUI } : {}),
 					loading: false,
 					streaming: false,
 					timestamp: Date.now()
