@@ -28,6 +28,7 @@ import { CalendlyEmbed } from '../calendlyEmbed/CalendlyEmbed';
 import { CalComEmbed } from '../calComEmbed/CalComEmbed';
 import { TidyCalEmbed } from '../tidyCalEmbed/TidyCalEmbed';
 import { ImageLightbox } from '../imageLightbox/ImageLightbox';
+import { OpenUIResponse } from '../generativeUi/OpenUIResponse';
 
 /**
  * Config `labels` keys when agent activity uses configKey (all tools except reasoning).
@@ -1312,6 +1313,7 @@ export const BotChatMessage = ({
 							return (
 								<>
 									<div dir="auto" ref={contentRef}>
+
 										<Suspense fallback={<Loader />}>
 											<LazyStreamdown
 												className="docsbot-streamdown"
@@ -1400,6 +1402,10 @@ export const BotChatMessage = ({
 						})()}
 					</div>
 					) : null}
+                    <OpenUIResponse payload={payload.generativeUI} messageId={payload.id} readOnly={payload.uiReadOnly} lifecycleState={payload.uiLifecycle} onLifecycleState={uiLifecycle => dispatch({type:"update_message",payload:{id:payload.id,uiLifecycle}})} requestPending={Object.values(state.messages || {}).some(item => item.loading || item.streaming)} isStreaming={payload.streaming} onSend={async message => {
+                      dispatch({type:'add_message', payload:{id:uuidv4(), variant:'user', message, timestamp:Date.now(), loading:false}});
+                      return await fetchAnswer(message);
+                    }} />
 					{payload.type === 'custom_button' &&
 						payload.customButton?.buttonText &&
 						!payload.loading && (

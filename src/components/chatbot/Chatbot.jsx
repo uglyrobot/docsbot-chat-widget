@@ -1,3 +1,5 @@
+import { preloadOpenUIRenderer } from '../generativeUi/OpenUIResponse';
+import { manifest as openuiManifest } from '../generativeUi/contract.mjs';
 /** @format */
 
 import {
@@ -268,6 +270,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		useVoiceAgent, // Server-gated browser Realtime voice calling
 		useWebSearch, // If agent web search tool is enabled (API)
 		useCustomButtons, // Agent API: request custom_button terminal events
+		useGenerativeUI, // Opt-in OpenUI Lang output from the Agent API
 		useCalendly,
 		useCalCom,
 		useTidyCal,
@@ -334,6 +337,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const piiRedactionBypassedRef = useRef(false);
 	const piiRedactionSessionKeyRef = useRef('');
 	const stateMessagesRef = useRef(state.messages);
+	useEffect(() => {
+		if (useGenerativeUI === true) preloadOpenUIRenderer().catch(() => {});
+	}, [useGenerativeUI]);
+
 	const chatHistoryRef = useRef(state.chatHistory);
 	const voiceHistoryItemIndicesRef = useRef(
 		state.voiceHistoryItemIndices || {}
@@ -943,13 +950,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			Emitter.emit('docsbot_add_user_message_complete');
 		});
 
-		Emitter.on('docsbot_add_bot_message', async ({ message }) => {
+		Emitter.on('docsbot_add_bot_message', async ({ message, generativeUI, uiReadOnly }) => {
 			await dispatch({
 				type: 'add_message',
 				payload: {
 					id: uuidv4(),
 					variant: 'chatbot',
 					message: message,
+					...(generativeUI ? { generativeUI, uiReadOnly } : {}),
 					loading: false,
 					streaming: false,
 					timestamp: Date.now()
@@ -2066,6 +2074,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			...(typeof payload.message === 'string' && {
 				message: revealTextFromResponse(payload.message)
 			}),
+			...(payload.generativeUI?.response && {
+				generativeUI: {
+					...payload.generativeUI,
+					response: revealTextFromResponse(payload.generativeUI.response)
+				}
+			}),
 			...(Array.isArray(payload.history) && {
 				history: revealHistoryFromResponse(payload.history)
 			})
@@ -2315,6 +2329,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	}, [isTidyCalEnabled]);
 
 	async function fetchAnswer(question, image_urls = [], options = {}) {
+        let uiMessageAccepted = false;
 		if (!options.bypassLeadCollect && shouldRequireLeadBeforeSend()) {
 			setIsLeadCaptureLocked(true);
 			setPendingLeadCapture({
@@ -2387,6 +2402,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		);
 
 		let answer = '';
+		let generativeUI = '';
 		let pendingSchedulerEmbed = null;
 		let currentAgentActivity = null;
 		let hasStartedStreaming = false;
@@ -2429,7 +2445,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 						reasoning_effort: reasoningEffort
 					}),
 				...(useWebSearch && { web_search: true }),
-				...(useCustomButtons && { custom_buttons: true })
+				...(useCustomButtons && { custom_buttons: true }),
+				...(useGenerativeUI === true && { generative_ui: true })
 			};
 
 			// Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
@@ -2648,6 +2665,26 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							return;
 						}
 
+						if (data.event === 'generative_ui_delta') {
+							generativeUI += data.data || '';
+						const uiPayload = {
+							response: revealTextFromResponse(generativeUI),
+							libraryVersion: openuiManifest.componentLibraryVersion,
+							specSha256: openuiManifest.specSha256
+						};
+						const cleanedPayload = revealResponsePayload({ generativeUI: uiPayload }).generativeUI;
+						dispatch({
+							type: 'update_message',
+							payload: {
+								id,
+								generativeUI: cleanedPayload,
+								loading: false,
+								streaming: true
+							}
+						});
+						return;
+						}
+
 						if (data.event === 'stream') {
 							hasStartedStreaming = true;
 							// Handle empty data fields as line breaks to preserve formatting
@@ -2728,6 +2765,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 											}
 										}),
 										sources: finalData.sources || null,
+									generativeUI: finalData.generativeUI || null,
 										answerId:
 											answerId || finalData.id || null, // use saved prev id for feedback button
 										conversationId: requestConversationId,
@@ -2745,7 +2783,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 								currentAgentActivity = null;
 
 								answerId = finalData.id || null; // save the answer id for the feedback button
-								let newChatHistory = finalData.history;
+								uiMessageAccepted = true;
+                                let newChatHistory = finalData.history;
 
 								dispatch({
 									type: 'save_history',
@@ -2987,6 +3026,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				}
 			};
 		}
+        return uiMessageAccepted;
 	}
 
 	async function handleSubmit(event) {

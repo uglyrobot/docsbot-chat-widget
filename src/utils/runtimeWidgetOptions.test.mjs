@@ -63,6 +63,12 @@ test('unrelated updates never reshuffle suggestions; queued inputs are copied', 
 	assert.equal(config.labels.send, 'Go');
 	assert.equal(apply(config, { botName: 'New' }).questions, config.questions);
 });
+test('generative UI is opt-in and runtime overrides require a boolean', () => {
+	assert.equal(apply({}, {}).useGenerativeUI, undefined);
+	assert.equal(apply({}, { useGenerativeUI: true }).useGenerativeUI, true);
+	assert.equal(apply({ useGenerativeUI: true }, { useGenerativeUI: false }).useGenerativeUI, false);
+	assert.throws(() => validateRuntimeOptions({ useGenerativeUI: 'true' }), TypeError);
+});
 test('invalid and unsupported patches fail atomically', () => {
 	for (const patch of [
 		null,

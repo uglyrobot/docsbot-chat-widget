@@ -141,3 +141,6 @@ test-results/
 playwright-report/
 blob-report/
 output/
+
+# Generated local OpenUI screenshot gallery
+public/openui-gallery/
