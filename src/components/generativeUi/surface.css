@@ -32,4 +32,5 @@
 }
 /* Historical/submitted values stay legible; only their interaction is retired. */
 .docsbot-openui-surface [data-docsbot-ui-frozen="true"] :is(input,textarea,select):disabled {opacity:1;color:var(--openui-text-neutral-primary);-webkit-text-fill-color:var(--openui-text-neutral-primary);cursor:default;}
-.docsbot-openui-surface [data-docsbot-ui-frozen="true"] button:disabled {opacity:1;color:var(--openui-text-neutral-secondary);background:var(--openui-sunk);border-color:var(--openui-border-default);box-shadow:none;cursor:default;}
+.docsbot-openui-surface [data-docsbot-ui-frozen="true"] button:disabled,
+.docsbot-openui-surface button[data-docsbot-duplicate-disabled="true"] {opacity:1;color:var(--openui-text-neutral-secondary);background:var(--openui-sunk);border-color:var(--openui-border-default);box-shadow:none;cursor:default;}
