@@ -17,14 +17,9 @@
 .docsbot-openui-surface img {max-width:100%;}
 .docsbot-openui-surface :is(.openui-snippet-card-block,.openui-overview-card-block,.openui-context-card-block,.openui-composite-card-block,.openui-visual-card-block) {min-width:0;}
 @container (max-width:480px) {
- .docsbot-openui-surface div:has(> .openui-card + .openui-card) {flex-direction:column!important;align-items:stretch!important;}
- .docsbot-openui-surface :is(.openui-snippet-card-block,.openui-overview-card-block,.openui-context-card-block,.openui-composite-card-block,.openui-visual-card-block) {grid-template-columns:minmax(0,1fr)!important;}
  .docsbot-openui-surface .openui-card:not(.openui-card-clear) {padding:14px;}
 }
 
-@container (max-width:480px) {
- .docsbot-openui-surface :is(.openui-small-card-block__row,.openui-medium-card-block__row) {grid-template-columns:minmax(0,1fr)!important;display:grid!important;}
-}
 
 /* Match the widget input's iOS zoom safeguard, without enlarging desktop fields. */
 @media (max-width:640px) {
@@ -34,3 +29,13 @@
 .docsbot-openui-surface [data-docsbot-ui-frozen="true"] :is(input,textarea,select):disabled {opacity:1;color:var(--openui-text-neutral-primary);-webkit-text-fill-color:var(--openui-text-neutral-primary);cursor:default;}
 .docsbot-openui-surface [data-docsbot-ui-frozen="true"] button:disabled,
 .docsbot-openui-surface button[data-docsbot-duplicate-disabled="true"] {opacity:1;color:var(--openui-text-neutral-secondary);background:var(--openui-sunk);border-color:var(--openui-border-default);box-shadow:none;cursor:default;}
+
+/* Only recognized card collections participate; tables, forms, and generic rows keep their layout. */
+.docsbot-openui-surface [data-docsbot-card-grid] > * {min-width:0;max-width:100%;}
+.docsbot-openui-surface [data-docsbot-card-block] > :is(.openui-small-card-block,.openui-medium-card-block) > :is(.openui-small-card-block__grid,.openui-medium-card-block__grid) {display:grid;grid-template-columns:repeat(var(--docsbot-card-columns),minmax(0,1fr));gap:12px;min-width:0;}
+.docsbot-openui-surface [data-docsbot-card-block] :is(.openui-small-card-block__row,.openui-medium-card-block__row) {display:contents!important;}
+.docsbot-openui-surface [data-docsbot-card-block] :is(.openui-small-card-block__item,.openui-medium-card-block__item) {min-width:0;max-width:100%;grid-column:auto!important;}
+.docsbot-openui-surface :is(.openui-metric-indicator__main-value,.openui-metric-indicator__previous-value) {white-space:nowrap;overflow-wrap:normal;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+.docsbot-openui-surface [data-docsbot-card-grid] .openui-button-base {min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;}
+
+.docsbot-openui-surface :is(.openui-text-block--number-text,.openui-text-block--number-title-text) .openui-text-block__primary {white-space:nowrap;overflow-wrap:normal;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
