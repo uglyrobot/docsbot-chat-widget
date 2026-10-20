@@ -1,4 +1,5 @@
 import { preloadOpenUIRenderer } from '../generativeUi/OpenUIResponse';
+import { observeMessageViewport } from '../../utils/observeMessageViewport.mjs';
 import { manifest as openuiManifest } from '../generativeUi/contract.mjs';
 /** @format */
 
@@ -3187,18 +3188,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	};
 
 	useEffect(() => {
-		const chatContainer = ref.current;
-
-		if (chatContainer) {
-			chatContainer.addEventListener('scroll', syncAtBottom);
-			syncAtBottom();
-		}
-
-		return () => {
-			if (chatContainer) {
-				chatContainer.removeEventListener('scroll', syncAtBottom);
-			}
-		};
+		// Composer growth and container resizing change the visible bottom even
+		// without a scroll event. Keep the latest-message control reachable.
+		return observeMessageViewport(ref.current, syncAtBottom);
 	}, [bottomScrollSpacerHeight]);
 
 	useLayoutEffect(() => {
