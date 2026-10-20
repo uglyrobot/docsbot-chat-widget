@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>DocsBot Dynamic UI local release check</title>
+<style>body{font:15px system-ui;margin:24px auto;max-width:760px;padding:0 16px;color:#111827}button{padding:10px;margin:5px}#status{white-space:pre-wrap}#docsbot-widget-embed{height:700px}</style>
+<h1>Dynamic UI · local release check</h1><p>Verified staging bot configuration. These host-authored fictional interfaces make no model calls. Actions are handled locally and never sent to the API.</p>
+<button id="once">One-time action</button><button id="repeat">Repeatable action</button><button id="frozen">Read-only snapshot</button><button id="invalid">Invalid UI fallback</button><label><input type="checkbox" id="fail">Interrupt next action</label><pre id="status" role="status">Loading staging configuration…</pre><div id="docsbot-widget-embed"></div>
+<script src="/chat.js"></script><script>
+const status=document.getElementById('status');
+const labels='{pending:"Working…", submitted:"Submitted locally", retry:"Interrupted — review and retry"}';
+const ui=policy=>`root = Stack([ActionGroup("local-${policy}-${Date.now()}", "${policy}", [Card([CardHeader("Fictional release check", "No external operation"), Buttons([Button("Save demo choice", @ToAssistant("Save fictional choice", "local-release"))])])], ${labels})])`;
+document.addEventListener('docsbot_ui_action',event=>{event.preventDefault(); const fail=document.getElementById('fail');const interrupted=fail.checked;fail.checked=false;status.textContent=interrupted?'Interrupted locally. Retry restored.':'Accepted locally. No API request.';event.detail.respondWith(new Promise(resolve=>setTimeout(()=>resolve(!interrupted),1200)));});
+DocsBotAI.mount({id:'nG4F5A3BFSBzdYc5TZIX/uy8srweloFNgRadNtwvf',options:{localDev:true,localApiBase:'http://127.0.0.1:9000',useGenerativeUI:false,isAgent:true,useVoiceAgent:false,useWebSearch:false,useCustomButtons:false,useFeedback:false,useEscalation:false,useImageUpload:false,useAudioUpload:false,testing:true,questions:[]}}).then(()=>{status.textContent='Ready. Choose a local fixture.';});
+document.getElementById('once').onclick=()=>DocsBotAI.addUIMessage({response:ui('once'),message:'Fictional one-time choice.'});
+document.getElementById('repeat').onclick=()=>DocsBotAI.addUIMessage({response:ui('repeatable'),message:'Fictional repeatable choice.'});
+document.getElementById('frozen').onclick=()=>DocsBotAI.addUIMessage({response:ui('once'),message:'Historical read-only snapshot.',readOnly:true});
+document.getElementById('invalid').onclick=async()=>{const accepted=await DocsBotAI.addUIMessage({response:'root = UnknownUnsafeComponent()',message:'Readable fallback: UI could not render.'});status.textContent='Invalid UI accepted: '+accepted;await DocsBotAI.addBotMessage('Readable fallback: continue the same request conversationally.');};
+</script></html>
