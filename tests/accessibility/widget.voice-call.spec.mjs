@@ -215,7 +215,8 @@ data: ${JSON.stringify({
 				headers: {
 					'Content-Type': 'application/sdp',
 					'X-DocsBot-Voice-Call-Id': 'call-playwright',
-					'X-DocsBot-Conversation-Id': 'conversation-playwright'
+					// The voice API preserves the supplied conversation ID.
+					'X-DocsBot-Conversation-Id': new Headers(init?.headers).get('X-DocsBot-Conversation-Id') || 'conversation-playwright'
 				}
 			});
 		};
@@ -609,7 +610,9 @@ test('server-gated composer orb switches to a stateful call view and back', asyn
 	await expect(
 		root.getByRole('button', { name: 'Open account' })
 	).toBeVisible();
-	await expect(root.getByText('Open your account settings.')).toBeVisible();
+	// Persist the spoken handoff and its control, without adding a synthetic tool message.
+	await expect(root.getByText("I've shown the next step on screen.")).toBeVisible();
+	await expect(root.getByText('Open your account settings.')).toHaveCount(0);
 	await expect(
 		root.getByText('Here are your recent invoices.')
 	).toBeVisible();
@@ -753,7 +756,7 @@ test('voice custom and support callbacks receive complete canonical history', as
 	// Voice custom_button is button-only; no client_action confirmation bubble.
 	await expect(root.getByText('Open account settings.')).toHaveCount(0);
 	const customActionRow = root.locator('.docsbot-custom-button-cta-row').filter({
-		has: customActionButton
+		has: page.getByRole('button', { name: 'Open account' })
 	});
 	await expect(customActionRow).toBeVisible();
 
@@ -840,9 +843,25 @@ test('voice support escalation: No stays on call; Yes ends call', async ({
 
 	await page.goto('/');
 	const root = page.locator('#docsbotai-root');
+	await expect(root.getByRole('button', { name: 'Help' })).toBeVisible();
+	// This scenario exercises direct escalation; lead capture has its own test.
+	await page.evaluate(async () => {
+		DocsBotAI.unmount();
+		await new Promise(resolve => requestAnimationFrame(resolve));
+		await DocsBotAI.mount({
+			id: 'test/voice-direct',
+			options: {
+				localDev: true, isAgent: true, useVoiceAgent: true,
+				useEscalation: true, supportLink: 'https://example.com/support',
+				leadCollect: false, piiRedaction: false
+			}
+		});
+	});
 	await root.getByRole('button', { name: 'Help' }).click();
 	await root.getByRole('button', { name: 'Start voice call' }).click();
 	await expect(root.locator('.docsbot-voice-call-view')).toBeVisible();
+	// UI transcript state can settle before the mocked WebRTC channel opens.
+	await expect.poll(() => page.evaluate(() => window.__docsbotVoiceChannel?.readyState)).toBe('open');
 
 	await page.evaluate(() => {
 		window.__emitDocsBotVoiceEvent({
