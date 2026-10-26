@@ -49,3 +49,7 @@ test('projection excludes referenced action context and preserves boolean cells'
  const source='```openui-lang\nroot = Stack([heading,heading,button,Table([Col("Enabled",[true,false])])])\nheading = TextContent("Visible")\nbutton = Button("Continue", @ToAssistant("Send", context))\ncontext = {privateNote:"hidden context"}\n```';
  assert.equal(plainMixedAnswer(source),'Visible\nVisible\nContinue\nEnabled\ntrue\nfalse');
 });
+test('member selection and array plucking exclude unrelated private fields',()=>{
+ const source='```openui-lang\nroot = Stack([Table([Col("Plan", data.rows.name),Col("Price",data.prices)])])\ndata = {rows:[{name:"Basic",internalNote:"PRIVATE"},{name:"Pro",internalNote:"PRIVATE2"}],prices:[10,20]}\n```';
+ assert.equal(plainMixedAnswer(source),'Plan\nBasic\nPro\nPrice\n10\n20');
+});

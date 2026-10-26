@@ -57,17 +57,38 @@ function withoutActions(program) {
 // and strings such as TextContent("small") must survive unchanged.
 // Traverse static declarations reachable from the displayed root only.
 // Action expressions were removed first; their context bindings stay private.
+function projectionParts(value,separator=','){
+ const parts=[];let start=0,depth=0,quoted=false,escaped=false
+ for(let i=0;i<value.length;i++){const c=value[i]
+  if(escaped){escaped=false;continue}if(c==='\\'&&quoted){escaped=true;continue}if(c==='"'){quoted=!quoted;continue}if(quoted)continue
+  if('([{'.includes(c))depth++;else if(')]}'.includes(c))depth--
+  else if(c===separator&&depth===0){parts.push(value.slice(start,i).trim());start=i+1}
+ }
+ parts.push(value.slice(start).trim());return parts.filter(Boolean)
+}
 function displayExpression(program){
  const masked=program.replace(/"(?:\\.|[^"\\])*"/g,m=>' '.repeat(m.length))
  const matches=[...masked.matchAll(/(?:^|\n)\s*([A-Za-z_$][\w$]*)\s*=/g)]
  const definitions=new Map(matches.map((m,i)=>[m[1],program.slice(m.index+m[0].length,matches[i+1]?.index??program.length)]))
  let budget=64000
+ const select=(expression,path,active)=>{
+  budget-=expression.length;if(budget<0||active.size>64)throw new Error('Projection limit')
+  expression=expression.trim();if(!path.length)return expression
+  if(definitions.has(expression)&&!active.has(expression))return select(definitions.get(expression),path,new Set([...active,expression]))
+  if(expression.startsWith('[')&&expression.endsWith(']'))return '['+projectionParts(expression.slice(1,-1)).map(item=>select(item,path,active)).join(',')+']'
+  if(expression.startsWith('{')&&expression.endsWith('}')){
+   for(const part of projectionParts(expression.slice(1,-1))){const pair=projectionParts(part,':');let key=pair.shift();if(key?.startsWith('"'))key=JSON.parse(key);if(key===path[0])return select(pair.join(':'),path.slice(1),active)}
+  }
+  throw new Error('Unsupported display selector')
+ }
  const expand=(expression,active=new Set())=>{
   budget-=expression.length;if(budget<0||active.size>64)throw new Error('Projection limit')
-  return expression.replace(/"(?:\\.|[^"\\])*"|[A-Za-z_$][\w$]*/g,(token,offset)=>{
+  return expression.replace(/"(?:\\.|[^"\\])*"|[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*/g,(token,offset)=>{
    if(expression.slice(offset+token.length).trimStart().startsWith(':'))return token
-   if(!definitions.has(token)||active.has(token))return token
-   return expand(definitions.get(token),new Set([...active,token]))
+   const [name,...path]=token.split('.')
+   if(!definitions.has(name)||active.has(name))return token
+   if(/^[\[.(]/.test(expression.slice(offset+token.length).trimStart()))throw new Error('Unsupported display selector')
+   const next=new Set([...active,name]);return expand(select(definitions.get(name),path,next),next)
   })
  }
  try{return definitions.has('root')?expand(definitions.get('root'),new Set(['root'])):''}catch{return ''}

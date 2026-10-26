@@ -894,3 +894,15 @@ test('repeatable form restores the latest edits after submission and reload',asy
  await expect(restored.getByRole('textbox',{name:'Issue',exact:true})).toHaveValue('Latest unsent issue');
  await expect(restored.getByRole('button',{name:'Send request',exact:true})).toBeEnabled();
 });
+
+test('renderer chunk failure preserves conversation and readable fallback',async({page})=>{
+ await installFixture(page);
+ await page.route('**/*docsbot-openui*.js',route=>route.abort('failed'));
+ await page.goto('/__openui-fixture');
+ await expect(page.getByRole('textbox',{name:'Send a message...',exact:true})).toBeVisible();
+ await ask(page);await finish(page,payload('root = Stack([TextContent("Readable card fallback")])'),'Useful surrounding prose.');
+ await expect(page.getByText('Readable card fallback',{exact:true})).toBeVisible();
+ await expect(page.getByText('Useful surrounding prose.',{exact:true})).toBeVisible();
+ await expect(page.getByRole('textbox',{name:'Send a message...',exact:true})).toBeVisible();
+ await expect(page.getByRole('group',{name:'Generated interface'})).toHaveCount(0);
+});
