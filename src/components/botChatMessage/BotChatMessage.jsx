@@ -1013,7 +1013,9 @@ export const BotChatMessage = ({
 						</span>
 						{(() => {
 							if (payload.loading) {
-								return <Loader />;
+								return MessageFrame === AssistantResponseFrame
+									? <AssistantTextBubble><Loader /></AssistantTextBubble>
+									: <Loader />;
 							}
 
 							if (payload.type === 'custom_button') {

@@ -767,3 +767,25 @@ for (const width of [320,390,1200]) test(`mixed answer keeps first partial UI fu
  await expect(page.getByText('root = Stack',{exact:false})).toHaveCount(0);
  await page.screenshot({path:`output/playwright/openui/mixed-${width}-final.png`});
 });
+
+for (const width of [320,1200]) test(`waiting indicator stays in a bubble before full-width UI at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:900});
+ await installFixture(page);
+ await page.goto('/__openui-fixture?floating=1&enabled=1');
+ await page.getByRole('button',{name:'Help',exact:true}).click();
+ await ask(page);
+ const loader=page.locator('.chatbot-loader-container').last();
+ await expect(loader).toBeVisible();
+ const waiting=await loader.evaluate(el=>{const bubble=el.closest('.docsbot-chat-text-segment'),frame=el.closest('[data-docsbot-response-frame]');return {inBubble:!!bubble,hidden:el.getAttribute('aria-hidden'),bubbleWidth:bubble?.getBoundingClientRect().width,frameWidth:frame?.getBoundingClientRect().width,background:bubble?getComputedStyle(bubble).backgroundColor:null}});
+ expect(waiting.inBubble).toBe(true);expect(waiting.hidden).toBe('true');expect(waiting.bubbleWidth).toBeLessThan(waiting.frameWidth);expect(waiting.background).not.toBe('rgba(0, 0, 0, 0)');
+ const code='root = Stack([Card([TextContent("Live UI preview")])])';
+ await push(page,sse('answer_delta',{delta:'```openui-lang\n'+code}));
+ const ui=page.getByRole('group',{name:'Generated interface'});
+ await expect(ui).toHaveAttribute('aria-busy','true');
+ await expect(page.locator('.chatbot-loader-container')).toHaveCount(0);
+ const partial=await ui.evaluate(el=>({width:el.getBoundingClientRect().width,frame:el.closest('[data-docsbot-response-frame]').getBoundingClientRect().width,bubble:!!el.closest('.docsbot-chat-text-segment')}));
+ expect(partial.bubble).toBe(false);expect(Math.abs(partial.width-partial.frame)).toBeLessThan(2);
+ await finish(page,null,'```openui-lang\n'+code+'\n```');
+ await expect(ui).toHaveAttribute('aria-busy','false');
+ expect(await ui.evaluate(el=>el.getBoundingClientRect().width)).toBe(partial.width);
+});
