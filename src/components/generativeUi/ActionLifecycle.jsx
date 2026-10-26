@@ -37,6 +37,7 @@ export function ActionLifecycleProvider({
 	const active = useRef(null);
 	const busy = useRef(false);
 	const fields = useRef(state.formState || {});
+    const formStateSnapshot = useRef(JSON.stringify(state.formState || {}));
 	const saveRef = useRef(onSave);
 	saveRef.current = onSave;
 	const update = (next) => {
@@ -60,7 +61,11 @@ export function ActionLifecycleProvider({
 				return [name, group];
 			})
 		);
-		if (changed) update({ ...stateRef.current, groups: next });
+		const serialized = JSON.stringify(value || {});
+        if (changed || formStateSnapshot.current !== serialized) {
+            formStateSnapshot.current = serialized;
+            update({ ...stateRef.current, groups: next, formState: JSON.parse(serialized) });
+        }
 	};
 	const onAction = async (event) => {
 		if (readOnly || requestPending || busy.current) return;

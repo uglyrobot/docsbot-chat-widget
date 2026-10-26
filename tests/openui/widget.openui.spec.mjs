@@ -876,3 +876,21 @@ for(const width of [320,1200])test(`composer borders remain consistent before an
  await page.evaluate(()=>window.fixtureController.close());
  check(await inspect());await screenshot(page,`composer-error-${width}`,testInfo);
 });
+
+test('repeatable form restores the latest edits after submission and reload',async({page})=>{
+ await openFixture(page);await ask(page);await finish(page,payload(lifecycleForm('repeatable')));
+ const ui=page.getByRole('group',{name:'Generated interface'}).first();
+ await ui.getByRole('textbox',{name:'Name',exact:true}).fill('Submitted name');
+ await ui.getByRole('textbox',{name:'Issue',exact:true}).fill('Submitted issue');
+ await ui.getByRole('button',{name:'Send request',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>window.fixtureRequests.length)).toBe(2);
+ await finish(page,null,'Received the fixture submission.');
+ await ui.getByRole('textbox',{name:'Name',exact:true}).fill('First edit');
+ await ui.getByRole('textbox',{name:'Name',exact:true}).fill('Second edit');
+ await ui.getByRole('textbox',{name:'Issue',exact:true}).fill('Latest unsent issue');
+ await page.reload();
+ const restored=page.getByRole('group',{name:'Generated interface'}).first();
+ await expect(restored.getByRole('textbox',{name:'Name',exact:true})).toHaveValue('Second edit');
+ await expect(restored.getByRole('textbox',{name:'Issue',exact:true})).toHaveValue('Latest unsent issue');
+ await expect(restored.getByRole('button',{name:'Send request',exact:true})).toBeEnabled();
+});

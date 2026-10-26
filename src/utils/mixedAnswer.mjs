@@ -55,8 +55,26 @@ function withoutActions(program) {
 }
 // Only direct presentation arguments are omitted. Content in arrays/objects
 // and strings such as TextContent("small") must survive unchanged.
-const presentationArgs={Stack:[1,2,3,4],Card:[1,2,3,4,5],TextContent:[1],MarkDownRenderer:[1],Callout:[0],TextCallout:[0],Col:[2],Button:[2,3,4],Buttons:[1],Separator:[0],TagBlock:[1],Tag:[2,3],EntityList:[1],ListBlock:[1,2],Text:[0,3,4],BoldText:[0,3,4],IconText:[1,2,6],ImageText:[5],Carousel:[1],ActionGroup:[1]}
+// Traverse static declarations reachable from the displayed root only.
+// Action expressions were removed first; their context bindings stay private.
+function displayExpression(program){
+ const masked=program.replace(/"(?:\\.|[^"\\])*"/g,m=>' '.repeat(m.length))
+ const matches=[...masked.matchAll(/(?:^|\n)\s*([A-Za-z_$][\w$]*)\s*=/g)]
+ const definitions=new Map(matches.map((m,i)=>[m[1],program.slice(m.index+m[0].length,matches[i+1]?.index??program.length)]))
+ let budget=64000
+ const expand=(expression,active=new Set())=>{
+  budget-=expression.length;if(budget<0||active.size>64)throw new Error('Projection limit')
+  return expression.replace(/"(?:\\.|[^"\\])*"|[A-Za-z_$][\w$]*/g,(token,offset)=>{
+   if(expression.slice(offset+token.length).trimStart().startsWith(':'))return token
+   if(!definitions.has(token)||active.has(token))return token
+   return expand(definitions.get(token),new Set([...active,token]))
+  })
+ }
+ try{return definitions.has('root')?expand(definitions.get('root'),new Set(['root'])):''}catch{return ''}
+}
+const presentationArgs={Stack:[1,2,3,4,5],Card:[1,2,3,4,5,6],TextContent:[1],MarkDownRenderer:[1],Callout:[0],TextCallout:[0],Col:[2],Button:[2,3,4],Buttons:[1],Separator:[0],TagBlock:[1],Tag:[2,3],EntityList:[1],ListBlock:[1,2],Text:[0,3,4],BoldText:[0,3,4],IconText:[1,2,6],ImageText:[5],Carousel:[1],ActionGroup:[1]}
 export function projectUiContent(program){
+ program=displayExpression(program)
  const frames=[],values=[]
  const tokens=program.matchAll(/"(?:\\.|[^"\\])*"|[A-Za-z_$][\w$]*|[-+]?\d+(?:\.\d+)?|[()[\]{},]/g)
  let previous=''
@@ -64,7 +82,7 @@ export function projectUiContent(program){
   if(token==='('||token==='['||token==='{')frames.push({kind:token,name:token==='('?previous:'',arg:0})
   else if(token===')'||token===']'||token==='}')frames.pop()
   else if(token===','){if(top)top.arg++}
-  else if(token.startsWith('"')||/^[-+]?\d/.test(token)){
+  else if(token.startsWith('"')||/^[-+]?\d/.test(token)||token==='true'||token==='false'){
    if(!(top?.kind==='('&&presentationArgs[top.name]?.includes(top.arg))){
     try{const value=JSON.parse(token);if(value!=='')values.push(String(value))}catch{}
    }

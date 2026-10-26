@@ -45,3 +45,7 @@ test('projection preserves content equal to style values and localizes fallback 
  assert.equal(plainMixedAnswer('```openui-lang\nroot = Stack([TextContent("small","large"),Table([Col("Size",["small","large","small"])])],"row","m")\n```'),'small\nSize\nsmall\nlarge\nsmall');
  assert.equal(plainMixedAnswer('```openui-lang\nroot = Stack([', {labels:{uiInterrupted:'Interrompu'}}),'Interrompu');
 });
+test('projection excludes referenced action context and preserves boolean cells',()=>{
+ const source='```openui-lang\nroot = Stack([heading,heading,button,Table([Col("Enabled",[true,false])])])\nheading = TextContent("Visible")\nbutton = Button("Continue", @ToAssistant("Send", context))\ncontext = {privateNote:"hidden context"}\n```';
+ assert.equal(plainMixedAnswer(source),'Visible\nVisible\nContinue\nEnabled\ntrue\nfalse');
+});
