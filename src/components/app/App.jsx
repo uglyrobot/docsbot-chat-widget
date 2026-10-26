@@ -7,7 +7,7 @@ import reactTailwindStyles from "!raw-loader!../../assets/css/docsbot-tw.min.css
 import reactChatbotStyles from "!raw-loader!../../assets/css/chatbot.min.css";
 import katexStyles from "!raw-loader!../../assets/css/katex.min.css";
 import appStyles from "!raw-loader!../../assets/css/App.min.css";
-import floatingButtonStyles from "!raw-loader!../../assets/css/FloatingButton.min.css";
+import floatingButtonStyles from "!raw-loader!../../assets/css/floatingButton.min.css";
 import optionsStyles from "!raw-loader!../../assets/css/Options.min.css";
 import linkListStyles from "!raw-loader!../../assets/css/LinkList.min.css";
 import { Chatbot } from "../chatbot/Chatbot";

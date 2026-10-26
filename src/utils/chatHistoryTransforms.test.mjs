@@ -60,3 +60,11 @@ test("mapChatHistoryStringsSync preserves tuple history entries", () => {
 	assert.deepEqual(mapped, [["email@example.com", "answer"]]);
 	assert.equal(Array.isArray(mapped[0]), true);
 });
+
+test("mixed answer history PII transforms include Markdown and UI in the existing AI field", async () => {
+ const history=[{Human:"Hi",AI:'Text [pii-1]\n```openui-lang\nroot = Stack([TextContent("[pii-1]")])\n```'}];
+ const mapped=await mapChatHistoryStrings(history,async text=>text.replaceAll("[pii-1]","[safe]"));
+ assert.equal(mapped[0].AI.includes("[pii-1]"),false);assert.ok(mapped[0].AI.includes('TextContent("[safe]")'));
+ const restored=mapChatHistoryStringsSync(mapped,text=>text.replaceAll("[safe]","person@example.com"));
+ assert.ok(restored[0].AI.includes('TextContent("person@example.com")'));assert.equal(restored[0].Human,'Hi');
+});

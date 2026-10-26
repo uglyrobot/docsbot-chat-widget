@@ -1,3 +1,6 @@
+import { decodeAnswerDelta } from '../../utils/answerDelta.mjs';
+import { preloadOpenUIRenderer } from '../generativeUi/OpenUIResponse';
+import { observeMessageViewport } from '../../utils/observeMessageViewport.mjs';
 /** @format */
 
 import {
@@ -268,6 +271,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		useVoiceAgent, // Server-gated browser Realtime voice calling
 		useWebSearch, // If agent web search tool is enabled (API)
 		useCustomButtons, // Agent API: request custom_button terminal events
+		useGenerativeUI, // Opt-in OpenUI Lang output from the Agent API
 		useCalendly,
 		useCalCom,
 		useTidyCal,
@@ -335,6 +339,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const piiRedactionBypassedRef = useRef(false);
 	const piiRedactionSessionKeyRef = useRef('');
 	const stateMessagesRef = useRef(state.messages);
+	useEffect(() => {
+		if (useGenerativeUI === true) preloadOpenUIRenderer().catch(() => {});
+	}, [useGenerativeUI]);
+
 	const chatHistoryRef = useRef(state.chatHistory);
 	const voiceHistoryItemIndicesRef = useRef(
 		state.voiceHistoryItemIndices || {}
@@ -944,13 +952,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			Emitter.emit('docsbot_add_user_message_complete');
 		});
 
-		Emitter.on('docsbot_add_bot_message', async ({ message }) => {
+		Emitter.on('docsbot_add_bot_message', async ({ message, uiReadOnly }) => {
 			await dispatch({
 				type: 'add_message',
 				payload: {
 					id: uuidv4(),
 					variant: 'chatbot',
 					message: message,
+					uiReadOnly,
 					loading: false,
 					streaming: false,
 					timestamp: Date.now()
@@ -2323,6 +2332,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	}, [isTidyCalEnabled]);
 
 	async function fetchAnswer(question, image_urls = [], options = {}) {
+        let uiMessageAccepted = false;
 		if (!options.bypassLeadCollect && shouldRequireLeadBeforeSend()) {
 			setIsLeadCaptureLocked(true);
 			setPendingLeadCapture({
@@ -2437,7 +2447,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 						reasoning_effort: reasoningEffort
 					}),
 				...(useWebSearch && { web_search: true }),
-				...(useCustomButtons && { custom_buttons: true })
+				...(useCustomButtons && { custom_buttons: true }),
+				...(useGenerativeUI === true && { generative_ui: true })
 			};
 
 			// Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
@@ -2656,6 +2667,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							return;
 						}
 
+                        if (data.event === 'answer_delta') {
+                            hasStartedStreaming = true;
+                            answer += decodeAnswerDelta(data.data);
+                            dispatch({type:'update_message',payload:{id,message:revealTextFromResponse(answer),loading:false,streaming:true}});
+                            return;
+                        }
+
 						if (data.event === 'stream') {
 							hasStartedStreaming = true;
 							// Handle empty data fields as line breaks to preserve formatting
@@ -2736,6 +2754,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 											}
 										}),
 										sources: finalData.sources || null,
+									uiInterrupted: false,
 										answerId:
 											answerId || finalData.id || null, // use saved prev id for feedback button
 										conversationId: requestConversationId,
@@ -2753,7 +2772,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 								currentAgentActivity = null;
 
 								answerId = finalData.id || null; // save the answer id for the feedback button
-								let newChatHistory = finalData.history;
+								uiMessageAccepted = true;
+                                let newChatHistory = finalData.history;
 
 								dispatch({
 									type: 'save_history',
@@ -2805,6 +2825,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 						throw wrapped;
 					}
 				});
+                if (isCurrentRequest() && !uiMessageAccepted) throw new FatalError('The response was interrupted before completion.');
 			} catch (error) {
 				if (!isCurrentRequest()) {
 					return;
@@ -2995,6 +3016,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				}
 			};
 		}
+        return uiMessageAccepted;
 	}
 
 	async function handleSubmit(event) {
@@ -3147,18 +3169,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	};
 
 	useEffect(() => {
-		const chatContainer = ref.current;
-
-		if (chatContainer) {
-			chatContainer.addEventListener('scroll', syncAtBottom);
-			syncAtBottom();
-		}
-
-		return () => {
-			if (chatContainer) {
-				chatContainer.removeEventListener('scroll', syncAtBottom);
-			}
-		};
+		// Composer growth and container resizing change the visible bottom even
+		// without a scroll event. Keep the latest-message control reachable.
+		return observeMessageViewport(ref.current, syncAtBottom);
 	}, [bottomScrollSpacerHeight]);
 
 	useLayoutEffect(() => {
