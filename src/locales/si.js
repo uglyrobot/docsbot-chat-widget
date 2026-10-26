@@ -3,6 +3,11 @@ export default {
   "name": "සිංහල (Sinhala)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "අතුරුමුහුණත සූදානම් කරමින්…",
+    "uiUnavailable": "අතුරුමුහුණත පෙන්විය නොහැක. නැවත උත්සාහ කරන්න.",
+    "uiInterrupted": "පිළිතුර බාධා විය. නැවත උත්සාහ කරන්න.",
+    "uiRegion": "ජනනය කළ අතුරුමුහුණත",
+
     "stopResponse": "පිළිතුර නවත්වන්න",
     "poweredBy": "සපයනු ලබන්නේ",
     "inputPlaceholder": "පණිවිඩයක් යවන්න...",

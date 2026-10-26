@@ -3,6 +3,11 @@ export default {
   "name": "Dansk (Danish)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Forbereder grænseflade…",
+    "uiUnavailable": "Grænsefladen kan ikke vises. Prøv igen.",
+    "uiInterrupted": "Svaret blev afbrudt. Prøv igen.",
+    "uiRegion": "Genereret grænseflade",
+
     "stopResponse": "Stop svar",
     "poweredBy": "Drevet af",
     "inputPlaceholder": "Send en besked...",

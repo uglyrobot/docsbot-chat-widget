@@ -3,6 +3,11 @@ export default {
   "name": "Hrvatski (Croatian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Priprema sučelja…",
+    "uiUnavailable": "Sučelje se ne može prikazati. Pokušajte ponovno.",
+    "uiInterrupted": "Odgovor je prekinut. Pokušajte ponovno.",
+    "uiRegion": "Generirano sučelje",
+
     "stopResponse": "Zaustavi odgovor",
     "poweredBy": "Pokreće",
     "inputPlaceholder": "Pošalji poruku...",

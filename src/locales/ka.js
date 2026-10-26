@@ -3,6 +3,11 @@ export default {
   "name": "ქართული (Georgian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "ინტერფეისის მომზადება…",
+    "uiUnavailable": "ინტერფეისი ვერ გამოჩნდა. სცადეთ ხელახლა.",
+    "uiInterrupted": "პასუხი შეწყდა. სცადეთ ხელახლა.",
+    "uiRegion": "შექმნილი ინტერფეისი",
+
     "stopResponse": "პასუხის შეჩერება",
     "poweredBy": "უზრუნველყოფს",
     "inputPlaceholder": "გაგზავნეთ შეტყობინება...",

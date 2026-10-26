@@ -21,7 +21,7 @@ function chatbotReducer(state, action) {
       )
       return {
         ...state,
-        messages: stopResponseMessages(state.messages),
+        messages: stopResponseMessages(state.messages, {labels:action.labels}),
         chatHistory,
       }
     }

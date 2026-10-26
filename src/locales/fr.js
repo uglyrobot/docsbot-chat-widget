@@ -3,6 +3,11 @@ export default {
   "name": "Français (French)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Préparation de l’interface…",
+    "uiUnavailable": "Impossible d’afficher l’interface. Réessayez.",
+    "uiInterrupted": "Réponse interrompue. Réessayez.",
+    "uiRegion": "Interface générée",
+
     "stopResponse": "Arrêter la réponse",
     "poweredBy": "Propulsé par",
     "inputPlaceholder": "Envoyer un message...",

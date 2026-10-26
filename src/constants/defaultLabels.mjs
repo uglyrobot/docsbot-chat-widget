@@ -2,6 +2,11 @@
  * English defaults for widget `labels` (bundled; merged with lazy locale + API + options).
  */
 export const defaultLabels = {
+  uiPreparing: "Preparing interface…",
+  uiUnavailable: "The interface could not be displayed. Please retry your request.",
+  uiInterrupted: "The interface was interrupted. Please retry your request.",
+  uiRegion: "Generated interface",
+
   poweredBy: "Powered by",
   inputPlaceholder: "Send a message...",
   firstMessage: "What can I help you with?",

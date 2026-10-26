@@ -1,7 +1,7 @@
 import {AssistantResponseFrame,AssistantTextBubble} from '../generativeUi/AssistantResponseFrame';
 import MixedAnswer from '../generativeUi/MixedAnswer';
-import {plainMixedAnswer} from '../../utils/mixedAnswer.mjs';
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import {plainMixedAnswer,hasMixedUi} from '../../utils/mixedAnswer.mjs';
+import { useState, useEffect, useRef, useCallback, Suspense, Fragment } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Loader } from '../loader/Loader';
 import { useConfig } from '../configContext/ConfigContext';
@@ -435,7 +435,7 @@ export const BotChatMessage = ({
 
 	const copyContentToClipboard = async () => {
 		// payload.message contains raw markdown
-		const markdownContent = plainMixedAnswer(payload.message || '');
+		const markdownContent = plainMixedAnswer(payload.message || '', {labels});
 		// Get rendered HTML from Streamdown component
 		const htmlContent = payload.message?.includes('```openui-lang') ? '' : contentRef.current?.innerHTML || '';
 
@@ -971,7 +971,9 @@ export const BotChatMessage = ({
 		}
 	};
 
-	const MessageFrame = ['custom_button','lead_collect'].includes(payload.type) ? 'div' : AssistantResponseFrame;
+	const hasUiContent = (useGenerativeUI === true || typeof payload.uiReadOnly === 'boolean') && hasMixedUi(payload.message || '');
+    const MessageFrame = hasUiContent && !['custom_button','lead_collect'].includes(payload.type) ? AssistantResponseFrame : 'div';
+    const TextFrame = hasUiContent ? AssistantTextBubble : Fragment;
 
 	return (
 		<>
@@ -1321,7 +1323,7 @@ export const BotChatMessage = ({
 								<>
 									<div dir="auto" ref={contentRef}>
 <MixedAnswer enabled={useGenerativeUI === true || typeof payload.uiReadOnly === 'boolean'} messageId={payload.id} content={payload.message || ''} isStreaming={Boolean(payload.streaming || payload.uiInterrupted)} readOnly={payload.uiReadOnly} lifecycleState={payload.uiLifecycle} onLifecycleState={uiLifecycle=>dispatch({type:'update_message',payload:{id:payload.id,uiLifecycle}})} requestPending={Object.values(state.messages || {}).some(item=>item.loading||item.streaming)} onSend={async message=>{dispatch({type:'add_message',payload:{id:uuidv4(),variant:'user',message,timestamp:Date.now(),loading:false}});return await fetchAnswer(message)}} renderMarkdown={text=>(
-<AssistantTextBubble>
+<TextFrame>
 										<Suspense fallback={<Loader />}>
 											<LazyStreamdown
 												className="docsbot-streamdown"
@@ -1342,7 +1344,7 @@ export const BotChatMessage = ({
 													text
 												)}
 											</LazyStreamdown>
-										</Suspense></AssistantTextBubble> )} />
+										</Suspense></TextFrame> )} />
 									</div>
 
 									{(hasVisibleSources ||

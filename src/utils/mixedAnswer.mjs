@@ -1,3 +1,4 @@
+import {defaultLabels} from '../constants/defaultLabels.mjs'
 // Upstream inline syntax; ordinary fences stay ordinary Markdown.
 export function splitMixedAnswer(source = '', {streaming = false} = {}) {
   if (typeof source !== 'string') return []
@@ -52,15 +53,33 @@ function withoutActions(program) {
  }
  return out
 }
-const styleValues=new Set(['row','column','small','default','large','large-heavy','small-heavy','primary','secondary','outline','ghost','card','clear','sunk','xs','s','m','l','xl','2xl','start','end','stretch','center','between','around','evenly','once','repeatable','gray'])
-export function plainMixedAnswer(source='', {interrupted=false}={}) {
+// Only direct presentation arguments are omitted. Content in arrays/objects
+// and strings such as TextContent("small") must survive unchanged.
+const presentationArgs={Stack:[1,2,3,4],Card:[1,2,3,4,5],TextContent:[1],MarkDownRenderer:[1],Callout:[0],TextCallout:[0],Col:[2],Button:[2,3,4],Buttons:[1],Separator:[0],TagBlock:[1],Tag:[2,3],EntityList:[1],ListBlock:[1,2],Text:[0,3,4],BoldText:[0,3,4],IconText:[1,2,6],ImageText:[5],Carousel:[1],ActionGroup:[1]}
+export function projectUiContent(program){
+ const frames=[],values=[]
+ const tokens=program.matchAll(/"(?:\\.|[^"\\])*"|[A-Za-z_$][\w$]*|[-+]?\d+(?:\.\d+)?|[()[\]{},]/g)
+ let previous=''
+ for(const match of tokens){const token=match[0],top=frames.at(-1)
+  if(token==='('||token==='['||token==='{')frames.push({kind:token,name:token==='('?previous:'',arg:0})
+  else if(token===')'||token===']'||token==='}')frames.pop()
+  else if(token===','){if(top)top.arg++}
+  else if(token.startsWith('"')||/^[-+]?\d/.test(token)){
+   if(!(top?.kind==='('&&presentationArgs[top.name]?.includes(top.arg))){
+    try{const value=JSON.parse(token);if(value!=='')values.push(String(value))}catch{}
+   }
+  }
+  previous=token
+ }
+ return values.join('\n')
+}
+export function plainMixedAnswer(source='', {interrupted=false,labels=defaultLabels}={}) {
  const blocks=splitMixedAnswer(source,{streaming:interrupted})
  if(!blocks.some(block=>block.kind==='ui'||block.kind==='invalid'||block.kind==='pending'))return source
  return blocks.map(block=>{
   if(block.kind==='markdown')return block.text
-  if(block.kind!=='ui')return 'The interface was interrupted. Please retry your request.'
+  if(block.kind!=='ui')return labels.uiInterrupted
   const program=withoutActions(block.text)
-  const values=[...program.matchAll(/"(?:\\.|[^"\\])*"|(?<![\w$])[-+]?\d+(?:\.\d+)?(?!\w)/g)].flatMap(match=>{try{const value=JSON.parse(match[0]);return value!==''&&!styleValues.has(value)?[String(value)]:[]}catch{return []}})
-  return [...new Set(values)].join('\n')||'The interface could not be displayed. Please retry your request.'
- }).filter(Boolean).join('\n\n').trim()||'The response could not be displayed. Please retry your request.'
+  return projectUiContent(program)||labels.uiUnavailable
+ }).filter(Boolean).join('\n\n').trim()||labels.uiUnavailable
 }

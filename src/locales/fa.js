@@ -3,6 +3,11 @@ export default {
   "name": "فارسی (Persian)",
   "isRTL": true,
   "labels": {
+    "uiPreparing": "در حال آماده‌سازی رابط…",
+    "uiUnavailable": "نمایش رابط ممکن نیست. دوباره تلاش کنید.",
+    "uiInterrupted": "پاسخ قطع شد. دوباره تلاش کنید.",
+    "uiRegion": "رابط تولیدشده",
+
     "stopResponse": "توقف پاسخ",
     "poweredBy": "قدرت گرفته از",
     "inputPlaceholder": "پیامی بفرستید...",

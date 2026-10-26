@@ -3,6 +3,11 @@ export default {
   "name": "हिन्दी (Hindi)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "इंटरफ़ेस तैयार हो रहा है…",
+    "uiUnavailable": "इंटरफ़ेस नहीं दिखाया जा सका। फिर कोशिश करें।",
+    "uiInterrupted": "जवाब बाधित हुआ। फिर कोशिश करें।",
+    "uiRegion": "बनाया गया इंटरफ़ेस",
+
     "stopResponse": "जवाब रोकें",
     "poweredBy": "द्वारा संचालित",
     "inputPlaceholder": "एक संदेश भेजें...",

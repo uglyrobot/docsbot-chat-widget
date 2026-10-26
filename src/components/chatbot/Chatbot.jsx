@@ -2106,7 +2106,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		setStreamController(null);
 		controller?.abort?.();
 		controller?.close?.();
-		dispatch({ type: 'stop_response' });
+		dispatch({ type: 'stop_response', labels });
 		setIsFetching(false);
 	};
 
@@ -2235,7 +2235,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 											sanitizeRestoredConversation(
 												savedConversation,
 												{
-													allowLeadCollect:
+													labels,
+                                                allowLeadCollect:
 														isLeadCollectEnabled()
 												}
 											)
@@ -2669,8 +2670,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
                         if (data.event === 'answer_delta') {
                             hasStartedStreaming = true;
+                            currentAgentActivity = null;
                             answer += decodeAnswerDelta(data.data);
-                            dispatch({type:'update_message',payload:{id,message:revealTextFromResponse(answer),loading:false,streaming:true}});
+                            dispatch({type:'update_message',payload:{id,message:revealTextFromResponse(answer),loading:false,streaming:true,agentActivity:null}});
                             return;
                         }
 
@@ -2825,7 +2827,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 						throw wrapped;
 					}
 				});
-                if (isCurrentRequest() && !uiMessageAccepted) throw new FatalError('The response was interrupted before completion.');
+                if (isCurrentRequest() && !uiMessageAccepted) throw new FatalError(labels.uiInterrupted);
 			} catch (error) {
 				if (!isCurrentRequest()) {
 					return;
@@ -2892,6 +2894,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			setStreamController(ws);
 			streamControllerRef.current = ws;
 
+			let finishWebSocket;
+			const webSocketResult = new Promise(resolve => { finishWebSocket = resolve; });
+
 			// Send message to server when connection is established
 			ws.onopen = function (event) {
 				if (!isCurrentRequest()) return;
@@ -2899,6 +2904,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			};
 
 			ws.onerror = function (event) {
+                finishWebSocket(false);
 				if (!isCurrentRequest()) return;
 				console.error('DOCSBOT: WebSocket error', event);
 				dispatch({
@@ -2919,6 +2925,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			};
 
 			ws.onclose = function (event) {
+                finishWebSocket(false);
 				if (!isCurrentRequest()) return;
 				if (!event.wasClean) {
 					dispatch({
@@ -2965,6 +2972,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 					} else if (data.type === 'end') {
 						const rawFinalData = JSON.parse(data.message);
 						const finalData = revealResponsePayload(rawFinalData);
+                        finishWebSocket(!finalData.error);
 						dispatch({
 							type: 'update_message',
 							payload: {
@@ -2997,6 +3005,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							setIsFetching(false);
 						}
 					} else if (data.type === 'error') {
+                        finishWebSocket(false);
 						dispatch({
 							type: 'update_message',
 							payload: {
@@ -3015,6 +3024,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 					}
 				}
 			};
+            uiMessageAccepted = await webSocketResult;
 		}
         return uiMessageAccepted;
 	}

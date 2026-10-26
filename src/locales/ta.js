@@ -3,6 +3,11 @@ export default {
   "name": "தமிழ் (Tamil)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "இடைமுகம் தயாராகிறது…",
+    "uiUnavailable": "இடைமுகத்தைக் காட்ட முடியவில்லை. மீண்டும் முயலவும்.",
+    "uiInterrupted": "பதில் தடைப்பட்டது. மீண்டும் முயலவும்.",
+    "uiRegion": "உருவாக்கப்பட்ட இடைமுகம்",
+
     "stopResponse": "பதிலை நிறுத்து",
     "poweredBy": "இயக்குவது",
     "inputPlaceholder": "செய்தி அனுப்புங்கள்...",

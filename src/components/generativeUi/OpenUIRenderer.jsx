@@ -15,11 +15,12 @@ class OpenUIErrorBoundary extends React.Component {
   state = { failed: false }
   static getDerivedStateFromError() { return { failed: true } }
   componentDidUpdate(previous) { if (this.state.failed && previous.response !== this.props.response) this.setState({ failed: false }) }
-  render() { return this.state.failed ? null : this.props.children }
+  render() { return this.state.failed ? <p role="status">{this.props.fallbackText}</p> : this.props.children }
 }
 
 function ThemeSurface({ children, isStreaming }) {
   const { theme } = useTheme()
+  const {labels} = useConfig()
   const ref = useRef(null)
   const labelPrefix = React.useId().replace(/:/g, "")
   const variables = Object.fromEntries(Object.entries(theme).filter(([, value]) => typeof value === 'string').map(([key, value]) => ['--openui-' + key.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/([A-Z])([A-Z])/g, '$1-$2').replace(/([a-z])(\d)/g, '$1-$2').toLowerCase(), value]))
@@ -49,19 +50,19 @@ function ThemeSurface({ children, isStreaming }) {
     if (ref.current) observer.observe(ref.current, {childList:true, subtree:true})
     return () => observer.disconnect()
   }, [labelPrefix])
-  return <div ref={ref} className="docsbot-openui-surface not-prose" role="group" aria-label="Generated interface" aria-busy={isStreaming} style={{...variables, width:'100%', minWidth:0, margin:'12px 0', color:'var(--openui-text-neutral-primary)', fontSize:14, lineHeight:1.5}}>{children}</div>
+  return <div ref={ref} className="docsbot-openui-surface not-prose" role="group" aria-label={labels.uiRegion} aria-busy={isStreaming} style={{...variables, width:'100%', minWidth:0, margin:'12px 0', color:'var(--openui-text-neutral-primary)', fontSize:14, lineHeight:1.5}}>{children}</div>
 }
 
 export default function OpenUIRenderer({ payload, isStreaming = false, onSend, messageId, lifecycleState, onLifecycleState, requestPending = false, readOnly = false, fallbackText }) {
-  const { effectiveTheme, color, teamId, botId } = useConfig()
+  const { effectiveTheme, color, teamId, botId, labels } = useConfig()
   const mode = effectiveTheme === 'dark' ? 'dark' : 'light'
   const lightTheme = React.useMemo(() => createOpenUITheme(color, 'light'), [color])
   const darkTheme = React.useMemo(() => createOpenUITheme(color, 'dark'), [color])
   const [failedResponse, setFailedResponse] = React.useState(null)
   const preview = isStreaming || payload?.provisional === true
   const safePayload = cleanGenerativeUiPayload(payload, { streaming: preview })
-  if (!safePayload) return <p role="status">{fallbackText || "The interface could not be displayed. Please retry your request."}</p>
-  if (!preview && failedResponse === safePayload.response) return <p role="status">{fallbackText || "The interface could not be displayed. Please retry your request."}</p>
+  if (!safePayload) return <p role="status">{fallbackText || labels.uiUnavailable}</p>
+  if (!preview && failedResponse === safePayload.response) return <p role="status">{fallbackText || labels.uiUnavailable}</p>
   const send = async (event, actionGroup) => {
     // Generated UIs can only add an explicit user turn to this conversation.
     // No tool registry, Query, Mutation, arbitrary code, or URL actions are supplied.

@@ -43,7 +43,7 @@ window.fixtureEvents=[];
 document.addEventListener('docsbot_tool_call',event=>window.fixtureEvents.push({type:'tool',detail:event.detail}));
 document.addEventListener('docsbot_fetching_answer_complete',()=>window.fixtureEvents.push({type:'done'}));
 DocsBotAI.mount({id:'fixture-team/fixture-bot',options:{localDev:true,localApiBase:'http://127.0.0.1:9000',
-isAgent:true,useGenerativeUI:new URLSearchParams(location.search).get('enabled')!=='0',
+isAgent:new URLSearchParams(location.search).get('agent')!=='0',useGenerativeUI:new URLSearchParams(location.search).get('enabled')!=='0',
 color:new URLSearchParams(location.search).get('brand')||'#0e7490',
 useWebSearch:false,useCustomButtons:false,useCalendly:false,useCalCom:false,useTidyCal:false,
 useFeedback:false,useEscalation:false,useVoiceAgent:false,useImageUpload:false,useAudioUpload:false,
@@ -56,7 +56,7 @@ function sse(event, data) {
   return `event: ${event}\n${text.split('\n').map(line => `data: ${line}`).join('\n')}\n\n`;
 }
 
-async function installFixture(page) {
+async function installFixture(page, options = {}) {
   const blocked = [];
   const liveApiRequests = [];
   page.on('request', request => {
@@ -82,7 +82,7 @@ async function installFixture(page) {
     if (url.pathname.startsWith('/__openui-fixture')) {
       await route.fulfill({ contentType: 'text/html', body: url.searchParams.has('floating') ? html.replace('id="docsbot-widget-embed"', 'id="fixture-floating-shell"') : html });
     } else if (url.pathname === '/api/widget/fixture-team/fixture-bot') {
-      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(config) });
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify({...config,...options}) });
     } else if (url.pathname === '/__fixture-photo.svg') {
       await route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="#d9eef0"/><path d="M0 310L190 65L350 300L480 120L640 330V360H0Z" fill="#397b7b"/><path d="M135 135L190 65L242 140L194 118Z" fill="#fff"/><rect x="365" y="234" width="130" height="98" rx="6" fill="#dba875"/><path d="M348 238L430 175L512 238Z" fill="#254d57"/><rect x="417" y="275" width="28" height="57" fill="#254d57"/><circle cx="548" cy="70" r="30" fill="#f6cc79"/></svg>' });
     } else if (url.origin === devOrigin && !url.pathname.includes('/chat-agent')) {
@@ -776,7 +776,7 @@ for (const width of [320,1200]) test(`waiting indicator stays in a bubble before
  await ask(page);
  const loader=page.locator('.chatbot-loader-container').last();
  await expect(loader).toBeVisible();
- const waiting=await loader.evaluate(el=>{const bubble=el.closest('.docsbot-chat-text-segment'),frame=el.closest('[data-docsbot-response-frame]');return {inBubble:!!bubble,hidden:el.getAttribute('aria-hidden'),bubbleWidth:bubble?.getBoundingClientRect().width,frameWidth:frame?.getBoundingClientRect().width,background:bubble?getComputedStyle(bubble).backgroundColor:null}});
+ const waiting=await loader.evaluate(el=>{const bubble=el.closest('.docsbot-chat-bot-message'),frame=el.closest('.docsbot-chat-bot-message-column');return {inBubble:!!bubble,hidden:el.getAttribute('aria-hidden'),bubbleWidth:bubble?.getBoundingClientRect().width,frameWidth:frame?.getBoundingClientRect().width,background:bubble?getComputedStyle(bubble).backgroundColor:null}});
  expect(waiting.inBubble).toBe(true);expect(waiting.hidden).toBe('true');expect(waiting.bubbleWidth).toBeLessThan(waiting.frameWidth);expect(waiting.background).not.toBe('rgba(0, 0, 0, 0)');
  const code='root = Stack([Card([TextContent("Live UI preview")])])';
  await push(page,sse('answer_delta',{delta:'```openui-lang\n'+code}));
@@ -788,4 +788,91 @@ for (const width of [320,1200]) test(`waiting indicator stays in a bubble before
  await finish(page,null,'```openui-lang\n'+code+'\n```');
  await expect(ui).toHaveAttribute('aria-busy','false');
  expect(await ui.evaluate(el=>el.getBoundingClientRect().width)).toBe(partial.width);
+});
+
+test('answer deltas retire prior reasoning and tool activity',async({page})=>{
+ await openFixture(page);await ask(page);
+ await push(page,sse('reasoning','Working on the fixture'));
+ await expect(page.locator('.docsbot-agent-activity')).toBeVisible();
+ await push(page,sse('answer_delta',{delta:'The answer has started.'}));
+ await expect(page.getByText('The answer has started.',{exact:true})).toBeVisible();
+ await expect(page.locator('.docsbot-agent-activity')).toHaveCount(0);
+ await expect(page.getByText('Working on the fixture',{exact:true})).toHaveCount(0);
+ await finish(page,null,'The answer has started.');
+});
+
+for(const outcome of ['end','error','cancel'])test(`WebSocket host once actions wait for terminal ${outcome}`,async({page})=>{
+ await page.addInitScript(()=>{
+  window.fixtureWSRequests=[];
+  window.WebSocket=class {
+   constructor(){window.fixtureSocket=this;setTimeout(()=>this.onopen?.({}),0)}
+   send(data){window.fixtureWSRequests.push(JSON.parse(data))}
+   close(){this.onclose?.({wasClean:true})}
+  };
+ });
+ await installFixture(page,{isAgent:false});
+ await page.goto('/__openui-fixture?agent=0');
+ await expect(page.getByRole('textbox',{name:'Send a message...'})).toBeVisible();
+ await page.evaluate(response=>DocsBotAI.addUIMessage({response}),lifecycleChoices);
+ const ui=page.getByRole('group',{name:'Generated interface'}).first();
+ const button=ui.getByRole('button',{name:'Request a demo',exact:true});
+ await button.click();
+ await expect.poll(()=>page.evaluate(()=>window.fixtureWSRequests.length)).toBe(1);
+ await expect(ui.locator('[data-action-status="pending"]')).toHaveCount(1);
+ await expect(button).toBeDisabled();
+ if(outcome==='cancel')await page.getByRole('button',{name:'Stop response',exact:true}).click();
+ else await page.evaluate(outcome=>window.fixtureSocket.onmessage({data:JSON.stringify({sender:'bot',type:outcome,message:outcome==='end'?JSON.stringify({answer:'Received',history:[],id:'fixture-answer'}):'Fixture failure'})}),outcome);
+ await expect(ui.locator(`[data-action-status="${outcome==='end'?'submitted':'retry'}"]`)).toHaveCount(1);
+ if(outcome==='end'){
+  await expect(button).toBeDisabled();await button.dispatchEvent('click');
+  expect(await page.evaluate(()=>window.fixtureWSRequests.length)).toBe(1);
+ }else await expect(button).toBeEnabled();
+});
+
+test('localized interface states and host overrides are used by the renderer',async({page})=>{
+ await installFixture(page,{labels:{...config.labels,uiPreparing:'Préparation personnalisée',uiUnavailable:'Interface indisponible',uiRegion:'Interface personnalisée',uiInterrupted:'Réponse interrompue'}});
+ await page.goto('/__openui-fixture');await ask(page);
+ await push(page,sse('answer_delta',{delta:'```openui-lang\nr'}));
+ await expect(page.getByRole('status').filter({hasText:'Préparation personnalisée'})).toBeVisible();
+ await finish(page,payload('root = Stack([TextContent("Bonjour")])'));
+ await expect(page.getByRole('group',{name:'Interface personnalisée'})).toBeVisible();
+});
+
+for(const width of [320,1200])for(const avatar of [false,true])for(const kind of ['normal','mixed','ui-only'])test(`sources and avatar framing ${kind} avatar=${avatar} ${width}px`,async({page},testInfo)=>{
+ await page.setViewportSize({width,height:1000});
+ await installFixture(page,{botIcon:avatar?'robot':null,showCopyButton:true});
+ await page.goto('/__openui-fixture?floating=1');
+ await page.getByRole('button',{name:'Help',exact:true}).click();
+ await ask(page);
+ const code='root = Stack([Card([TextContent("Fixture card"),Button("Details")])])';
+ const reply=kind==='normal'?'Ordinary answer with sources.':(kind==='mixed'?'Before the card.\n':'')+'```openui-lang\n'+code+'\n```'+(kind==='mixed'?'\nAfter the card.':'');
+ await finish(page,null,reply);
+ const message=page.locator('.docsbot-chat-bot-message-container').last();
+ const sources=message.locator('.docsbot-sources-container');await expect(sources).toBeVisible();
+ const framing=await sources.evaluate(el=>{const bubble=el.closest('.docsbot-chat-bot-message'),frame=el.closest('[data-docsbot-response-frame]');return {bubble:!!bubble,frame:!!frame,background:bubble?getComputedStyle(bubble).backgroundColor:null}});
+ expect(framing.frame).toBe(kind!=='normal');expect(framing.bubble).toBe(true);
+ if(kind==='normal')expect(framing.background).not.toBe('rgba(0, 0, 0, 0)');
+ await expect(message.getByRole('button',{name:'Copy response',exact:true})).toBeVisible();
+ if(kind!=='normal'){
+  const dimensions=await message.getByRole('group',{name:'Generated interface'}).evaluate(el=>{const frame=el.closest('[data-docsbot-response-frame]'),column=el.closest('.docsbot-chat-bot-message-column');return {ui:el.getBoundingClientRect().width,frame:frame.getBoundingClientRect().width,column:column.getBoundingClientRect().width,textBubble:!!el.closest('.docsbot-chat-text-segment'),overflow:document.documentElement.scrollWidth>innerWidth}});
+  expect(dimensions.textBubble).toBe(false);expect(dimensions.overflow).toBe(false);expect(Math.abs(dimensions.ui-dimensions.frame)).toBeLessThan(2);expect(dimensions.ui).toBeLessThanOrEqual(dimensions.column+1);
+ }
+ const avatarImage=message.locator('.docsbot-chat-bot-avatar');
+ if(avatar){await expect(avatarImage).toBeVisible();const a=await avatarImage.boundingBox(),b=await message.locator('.docsbot-chat-bot-message-column').boundingBox();expect(a.x+a.width).toBeLessThanOrEqual(b.x+1)}else await expect(avatarImage).toHaveCount(0);
+ await screenshot(page,`sources-${kind}-avatar-${avatar}-${width}`,testInfo);
+});
+
+for(const width of [320,1200])test(`composer borders remain consistent before and after UI at ${width}px`,async({page},testInfo)=>{
+ await page.setViewportSize({width,height:1000});await openFixture(page);
+ const input=page.getByRole('textbox',{name:'Send a message...'});
+ const inspect=()=>input.evaluate(el=>[el,el.closest('.docsbot-chat-input-form')].map(node=>{const s=getComputedStyle(node);return {borders:[s.borderTopColor,s.borderRightColor,s.borderBottomColor,s.borderLeftColor],widths:[s.borderTopWidth,s.borderRightWidth,s.borderBottomWidth,s.borderLeftWidth],outline:s.outline,shadow:s.boxShadow}}));
+ const check=values=>{for(const value of values){expect(new Set(value.borders).size).toBe(1);expect(new Set(value.widths).size).toBe(1)}};
+ await input.blur();const initial=await inspect();check(initial);await screenshot(page,`composer-normal-${width}`,testInfo);
+ await input.focus();await expect.poll(async()=>(await inspect())[1].borders[0]).toBe('rgb(14, 116, 144)');const focused=await inspect();check(focused);await screenshot(page,`composer-focus-${width}`,testInfo);
+ await ask(page);await finish(page,payload('root = Stack([TextContent("UI loaded")])'));
+ await input.focus();await expect.poll(async()=>(await inspect())[1].borders).toEqual(focused[1].borders);check(await inspect());
+ await input.fill('Demonstrate the fixture error.');await input.press('Enter');
+ await push(page,sse('error',{message:'Synthetic error',code:'fixture'}));
+ await page.evaluate(()=>window.fixtureController.close());
+ check(await inspect());await screenshot(page,`composer-error-${width}`,testInfo);
 });

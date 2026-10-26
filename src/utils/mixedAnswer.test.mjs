@@ -41,3 +41,7 @@ test('unframed image-card follow-up is UI; incomplete root never leaks; explicit
  assert.equal(splitMixedAnswer(example)[0].kind,'markdown');assert.equal(plainMixedAnswer(example),example)
  assert.equal(splitMixedAnswer('The root = Stack example stays prose.')[0].kind,'markdown')
 })
+test('projection preserves content equal to style values and localizes fallback overrides',()=>{
+ assert.equal(plainMixedAnswer('```openui-lang\nroot = Stack([TextContent("small","large"),Table([Col("Size",["small","large","small"])])],"row","m")\n```'),'small\nSize\nsmall\nlarge\nsmall');
+ assert.equal(plainMixedAnswer('```openui-lang\nroot = Stack([', {labels:{uiInterrupted:'Interrompu'}}),'Interrompu');
+});

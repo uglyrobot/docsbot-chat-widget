@@ -31,7 +31,7 @@ export function sanitizeRestoredConversation(savedConversation, options = {}) {
 				];
 			}
 
-			return [[id, message?.loading || message?.streaming ? {...message, message: plainMixedAnswer(message.message || '',{interrupted:true}) || 'Response interrupted. Please retry your request.', loading:false, streaming:false, agentActivity:null} : message]];
+			return [[id, message?.loading || message?.streaming ? {...message, message: plainMixedAnswer(message.message || '',{interrupted:true,labels:options.labels}) || plainMixedAnswer('```openui-lang', {labels:options.labels}), loading:false, streaming:false, agentActivity:null} : message]];
 		})
 	);
 }
@@ -129,7 +129,7 @@ export function appendInterruptedChatHistory(history, messages) {
 }
 
 // Finish interrupted messages without losing text already received.
-export function stopResponseMessages(messages) {
+export function stopResponseMessages(messages, options = {}) {
 	return Object.fromEntries(
 		Object.entries(messages || {}).flatMap(([id, message]) => {
 			if (!message.loading && !message.streaming) return [[id, message]];
@@ -140,7 +140,7 @@ export function stopResponseMessages(messages) {
 					id,
 					{
 						...message,
-                        message: plainMixedAnswer(message.message || '',{interrupted:true}) || 'Response interrupted. Please retry your request.',
+                        message: plainMixedAnswer(message.message || '',{interrupted:true,labels:options.labels}) || plainMixedAnswer('```openui-lang', {labels:options.labels}),
 						loading: false,
 						streaming: false,
 						agentActivity: null

@@ -3,6 +3,11 @@ export default {
   "name": "اردو (Urdu)",
   "isRTL": true,
   "labels": {
+    "uiPreparing": "انٹرفیس تیار ہو رہا ہے…",
+    "uiUnavailable": "انٹرفیس دکھایا نہیں جا سکا۔ دوبارہ کوشش کریں۔",
+    "uiInterrupted": "جواب منقطع ہوگیا۔ دوبارہ کوشش کریں۔",
+    "uiRegion": "تیار کردہ انٹرفیس",
+
     "stopResponse": "جواب روکیں",
     "poweredBy": "کی معاونت سے",
     "inputPlaceholder": "پیغام بھیجیں...",

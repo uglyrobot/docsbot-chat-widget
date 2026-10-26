@@ -3,6 +3,11 @@ export default {
   "name": "Català (Catalan)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "S’està preparant la interfície…",
+    "uiUnavailable": "No es pot mostrar la interfície. Torna-ho a provar.",
+    "uiInterrupted": "Resposta interrompuda. Torna-ho a provar.",
+    "uiRegion": "Interfície generada",
+
     "stopResponse": "Atura la resposta",
     "poweredBy": "Impulsat per",
     "inputPlaceholder": "Envia un missatge...",

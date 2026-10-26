@@ -3,6 +3,11 @@ export default {
   "name": "Română (Romanian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Se pregătește interfața…",
+    "uiUnavailable": "Interfața nu poate fi afișată. Încercați din nou.",
+    "uiInterrupted": "Răspuns întrerupt. Încercați din nou.",
+    "uiRegion": "Interfață generată",
+
     "stopResponse": "Oprește răspunsul",
     "poweredBy": "Alimentat de",
     "inputPlaceholder": "Trimite un mesaj...",

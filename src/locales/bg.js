@@ -3,6 +3,11 @@ export default {
   "name": "Български (Bulgarian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Подготвяне на интерфейса…",
+    "uiUnavailable": "Интерфейсът не може да се покаже. Опитайте отново.",
+    "uiInterrupted": "Отговорът е прекъснат. Опитайте отново.",
+    "uiRegion": "Генериран интерфейс",
+
     "stopResponse": "Спиране на отговора",
     "poweredBy": "Осъществено от",
     "inputPlaceholder": "Изпратете съобщение...",

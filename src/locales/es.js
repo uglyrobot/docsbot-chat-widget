@@ -3,6 +3,11 @@ export default {
   "name": "Español (Spanish)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Preparando interfaz…",
+    "uiUnavailable": "No se puede mostrar la interfaz. Inténtalo de nuevo.",
+    "uiInterrupted": "Respuesta interrumpida. Inténtalo de nuevo.",
+    "uiRegion": "Interfaz generada",
+
     "stopResponse": "Detener respuesta",
     "poweredBy": "Proporcionado por",
     "inputPlaceholder": "Enviar un mensaje...",

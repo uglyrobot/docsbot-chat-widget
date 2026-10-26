@@ -3,6 +3,11 @@ export default {
   "name": "Slovenščina (Slovenian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Priprava vmesnika…",
+    "uiUnavailable": "Vmesnika ni mogoče prikazati. Poskusite znova.",
+    "uiInterrupted": "Odgovor je prekinjen. Poskusite znova.",
+    "uiRegion": "Ustvarjen vmesnik",
+
     "stopResponse": "Ustavi odgovor",
     "poweredBy": "Poganja",
     "inputPlaceholder": "Pošlji sporočilo...",

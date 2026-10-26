@@ -3,6 +3,11 @@ export default {
   "name": "Eesti (Estonian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Liidese ettevalmistamine…",
+    "uiUnavailable": "Liidest ei saa kuvada. Proovige uuesti.",
+    "uiInterrupted": "Vastus katkes. Proovige uuesti.",
+    "uiRegion": "Loodud liides",
+
     "stopResponse": "Peata vastus",
     "poweredBy": "Toetab",
     "inputPlaceholder": "Saada sõnum...",

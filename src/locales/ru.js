@@ -3,6 +3,11 @@ export default {
   "name": "Русский (Russian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Подготовка интерфейса…",
+    "uiUnavailable": "Не удалось показать интерфейс. Повторите попытку.",
+    "uiInterrupted": "Ответ прерван. Повторите попытку.",
+    "uiRegion": "Созданный интерфейс",
+
     "stopResponse": "Остановить ответ",
     "poweredBy": "Предоставлено",
     "inputPlaceholder": "Отправить сообщение...",

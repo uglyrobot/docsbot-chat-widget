@@ -3,6 +3,11 @@ export default {
   "name": "العربية (Arabic)",
   "isRTL": true,
   "labels": {
+    "uiPreparing": "جارٍ إعداد الواجهة…",
+    "uiUnavailable": "تعذر عرض الواجهة. حاول مجددًا.",
+    "uiInterrupted": "انقطع الرد. حاول مجددًا.",
+    "uiRegion": "واجهة مُنشأة",
+
     "stopResponse": "إيقاف الرد",
     "poweredBy": "مدعوم من",
     "inputPlaceholder": "أرسل رسالة...",

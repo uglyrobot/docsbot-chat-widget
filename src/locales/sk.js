@@ -3,6 +3,11 @@ export default {
   "name": "Slovenčina (Slovak)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Príprava rozhrania…",
+    "uiUnavailable": "Rozhranie sa nedá zobraziť. Skúste to znova.",
+    "uiInterrupted": "Odpoveď bola prerušená. Skúste to znova.",
+    "uiRegion": "Vygenerované rozhranie",
+
     "stopResponse": "Zastaviť odpoveď",
     "poweredBy": "Poháňané",
     "inputPlaceholder": "Odoslať správu...",

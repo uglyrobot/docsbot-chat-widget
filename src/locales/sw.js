@@ -3,6 +3,11 @@ export default {
   "name": "Kiswahili (Swahili)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Inaandaa kiolesura…",
+    "uiUnavailable": "Haiwezi kuonyesha kiolesura. Jaribu tena.",
+    "uiInterrupted": "Jibu limekatizwa. Jaribu tena.",
+    "uiRegion": "Kiolesura kilichozalishwa",
+
     "stopResponse": "Simamisha jibu",
     "poweredBy": "Inaendeshwa na",
     "inputPlaceholder": "Tuma ujumbe...",

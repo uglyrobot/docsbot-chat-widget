@@ -3,6 +3,11 @@ export default {
   "name": "Српски (Serbian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Припрема интерфејса…",
+    "uiUnavailable": "Интерфејс се не може приказати. Покушајте поново.",
+    "uiInterrupted": "Одговор је прекинут. Покушајте поново.",
+    "uiRegion": "Генерисани интерфејс",
+
     "stopResponse": "Заустави одговор",
     "poweredBy": "Подржано од",
     "inputPlaceholder": "Пошаљи поруку...",

@@ -3,6 +3,11 @@ export default {
   "name": "한국어 (Korean)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "인터페이스 준비 중…",
+    "uiUnavailable": "인터페이스를 표시할 수 없습니다. 다시 시도하세요.",
+    "uiInterrupted": "응답이 중단되었습니다. 다시 시도하세요.",
+    "uiRegion": "생성된 인터페이스",
+
     "stopResponse": "응답 중지",
     "poweredBy": "제공자",
     "inputPlaceholder": "메시지를 보내세요...",
