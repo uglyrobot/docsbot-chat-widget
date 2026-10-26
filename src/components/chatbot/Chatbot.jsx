@@ -289,6 +289,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	} = useConfig();
 	const ref = useRef();
 	const inputRef = useRef();
+	const focusInputAfterResetRef = useRef(false);
 	const fileInputRef = useRef(null);
 	const mediaRecorderRef = useRef(null);
 	const audioChunksRef = useRef([]);
@@ -2146,6 +2147,13 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		}
 	};
 
+	useLayoutEffect(() => {
+		if (focusInputAfterResetRef.current) {
+			focusInputAfterResetRef.current = false;
+			inputRef.current?.focus();
+		}
+	}, [state.messages]);
+
 	useEffect(() => {
 		refreshChatHistoryRef.current = refreshChatHistory;
 	});
@@ -3433,7 +3441,11 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 								>
 									<button
 										type="button"
-										onClick={() => refreshChatHistory()}
+										onClick={() => {
+											// Reset hides this control; continue in the composer after render.
+											focusInputAfterResetRef.current = true;
+											refreshChatHistory();
+										}}
 										className="docsbot-chat-header-button"
 										aria-label={labels?.resetChat}
 									>
