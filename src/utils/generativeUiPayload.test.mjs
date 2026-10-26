@@ -36,3 +36,8 @@ test('official forms accept email data and conversation actions but reject remot
 		assert.equal(cleanGenerativeUiPayload(value(`root = Stack([Button("Run", ${action})])`)), null)
 	}
 })
+
+test('partial strings are data during streaming without allowing remote functions', () => {
+ assert.ok(cleanGenerativeUiPayload(payload('root = Stack([heading])\nheading = TextContent("Value < 10 and @Run('),{streaming:true}))
+ assert.equal(cleanGenerativeUiPayload(payload('root = Stack([Button("Run", @Run('),{streaming:true}),null)
+})

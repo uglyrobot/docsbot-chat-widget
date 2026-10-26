@@ -216,3 +216,19 @@ test('appendInterruptedChatHistory skips unresolved audio placeholders', () => {
 	};
 	assert.deepEqual(appendInterruptedChatHistory([], messages), []);
 });
+
+test('stopping a streamed mixed answer retains prose and replaces incomplete UI with retry', () => {
+ const result = stopResponseMessages({answer:{variant:'chatbot',message:'Readable prose\n```openui-lang\nroot = Stack([unfinished',streaming:true}})
+ assert.ok(result.answer.message.includes('Readable prose'))
+ assert.ok(result.answer.message.includes('retry'))
+ assert.ok(!result.answer.message.includes('Stack('))
+ assert.equal(result.answer.streaming,false)
+})
+
+test('stopping at a split opening marker never leaks a marker or leaves a blank reply',()=>{
+ for(const source of ['`','```op','```openui-lang\nr','root = Sta']){
+  const result=stopResponseMessages({answer:{variant:'chatbot',message:source,streaming:true}})
+  assert.ok(result.answer.message.includes('retry'))
+  assert.equal(result.answer.streaming,false)
+ }
+})

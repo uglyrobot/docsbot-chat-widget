@@ -1,6 +1,6 @@
+import { decodeAnswerDelta } from '../../utils/answerDelta.mjs';
 import { preloadOpenUIRenderer } from '../generativeUi/OpenUIResponse';
 import { observeMessageViewport } from '../../utils/observeMessageViewport.mjs';
-import { manifest as openuiManifest } from '../generativeUi/contract.mjs';
 /** @format */
 
 import {
@@ -951,14 +951,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			Emitter.emit('docsbot_add_user_message_complete');
 		});
 
-		Emitter.on('docsbot_add_bot_message', async ({ message, generativeUI, uiReadOnly }) => {
+		Emitter.on('docsbot_add_bot_message', async ({ message, uiReadOnly }) => {
 			await dispatch({
 				type: 'add_message',
 				payload: {
 					id: uuidv4(),
 					variant: 'chatbot',
 					message: message,
-					...(generativeUI ? { generativeUI, uiReadOnly } : {}),
+					uiReadOnly,
 					loading: false,
 					streaming: false,
 					timestamp: Date.now()
@@ -2075,12 +2075,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			...(typeof payload.message === 'string' && {
 				message: revealTextFromResponse(payload.message)
 			}),
-			...(payload.generativeUI?.response && {
-				generativeUI: {
-					...payload.generativeUI,
-					response: revealTextFromResponse(payload.generativeUI.response)
-				}
-			}),
 			...(Array.isArray(payload.history) && {
 				history: revealHistoryFromResponse(payload.history)
 			})
@@ -2403,7 +2397,6 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		);
 
 		let answer = '';
-		let generativeUI = '';
 		let pendingSchedulerEmbed = null;
 		let currentAgentActivity = null;
 		let hasStartedStreaming = false;
@@ -2666,25 +2659,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							return;
 						}
 
-						if (data.event === 'generative_ui_delta') {
-							generativeUI += data.data || '';
-						const uiPayload = {
-							response: revealTextFromResponse(generativeUI),
-							libraryVersion: openuiManifest.componentLibraryVersion,
-							specSha256: openuiManifest.specSha256
-						};
-						const cleanedPayload = revealResponsePayload({ generativeUI: uiPayload }).generativeUI;
-						dispatch({
-							type: 'update_message',
-							payload: {
-								id,
-								generativeUI: cleanedPayload,
-								loading: false,
-								streaming: true
-							}
-						});
-						return;
-						}
+                        if (data.event === 'answer_delta') {
+                            hasStartedStreaming = true;
+                            answer += decodeAnswerDelta(data.data);
+                            dispatch({type:'update_message',payload:{id,message:revealTextFromResponse(answer),loading:false,streaming:true}});
+                            return;
+                        }
 
 						if (data.event === 'stream') {
 							hasStartedStreaming = true;
@@ -2766,7 +2746,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 											}
 										}),
 										sources: finalData.sources || null,
-									generativeUI: finalData.generativeUI || null,
+									uiInterrupted: false,
 										answerId:
 											answerId || finalData.id || null, // use saved prev id for feedback button
 										conversationId: requestConversationId,
@@ -2837,6 +2817,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 						throw wrapped;
 					}
 				});
+                if (isCurrentRequest() && !uiMessageAccepted) throw new FatalError('The response was interrupted before completion.');
 			} catch (error) {
 				if (!isCurrentRequest()) {
 					return;

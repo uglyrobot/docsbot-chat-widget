@@ -52,17 +52,20 @@ function ThemeSurface({ children, isStreaming }) {
   return <div ref={ref} className="docsbot-openui-surface not-prose" role="group" aria-label="Generated interface" aria-busy={isStreaming} style={{...variables, width:'100%', minWidth:0, margin:'12px 0', color:'var(--openui-text-neutral-primary)', fontSize:14, lineHeight:1.5}}>{children}</div>
 }
 
-export default function OpenUIRenderer({ payload, isStreaming = false, onSend, messageId, lifecycleState, onLifecycleState, requestPending = false, readOnly = false }) {
+export default function OpenUIRenderer({ payload, isStreaming = false, onSend, messageId, lifecycleState, onLifecycleState, requestPending = false, readOnly = false, fallbackText }) {
   const { effectiveTheme, color, teamId, botId } = useConfig()
   const mode = effectiveTheme === 'dark' ? 'dark' : 'light'
   const lightTheme = React.useMemo(() => createOpenUITheme(color, 'light'), [color])
   const darkTheme = React.useMemo(() => createOpenUITheme(color, 'dark'), [color])
-  const safePayload = cleanGenerativeUiPayload(payload)
-  if (!safePayload) return null
+  const [failedResponse, setFailedResponse] = React.useState(null)
+  const preview = isStreaming || payload?.provisional === true
+  const safePayload = cleanGenerativeUiPayload(payload, { streaming: preview })
+  if (!safePayload) return <p role="status">{fallbackText || "The interface could not be displayed. Please retry your request."}</p>
+  if (!preview && failedResponse === safePayload.response) return <p role="status">{fallbackText || "The interface could not be displayed. Please retry your request."}</p>
   const send = async (event, actionGroup) => {
     // Generated UIs can only add an explicit user turn to this conversation.
     // No tool registry, Query, Mutation, arbitrary code, or URL actions are supplied.
-    if (readOnly || isStreaming) return false
+    if (readOnly || preview) return false
     if (actionGroup) event = {...event, params:{...event.params, docsbotAction:{group:actionGroup.name, policy:actionGroup.policy}}}
     const message = buildOpenUIActionMessage(event)
     if (!message) return false
@@ -71,5 +74,5 @@ export default function OpenUIRenderer({ payload, isStreaming = false, onSend, m
     if (!proceed) return hostResult ? await hostResult : 'cancelled'
     return typeof onSend === 'function' ? await onSend(message) : false
   }
-  return <ThemeProvider mode={mode} lightTheme={lightTheme} darkTheme={darkTheme} cssSelector=".docsbot-openui-surface"><ThemeSurface isStreaming={isStreaming}><FrozenInterface frozen={readOnly}><OpenUIErrorBoundary key={isStreaming ? 'streaming' : 'complete'} response={safePayload.response}><ActionLifecycleProvider initialState={lifecycleState} onSave={onLifecycleState} send={send} requestPending={requestPending} readOnly={readOnly}>{api => <Renderer response={safePayload.response} library={library} initialState={lifecycleState?.formState} onStateUpdate={api.onStateUpdate} isStreaming={isStreaming || requestPending} onAction={api.onAction} />}</ActionLifecycleProvider></OpenUIErrorBoundary></FrozenInterface></ThemeSurface></ThemeProvider>
+  return <ThemeProvider mode={mode} lightTheme={lightTheme} darkTheme={darkTheme} cssSelector=".docsbot-openui-surface"><ThemeSurface isStreaming={preview}><FrozenInterface frozen={readOnly || preview}><OpenUIErrorBoundary fallbackText={fallbackText} key={preview ? 'streaming' : 'complete'} response={safePayload.response}><ActionLifecycleProvider initialState={lifecycleState} onSave={onLifecycleState} send={send} requestPending={requestPending} readOnly={readOnly || preview}>{api => <Renderer onParseResult={result => { if (!preview && (!result?.root || result.meta?.incomplete || result.meta?.unresolved?.length)) setFailedResponse(safePayload.response) }} onError={errors => { if (!preview && errors.length) setFailedResponse(safePayload.response) }} response={safePayload.response} library={library} initialState={lifecycleState?.formState} onStateUpdate={api.onStateUpdate} isStreaming={preview || requestPending} onAction={api.onAction} />}</ActionLifecycleProvider></OpenUIErrorBoundary></FrozenInterface></ThemeSurface></ThemeProvider>
 }
