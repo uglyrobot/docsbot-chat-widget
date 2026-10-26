@@ -51,6 +51,7 @@ piiRedaction:false,leadCollect:false,testing:true,theme:new URLSearchParams(loca
 </script></html>`;
 
 function sse(event, data) {
+  if(event === 'generative_ui_delta') { event = 'answer_delta'; data = {delta:data.startsWith('root =') ? '```openui-lang\n'+data : data}; }
   const text = typeof data === 'string' ? data : JSON.stringify(data);
   return `event: ${event}\n${text.split('\n').map(line => `data: ${line}`).join('\n')}\n\n`;
 }
@@ -123,12 +124,12 @@ async function push(page, bytes) {
 }
 
 async function finish(page, generativeUI, text = answer) {
+  const content = generativeUI ? text+'\n\n```openui-lang\n'+generativeUI.response+'\n```' : text;
   await push(page, sse('done', {
-    answer: text, id: 'synthetic-answer', sources: [source],
-    ...(generativeUI ? { generativeUI } : {}),
+    answer: content, id: 'synthetic-answer', sources: [source],
     history: [
       { role: 'user', message: 'Show the synthetic fixture report.' },
-      { role: 'assistant', message: text, ...(generativeUI ? { generativeUI } : {}) },
+      { role: 'assistant', message: content },
     ],
   }));
   await page.evaluate(() => window.fixtureController.close());
@@ -174,7 +175,8 @@ test('all six components coexist with text, citation/source links and tool event
   await finish(page, payload(program));
   const ui = await assertComponents(page);
   await expect(ui).toHaveAttribute('aria-busy', 'false');
-  expect(await ui.evaluate(el => Boolean(el.closest('.docsbot-chat-bot-message')))).toBe(false);
+  expect(await ui.evaluate(el => Boolean(el.closest('.docsbot-chat-text-segment')))).toBe(false);
+  expect(await ui.evaluate(el => {const frame=el.closest('[data-docsbot-response-frame]');return Boolean(frame)&&Math.abs(frame.getBoundingClientRect().width-el.getBoundingClientRect().width)<2})).toBe(true);
   await expect(page.getByText('The fictional teams resolved 73 tickets.', { exact: false })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Synthetic support reference' })).toBeVisible();
   const axe = await new AxeBuilder({ page }).include('#docsbotai-root').analyze();
@@ -199,7 +201,7 @@ test('disabled UI omits the opt-in and preserves a readable text response', asyn
 
 for (const [name, badPayload] of [
   ['action-component', payload('root = Stack([button])\nbutton = Button("Run", @execute())')],
-  ['spec-mismatch', { ...payload(program), specSha256: 'untrusted-spec' }],
+  ['unsupported-component', payload('root = UnsupportedComponent("Unsafe")')],
   ['malformed-syntax', payload('root = Stack(???)')],
 ]) {
   test(`malformed payload (${name}) leaves ordinary text usable`, async ({ page }, testInfo) => {
@@ -243,8 +245,8 @@ test('saved conversation replays all components after reload without a chat requ
   await push(page, sse('stream', answer));
   await finish(page, payload(program));
   await assertComponents(page);
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('DocsBot_fixture-bot_chatHistory') || '')).toContain('generativeUI');
-  await page.goto('/__openui-fixture?enabled=0');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('DocsBot_fixture-bot_chatHistory') || '')).toContain('openui-lang');
+  await page.goto('/__openui-fixture?enabled=1');
   await assertComponents(page);
   await expect(page.getByRole('link', { name: 'Synthetic support reference' })).toBeVisible();
   expect(await page.evaluate(() => window.fixtureRequests)).toEqual([]);
@@ -266,7 +268,8 @@ test('official image cards use styled surfaces outside the message bubble', asyn
   await expect(ui.getByText('Alpine Cabin', { exact:true })).toBeVisible();
   await expect(ui.getByRole('img', { name:'Alpine cabin illustration' })).toBeVisible();
   await expect.poll(() => ui.getByRole('img', { name:'Alpine cabin illustration' }).evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
-  expect(await ui.evaluate(el => Boolean(el.closest('.docsbot-chat-bot-message')))).toBe(false);
+  expect(await ui.evaluate(el => Boolean(el.closest('.docsbot-chat-text-segment')))).toBe(false);
+  expect(await ui.evaluate(el => {const frame=el.closest('[data-docsbot-response-frame]');return Boolean(frame)&&Math.abs(frame.getBoundingClientRect().width-el.getBoundingClientRect().width)<2})).toBe(true);
   await screenshot(page, 'official-image-cards', testInfo);
 });
 
@@ -405,7 +408,7 @@ test('floating widget defers OpenUI until opened with a UI message in history', 
   await assertComponents(page);
   const chunks=[];
   page.on('request', request=> { if (/docsbot-openui/.test(request.url())) chunks.push(request.url()); });
-  await page.goto('/__openui-fixture?floating=1&enabled=0');
+  await page.goto('/__openui-fixture?floating=1&enabled=1');
   await expect(page.getByRole('button',{name:'Help',exact:true})).toBeVisible();
   expect(chunks).toEqual([]);
   await page.getByRole('button',{name:'Help',exact:true}).click();
@@ -706,7 +709,7 @@ for(const example of lifecycleExamples) for(const mode of ['light','dark']) for(
    await expect.poll(()=>page.evaluate(()=>localStorage.getItem('DocsBot_fixture-bot_chatHistory')||'')).toContain('uiLifecycle');
    if(example.frozen)await page.evaluate(()=>{
     const key='DocsBot_fixture-bot_chatHistory';const data=JSON.parse(localStorage.getItem(key));
-    for(const item of Object.values(data))if(item.generativeUI)item.uiReadOnly=true;
+    for(const item of Object.values(data))if(item.message?.includes('openui-lang'))item.uiReadOnly=true;
     localStorage.setItem(key,JSON.stringify(data));
    });
    await page.reload();
@@ -741,4 +744,26 @@ test('invalid or nested action policies cannot produce actionable controls',asyn
  const button=page.getByRole('button',{name:'Invalid policy action',exact:true});
  if(await button.count()){await expect(button).toBeDisabled();await button.dispatchEvent('click');}
  expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(1);
+});
+
+for (const width of [320,390,1200]) test(`mixed answer keeps first partial UI full width at ${width}px`,async({page},testInfo)=>{
+ await page.setViewportSize({width,height:900});
+ await installFixture(page);
+ await page.goto('/__openui-fixture?floating=1&enabled=1');
+ await page.getByRole('button',{name:'Help',exact:true}).click();
+ await ask(page);
+ const uiProgram='root = Stack([one, two])\none = Card([TextContent("Invoice OCT-001-VERY-LONG-ID"), TextContent("$124.00 · Paid")])\ntwo = Card([TextContent("Invoice OCT-002"), TextContent("$125.00 · Open")])';
+ const mixed='Before the cards.\n\n```openui-lang\n'+uiProgram+'\n```\n\nAfter the cards.';
+ await push(page,sse('answer_delta',{delta:'Before the cards.\n\n```openui-lang\n'+uiProgram.slice(0,uiProgram.indexOf('\ntwo ='))}));
+ const ui=page.getByRole('group',{name:'Generated interface'});
+ await expect(ui).toHaveAttribute('aria-busy','true');
+ const measure=()=>ui.evaluate(el=>({ui:el.getBoundingClientRect().width,frame:el.closest('[data-docsbot-response-frame]').getBoundingClientRect().width,overflow:document.documentElement.scrollWidth>innerWidth,inBubble:!!el.closest('.docsbot-chat-text-segment')}));
+ const partial=await measure();expect(partial.ui).toBeGreaterThan(240);expect(Math.abs(partial.ui-partial.frame)).toBeLessThan(2);expect(partial.overflow).toBe(false);expect(partial.inBubble).toBe(false);
+ await page.screenshot({path:`output/playwright/openui/mixed-${width}-partial.png`});
+ await finish(page,null,mixed);
+ await expect(ui).toHaveAttribute('aria-busy','false');
+ const final=await measure();expect(final.ui).toBe(partial.ui);expect(final.overflow).toBe(false);
+ await expect(page.getByText('After the cards.',{exact:true})).toBeVisible();
+ await expect(page.getByText('root = Stack',{exact:false})).toHaveCount(0);
+ await page.screenshot({path:`output/playwright/openui/mixed-${width}-final.png`});
 });
