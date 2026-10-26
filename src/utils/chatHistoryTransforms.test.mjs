@@ -61,17 +61,10 @@ test("mapChatHistoryStringsSync preserves tuple history entries", () => {
 	assert.equal(Array.isArray(mapped[0]), true);
 });
 
-test("chat history PII transforms include the generated UI payload", async () => {
-	const history = [{ AI: "A readable reply", generativeUI: { response: 'root = Stack([card])\ncard = TextBlock("[pii-1]")', libraryVersion: "1.0.0" } }];
-	const mapped = await mapChatHistoryStrings(history, async (text) => text.replace("[pii-1]", "[safe]"));
-	assert.equal(mapped[0].AI, "A readable reply");
-	assert.equal(mapped[0].generativeUI.response.includes("[safe]"), true);
-	assert.equal(mapped[0].generativeUI.libraryVersion, "1.0.0");
-});
-
-test("chat history PII restoration includes the generated UI payload", () => {
-	const history = [{ AI: "A readable reply", generativeUI: { response: 'root = Stack([card])\ncard = TextBlock("[pii-1]")', libraryVersion: "1.0.0" } }];
-	const mapped = mapChatHistoryStringsSync(history, (text) => text.replace("[pii-1]", "person@example.com"));
-	assert.equal(mapped[0].generativeUI.response.includes("person@example.com"), true);
-	assert.equal(mapped[0].generativeUI.libraryVersion, "1.0.0");
+test("mixed answer history PII transforms include Markdown and UI in the existing AI field", async () => {
+ const history=[{Human:"Hi",AI:'Text [pii-1]\n```openui-lang\nroot = Stack([TextContent("[pii-1]")])\n```'}];
+ const mapped=await mapChatHistoryStrings(history,async text=>text.replaceAll("[pii-1]","[safe]"));
+ assert.equal(mapped[0].AI.includes("[pii-1]"),false);assert.ok(mapped[0].AI.includes('TextContent("[safe]")'));
+ const restored=mapChatHistoryStringsSync(mapped,text=>text.replaceAll("[safe]","person@example.com"));
+ assert.ok(restored[0].AI.includes('TextContent("person@example.com")'));assert.equal(restored[0].Human,'Hi');
 });

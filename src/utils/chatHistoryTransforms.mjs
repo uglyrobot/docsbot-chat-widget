@@ -1,4 +1,4 @@
-const HISTORY_TEXT_KEYS = ["content", "message", "answer", "question"];
+const HISTORY_TEXT_KEYS = ["content", "message", "answer", "question", "AI", "Human"];
 
 export async function mapChatHistoryStrings(history, mapString) {
 	if (!Array.isArray(history) || typeof mapString !== "function") {
@@ -39,12 +39,6 @@ async function mapChatHistoryEntryStrings(entry, mapString) {
 			nextEntry[key] = await mapString(nextEntry[key]);
 		}
 	}
-	if (typeof nextEntry.generativeUI?.response === "string") {
-		nextEntry.generativeUI = {
-			...nextEntry.generativeUI,
-			response: await mapString(nextEntry.generativeUI.response),
-		};
-	}
 	return nextEntry;
 }
 
@@ -66,12 +60,6 @@ function mapChatHistoryEntryStringsSync(entry, mapString) {
 		if (typeof nextEntry[key] === "string") {
 			nextEntry[key] = mapString(nextEntry[key]);
 		}
-	}
-	if (typeof nextEntry.generativeUI?.response === "string") {
-		nextEntry.generativeUI = {
-			...nextEntry.generativeUI,
-			response: mapString(nextEntry.generativeUI.response),
-		};
 	}
 	return nextEntry;
 }

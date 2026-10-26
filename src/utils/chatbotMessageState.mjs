@@ -1,3 +1,4 @@
+import {plainMixedAnswer} from './mixedAnswer.mjs'
 export function sanitizeRestoredConversation(savedConversation, options = {}) {
 	if (!savedConversation || typeof savedConversation !== 'object') {
 		return savedConversation;
@@ -30,7 +31,7 @@ export function sanitizeRestoredConversation(savedConversation, options = {}) {
 				];
 			}
 
-			return [[id, message]];
+			return [[id, message?.loading || message?.streaming ? {...message, message: plainMixedAnswer(message.message || '',{interrupted:true}) || 'Response interrupted. Please retry your request.', loading:false, streaming:false, agentActivity:null} : message]];
 		})
 	);
 }
@@ -139,6 +140,7 @@ export function stopResponseMessages(messages) {
 					id,
 					{
 						...message,
+                        message: plainMixedAnswer(message.message || '',{interrupted:true}) || 'Response interrupted. Please retry your request.',
 						loading: false,
 						streaming: false,
 						agentActivity: null

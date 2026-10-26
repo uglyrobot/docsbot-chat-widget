@@ -1,3 +1,6 @@
+import {AssistantResponseFrame,AssistantTextBubble} from '../generativeUi/AssistantResponseFrame';
+import MixedAnswer from '../generativeUi/MixedAnswer';
+import {plainMixedAnswer} from '../../utils/mixedAnswer.mjs';
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Loader } from '../loader/Loader';
@@ -28,7 +31,6 @@ import { CalendlyEmbed } from '../calendlyEmbed/CalendlyEmbed';
 import { CalComEmbed } from '../calComEmbed/CalComEmbed';
 import { TidyCalEmbed } from '../tidyCalEmbed/TidyCalEmbed';
 import { ImageLightbox } from '../imageLightbox/ImageLightbox';
-import { OpenUIResponse } from '../generativeUi/OpenUIResponse';
 
 /**
  * Config `labels` keys when agent activity uses configKey (all tools except reasoning).
@@ -304,6 +306,7 @@ export const BotChatMessage = ({
 		teamId,
 		botId,
 		botName,
+		useGenerativeUI,
 		botIcon,
 		signature,
 		hideSources,
@@ -432,9 +435,9 @@ export const BotChatMessage = ({
 
 	const copyContentToClipboard = async () => {
 		// payload.message contains raw markdown
-		const markdownContent = payload.message || '';
+		const markdownContent = plainMixedAnswer(payload.message || '');
 		// Get rendered HTML from Streamdown component
-		const htmlContent = contentRef.current?.innerHTML || '';
+		const htmlContent = payload.message?.includes('```openui-lang') ? '' : contentRef.current?.innerHTML || '';
 
 		try {
 			// Try to copy both markdown and HTML formats using ClipboardItem
@@ -968,6 +971,8 @@ export const BotChatMessage = ({
 		}
 	};
 
+	const MessageFrame = ['custom_button','lead_collect'].includes(payload.type) ? 'div' : AssistantResponseFrame;
+
 	return (
 		<>
 			<ImageLightbox
@@ -995,7 +1000,7 @@ export const BotChatMessage = ({
 							/>
 						)}
 					{showMessageBubble ? (
-					<div
+					<MessageFrame
 						className={clsx(
 							'docsbot-chat-bot-message bg-slate-100 text-slate-800',
 							payload.error && 'docsbot-message-error'
@@ -1313,7 +1318,8 @@ export const BotChatMessage = ({
 							return (
 								<>
 									<div dir="auto" ref={contentRef}>
-
+<MixedAnswer enabled={useGenerativeUI === true || typeof payload.uiReadOnly === 'boolean'} messageId={payload.id} content={payload.message || ''} isStreaming={Boolean(payload.streaming || payload.uiInterrupted)} readOnly={payload.uiReadOnly} lifecycleState={payload.uiLifecycle} onLifecycleState={uiLifecycle=>dispatch({type:'update_message',payload:{id:payload.id,uiLifecycle}})} requestPending={Object.values(state.messages || {}).some(item=>item.loading||item.streaming)} onSend={async message=>{dispatch({type:'add_message',payload:{id:uuidv4(),variant:'user',message,timestamp:Date.now(),loading:false}});return await fetchAnswer(message)}} renderMarkdown={text=>(
+<AssistantTextBubble>
 										<Suspense fallback={<Loader />}>
 											<LazyStreamdown
 												className="docsbot-streamdown"
@@ -1331,10 +1337,10 @@ export const BotChatMessage = ({
 												)}
 											>
 												{preprocessStreamdownMarkdown(
-													payload.message || ''
+													text
 												)}
 											</LazyStreamdown>
-										</Suspense>
+										</Suspense></AssistantTextBubble> )} />
 									</div>
 
 									{(hasVisibleSources ||
@@ -1400,12 +1406,9 @@ export const BotChatMessage = ({
 								</>
 							);
 						})()}
-					</div>
+					</MessageFrame>
 					) : null}
-                    <OpenUIResponse payload={payload.generativeUI} messageId={payload.id} readOnly={payload.uiReadOnly} lifecycleState={payload.uiLifecycle} onLifecycleState={uiLifecycle => dispatch({type:"update_message",payload:{id:payload.id,uiLifecycle}})} requestPending={Object.values(state.messages || {}).some(item => item.loading || item.streaming)} isStreaming={payload.streaming} onSend={async message => {
-                      dispatch({type:'add_message', payload:{id:uuidv4(), variant:'user', message, timestamp:Date.now(), loading:false}});
-                      return await fetchAnswer(message);
-                    }} />
+
 					{payload.type === 'custom_button' &&
 						payload.customButton?.buttonText &&
 						!payload.loading && (
