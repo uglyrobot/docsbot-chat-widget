@@ -95,8 +95,10 @@
 		}
 
 		&:focus-visible {
-			outline: 2px solid var(--docsbot-focus-ring, #1292ee);
+			// Contrast against the branded header and transparent hideHeader surface.
+			outline: 2px solid var(--docsbot-reset-button--color, $color-neutral-300);
 			outline-offset: 2px;
+			box-shadow: 0 0 0 4px var(--docsbot-reset-button--bg, $color-primary-200);
 		}
 
 		&:active {

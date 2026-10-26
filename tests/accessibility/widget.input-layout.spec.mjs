@@ -12,6 +12,8 @@ async function openVoiceDisabledWidget(page) {
 		const originalHtml = await response.text();
 		const html = originalHtml
 			.replace('localDev: true', 'localDev: false')
+			.replace('useVoiceAgent: true', 'useVoiceAgent: false')
+			.replace("piiRedaction: previewParams.has('visual') ? false : true", 'piiRedaction: false')
 			.replace('useAudioUpload: true', 'useAudioUpload: false');
 
 		expect(html).not.toBe(originalHtml);
@@ -94,6 +96,11 @@ for (const viewport of viewports) {
 		await chatInput.fill('Hello');
 
 		await expect(send).toBeEnabled();
+		// Becoming enabled precedes the upload button's right-position transition.
+		await expect.poll(async () => {
+			const layout = await getControlLayout(imageUpload, send);
+			return layout.sendBox.x - (layout.imageBox.x + layout.imageBox.width);
+		}).toBeGreaterThanOrEqual(2);
 		const enabledLayout = await getControlLayout(imageUpload, send);
 		expect(
 			enabledLayout.sendBox.x -
