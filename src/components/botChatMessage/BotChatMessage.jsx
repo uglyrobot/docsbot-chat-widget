@@ -972,6 +972,7 @@ export const BotChatMessage = ({
 	};
 
 	const hasUiContent = (useGenerativeUI === true || typeof payload.uiReadOnly === 'boolean') && hasMixedUi(payload.message || '');
+    const reserveAvatar = Boolean(botIcon) && !hasUiContent;
     const MessageFrame = hasUiContent && !['custom_button','lead_collect'].includes(payload.type) ? AssistantResponseFrame : 'div';
     const TextFrame = hasUiContent ? AssistantTextBubble : Fragment;
 
@@ -987,11 +988,11 @@ export const BotChatMessage = ({
 			<div
 				className={clsx(
 					'docsbot-chat-bot-message-container',
-					botIcon && 'has-avatar',
+					reserveAvatar && 'has-avatar',
 					repeatedBotMessage && 'consecutive-bot-message'
 				)}
 			>
-				{!repeatedBotMessage && <BotAvatar />}
+				{reserveAvatar && !repeatedBotMessage && <BotAvatar />}
 				<div className="docsbot-chat-bot-message-column">
 					{isAgent &&
 						showAgentActivity !== false &&

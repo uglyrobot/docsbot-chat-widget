@@ -856,9 +856,11 @@ for(const width of [320,1200])for(const avatar of [false,true])for(const kind of
  if(kind!=='normal'){
   const dimensions=await message.getByRole('group',{name:'Generated interface'}).evaluate(el=>{const frame=el.closest('[data-docsbot-response-frame]'),column=el.closest('.docsbot-chat-bot-message-column');return {ui:el.getBoundingClientRect().width,frame:frame.getBoundingClientRect().width,column:column.getBoundingClientRect().width,textBubble:!!el.closest('.docsbot-chat-text-segment'),overflow:document.documentElement.scrollWidth>innerWidth}});
   expect(dimensions.textBubble).toBe(false);expect(dimensions.overflow).toBe(false);expect(Math.abs(dimensions.ui-dimensions.frame)).toBeLessThan(2);expect(dimensions.ui).toBeLessThanOrEqual(dimensions.column+1);
+  const full=await message.evaluate(el=>{const row=el.getBoundingClientRect(),column=el.querySelector('.docsbot-chat-bot-message-column').getBoundingClientRect(),s=getComputedStyle(el);return {leftGap:column.left-row.left,widthGap:row.width-column.width-parseFloat(s.paddingRight)}});
+  expect(Math.abs(full.leftGap)).toBeLessThan(1);expect(Math.abs(full.widthGap)).toBeLessThan(1);
  }
  const avatarImage=message.locator('.docsbot-chat-bot-avatar');
- if(avatar){await expect(avatarImage).toBeVisible();const a=await avatarImage.boundingBox(),b=await message.locator('.docsbot-chat-bot-message-column').boundingBox();expect(a.x+a.width).toBeLessThanOrEqual(b.x+1)}else await expect(avatarImage).toHaveCount(0);
+ if(avatar && kind==='normal'){await expect(avatarImage).toBeVisible();const a=await avatarImage.boundingBox(),b=await message.locator('.docsbot-chat-bot-message-column').boundingBox();expect(a.x+a.width).toBeLessThanOrEqual(b.x+1)}else await expect(avatarImage).toHaveCount(0);
  await screenshot(page,`sources-${kind}-avatar-${avatar}-${width}`,testInfo);
 });
 
@@ -905,4 +907,24 @@ test('renderer chunk failure preserves conversation and readable fallback',async
  await expect(page.getByText('Useful surrounding prose.',{exact:true})).toBeVisible();
  await expect(page.getByRole('textbox',{name:'Send a message...',exact:true})).toBeVisible();
  await expect(page.getByRole('group',{name:'Generated interface'})).toHaveCount(0);
+});
+
+for(const width of [320,1200])for(const avatar of [false,true])test(`UI preview removes avatar gutter immediately avatar=${avatar} ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:1000});await installFixture(page,{botIcon:avatar?'robot':null});
+ await page.goto('/__openui-fixture?floating=1');await page.getByRole('button',{name:'Help',exact:true}).click();await ask(page);
+ const message=page.locator('.docsbot-chat-bot-message-container').last();
+ await expect(message.locator('.chatbot-loader-container')).toBeVisible();
+ await expect(message.locator('.docsbot-chat-bot-avatar')).toHaveCount(avatar?1:0);
+ const program='root = Stack([Card([TextContent("Progressive full-width card")])])';
+ await push(page,sse('answer_delta',{delta:'```openui-lang\n'+program}));
+ const ui=message.getByRole('group',{name:'Generated interface'});await expect(ui).toHaveAttribute('aria-busy','true');
+ await expect(message.locator('.docsbot-chat-bot-avatar')).toHaveCount(0);await expect(message).not.toHaveClass(/has-avatar/);
+ const gaps=await message.evaluate(el=>{const row=el.getBoundingClientRect(),column=el.querySelector('.docsbot-chat-bot-message-column').getBoundingClientRect();return {left:column.left-row.left,overflow:document.documentElement.scrollWidth>innerWidth}});
+ expect(Math.abs(gaps.left)).toBeLessThan(1);expect(gaps.overflow).toBe(false);
+ await finish(page,null,'Before prose\n```openui-lang\n'+program+'\n```\nAfter prose');
+ await expect(message.locator('.docsbot-chat-bot-avatar')).toHaveCount(0);
+ await page.evaluate(response=>DocsBotAI.addUIMessage({response}),program);
+ const repeated=page.locator('.docsbot-chat-bot-message-container').last();await expect(repeated.getByText('Progressive full-width card',{exact:true})).toBeVisible();
+ await expect(repeated).not.toHaveClass(/has-avatar/);
+ expect(await repeated.evaluate(el=>Math.abs(el.querySelector('.docsbot-chat-bot-message-column').getBoundingClientRect().left-el.getBoundingClientRect().left))).toBeLessThan(1);
 });
