@@ -1,5 +1,6 @@
 import {defaultLabels} from '../constants/defaultLabels.mjs'
-// Upstream inline syntax; ordinary fences stay ordinary Markdown.
+// Canonical upstream syntax plus its explicit model-emitted alias. Ordinary code stays Markdown.
+const isUiFence = language => language === 'openui-lang' || language === 'openui'
 export function splitMixedAnswer(source = '', {streaming = false} = {}) {
   if (typeof source !== 'string') return []
   const trimmed=source.trimStart()
@@ -13,7 +14,7 @@ export function splitMixedAnswer(source = '', {streaming = false} = {}) {
     const line=lines[index],bare=line.replace(/[\r\n]+$/,''),match=/^ {0,3}(`{3,}|~{3,})([^\r\n]*)$/.exec(bare)
     if(marker===null){
       if(match){const [,mark,lang]=match
-        if(lang.trim()==='openui-lang'){flush();marker=mark;ui=true;body='';quote=false;escaped=false}
+        if(isUiFence(lang.trim())){flush();marker=mark;ui=true;body='';quote=false;escaped=false}
         else if(streaming&&index===lines.length-1&&!/[\r\n]$/.test(line)&&'openui-lang'.startsWith(lang.trim())){flush();result.push({kind:'pending',text:'',complete:false})}
         else{marker=mark;ui=false;prose+=line}
       }else if(streaming&&index===lines.length-1&&/^ {0,3}`{1,2}$/.test(bare)){flush();result.push({kind:'pending',text:'',complete:false})}
