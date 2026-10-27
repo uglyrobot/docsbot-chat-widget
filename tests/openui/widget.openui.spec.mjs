@@ -748,26 +748,26 @@ test('invalid or nested action policies cannot produce actionable controls',asyn
  expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(1);
 });
 
-for (const width of [320,390,1200]) test(`mixed answer keeps first partial UI full width at ${width}px`,async({page},testInfo)=>{
+for (const language of ['openui','openui-lang']) for (const width of [320,390,1200]) test(`${language} mixed answer keeps first partial UI full width at ${width}px`,async({page},testInfo)=>{
  await page.setViewportSize({width,height:900});
  await installFixture(page);
  await page.goto('/__openui-fixture?floating=1&enabled=1');
  await page.getByRole('button',{name:'Help',exact:true}).click();
  await ask(page);
  const uiProgram='root = Stack([one, two])\none = Card([TextContent("Invoice OCT-001-VERY-LONG-ID"), TextContent("$124.00 · Paid")])\ntwo = Card([TextContent("Invoice OCT-002"), TextContent("$125.00 · Open")])';
- const mixed='Before the cards.\n\n```openui-lang\n'+uiProgram+'\n```\n\nAfter the cards.';
- await push(page,sse('answer_delta',{delta:'Before the cards.\n\n```openui-lang\n'+uiProgram.slice(0,uiProgram.indexOf('\ntwo ='))}));
+ const mixed='Before the cards.\n\n```'+language+'\n'+uiProgram+'\n```\n\nAfter the cards.';
+ await push(page,sse('answer_delta',{delta:'Before the cards.\n\n```'+language+'\n'+uiProgram.slice(0,uiProgram.indexOf('\ntwo ='))}));
  const ui=page.getByRole('group',{name:'Generated interface'});
  await expect(ui).toHaveAttribute('aria-busy','true');
  const measure=()=>ui.evaluate(el=>({ui:el.getBoundingClientRect().width,frame:el.closest('[data-docsbot-response-frame]').getBoundingClientRect().width,overflow:document.documentElement.scrollWidth>innerWidth,inBubble:!!el.closest('.docsbot-chat-text-segment')}));
  const partial=await measure();expect(partial.ui).toBeGreaterThan(240);expect(Math.abs(partial.ui-partial.frame)).toBeLessThan(2);expect(partial.overflow).toBe(false);expect(partial.inBubble).toBe(false);
- await page.screenshot({path:`output/playwright/openui/mixed-${width}-partial.png`});
+ await page.screenshot({path:`output/playwright/openui/mixed-${language}-${width}-partial.png`});
  await finish(page,null,mixed);
  await expect(ui).toHaveAttribute('aria-busy','false');
  const final=await measure();expect(final.ui).toBe(partial.ui);expect(final.overflow).toBe(false);
  await expect(page.getByText('After the cards.',{exact:true})).toBeVisible();
  await expect(page.getByText('root = Stack',{exact:false})).toHaveCount(0);
- await page.screenshot({path:`output/playwright/openui/mixed-${width}-final.png`});
+ await page.screenshot({path:`output/playwright/openui/mixed-${language}-${width}-final.png`});
 });
 
 for (const width of [320,1200]) test(`waiting indicator stays in a bubble before full-width UI at ${width}px`,async({page})=>{
