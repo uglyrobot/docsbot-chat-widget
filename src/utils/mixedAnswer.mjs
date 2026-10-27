@@ -70,18 +70,37 @@ function displayExpression(program){
  const masked=program.replace(/"(?:\\.|[^"\\])*"/g,m=>' '.repeat(m.length))
  const matches=[...masked.matchAll(/(?:^|\n)\s*([A-Za-z_$][\w$]*)\s*=/g)]
  const definitions=new Map(matches.map((m,i)=>[m[1],program.slice(m.index+m[0].length,matches[i+1]?.index??program.length)]))
- let budget=64000
- const select=(expression,path,active)=>{
-  budget-=expression.length;if(budget<0||active.size>64)throw new Error('Projection limit')
+ let budget=64000,parseBudget=64000
+ const collections=new Map()
+ const collection=expression=>{
+  if(collections.has(expression))return collections.get(expression)
+  parseBudget-=expression.length;if(parseBudget<0)throw new Error('Projection limit')
+  const parts=projectionParts(expression.slice(1,-1))
+  let result=parts
+  if(expression.startsWith('{')){
+   result=new Map()
+   for(const part of parts){const pair=projectionParts(part,':');let key=pair.shift();if(key?.startsWith('"'))key=JSON.parse(key);if(!result.has(key))result.set(key,pair.join(':'))}
+  }
+  collections.set(expression,result);return result
+ }
+ const select=(expression,path,active,depth=0)=>{
+  if(depth>64||active.size>64)throw new Error('Projection limit')
   expression=expression.trim();if(!path.length)return expression
-  if(definitions.has(expression)&&!active.has(expression))return select(definitions.get(expression),path,new Set([...active,expression]))
-  if(expression.startsWith('[')&&expression.endsWith(']'))return '['+projectionParts(expression.slice(1,-1)).map(item=>select(item,path,active)).join(',')+']'
+  if(definitions.has(expression)&&!active.has(expression))return select(definitions.get(expression),path,new Set([...active,expression]),depth+1)
+  if(expression.startsWith('[')&&expression.endsWith(']')){
+   const values=[];let length=2
+   for(const item of collection(expression)){const value=select(item,path,active,depth+1);length+=value.length+1;if(length>64000)throw new Error('Projection limit');values.push(value)}
+   return '['+values.join(',')+']'
+  }
   if(expression.startsWith('{')&&expression.endsWith('}')){
-   for(const part of projectionParts(expression.slice(1,-1))){const pair=projectionParts(part,':');let key=pair.shift();if(key?.startsWith('"'))key=JSON.parse(key);if(key===path[0])return select(pair.join(':'),path.slice(1),active)}
+   const fields=collection(expression)
+   if(fields.has(path[0]))return select(fields.get(path[0]),path.slice(1),active,depth+1)
   }
   throw new Error('Unsupported display selector')
  }
  const expand=(expression,active=new Set())=>{
+  // Charge selected/expanded content, not every sibling in a shared object on
+  // every column. Collection parsing has a separate bounded, memoized budget.
   budget-=expression.length;if(budget<0||active.size>64)throw new Error('Projection limit')
   return expression.replace(/"(?:\\.|[^"\\])*"|[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*/g,(token,offset)=>{
    if(expression.slice(offset+token.length).trimStart().startsWith(':'))return token

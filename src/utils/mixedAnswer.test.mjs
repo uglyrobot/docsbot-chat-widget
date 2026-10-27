@@ -53,3 +53,23 @@ test('member selection and array plucking exclude unrelated private fields',()=>
  const source='```openui-lang\nroot = Stack([Table([Col("Plan", data.rows.name),Col("Price",data.prices)])])\ndata = {rows:[{name:"Basic",internalNote:"PRIVATE"},{name:"Pro",internalNote:"PRIVATE2"}],prices:[10,20]}\n```';
  assert.equal(plainMixedAnswer(source),'Plan\nBasic\nPro\nPrice\n10\n20');
 });
+
+test('shared table columns project within the UI limit without repeating sibling work',()=>{
+ const columns=Array.from({length:8},(_,i)=>'column'+i)
+ const data=Object.fromEntries(columns.map((c,i)=>[c,Array.from({length:25},(_,j)=>`value-${i}-${j}-`+'x'.repeat(28))]))
+ data.hidden='PRIVATE'
+ const program='root = Stack([Table(['+columns.map(c=>`Col("${c}", data.${c})`).join(',')+'])])\ndata = '+JSON.stringify(data)
+ assert.ok(new TextEncoder().encode(program).length<16000)
+ const result=plainMixedAnswer('```openui-lang\n'+program+'\n```')
+ assert.deepEqual(result.split('\n'),columns.flatMap(c=>[c,...data[c]]))
+ assert.ok(!result.includes(data.hidden))
+})
+test('projection keeps depth and selected-output limits',()=>{
+ const repeated='root = Stack(['+Array(100).fill('large').join(',')+'])\nlarge = TextContent('+JSON.stringify('x'.repeat(1000))+')'
+ const deep='root = Stack([Table([Col("Value", data.x)])])\ndata = '+'['.repeat(80)+'{x:"PRIVATE"}'+']'.repeat(80)
+ for(const program of [repeated,deep]){
+  const result=plainMixedAnswer('Before\n```openui-lang\n'+program+'\n```\nAfter')
+  assert.ok(result.includes('Before')&&result.includes('After'))
+  assert.ok(!result.includes('PRIVATE')&&result.length<1000)
+ }
+})
