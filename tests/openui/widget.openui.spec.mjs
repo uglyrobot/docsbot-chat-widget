@@ -47,7 +47,7 @@ isAgent:new URLSearchParams(location.search).get('agent')!=='0',useGenerativeUI:
 color:new URLSearchParams(location.search).get('brand')||'#0e7490',
 useWebSearch:false,useCustomButtons:false,useCalendly:false,useCalCom:false,useTidyCal:false,
 useFeedback:false,useEscalation:false,useVoiceAgent:false,useImageUpload:false,useAudioUpload:false,
-piiRedaction:false,leadCollect:false,testing:true,theme:new URLSearchParams(location.search).get('theme')||'light',questions:[]}});
+piiRedaction:false,leadCollect:new URLSearchParams(location.search).has('lead')?{enabled:true,mode:'before_response',fields:[{key:'email',label:'Email',type:'email',required:true}]}:false,testing:true,theme:new URLSearchParams(location.search).get('theme')||'light',questions:[]}});
 </script></html>`;
 
 function sse(event, data) {
@@ -83,6 +83,8 @@ async function installFixture(page, options = {}) {
       await route.fulfill({ contentType: 'text/html', body: url.searchParams.has('floating') ? html.replace('id="docsbot-widget-embed"', 'id="fixture-floating-shell"') : html });
     } else if (url.pathname === '/api/widget/fixture-team/fixture-bot') {
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify({...config,...options}) });
+    } else if (/\/teams\/fixture-team\/bots\/fixture-bot\/conversations\//.test(url.pathname) && ['POST','PUT'].includes(route.request().method())) {
+      await route.fulfill({contentType:'application/json',body:JSON.stringify({success:true})});
     } else if (url.pathname === '/__fixture-photo.svg') {
       await route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="#d9eef0"/><path d="M0 310L190 65L350 300L480 120L640 330V360H0Z" fill="#397b7b"/><path d="M135 135L190 65L242 140L194 118Z" fill="#fff"/><rect x="365" y="234" width="130" height="98" rx="6" fill="#dba875"/><path d="M348 238L430 175L512 238Z" fill="#254d57"/><rect x="417" y="275" width="28" height="57" fill="#254d57"/><circle cx="548" cy="70" r="30" fill="#f6cc79"/></svg>' });
     } else if (url.origin === devOrigin && !url.pathname.includes('/chat-agent')) {
@@ -927,4 +929,76 @@ for(const width of [320,1200])for(const avatar of [false,true])test(`UI preview 
  const repeated=page.locator('.docsbot-chat-bot-message-container').last();await expect(repeated.getByText('Progressive full-width card',{exact:true})).toBeVisible();
  await expect(repeated).not.toHaveClass(/has-avatar/);
  expect(await repeated.evaluate(el=>Math.abs(el.querySelector('.docsbot-chat-bot-message-column').getBoundingClientRect().left-el.getBoundingClientRect().left))).toBeLessThan(1);
+});
+
+test('required leads gate rapid cross-message UI actions before any user turn or request',async({page})=>{
+ await installFixture(page,{leadCollect:{enabled:true,mode:'before_response',fields:[{key:'email',label:'Email',type:'email',required:true}]}});await page.goto('/__openui-fixture?lead=1');
+ await expect(page.getByRole('textbox',{name:'Send a message...',exact:true})).toBeVisible();
+ await page.evaluate(async response=>{await DocsBotAI.addUIMessage({response});await DocsBotAI.addUIMessage({response});},lifecycleHost);
+ const actions=page.getByRole('button',{name:'Save demo choice',exact:true});await expect(actions).toHaveCount(2);
+ await actions.evaluateAll(buttons=>{buttons[0].click();buttons[1].click();buttons[0].dispatchEvent(new MouseEvent('click',{bubbles:true}));});
+ await expect(page.getByRole('textbox',{name:'Email',exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(0);
+ await expect(page.locator('.docsbot-user-chat-message-container')).toHaveCount(0);
+ await expect(actions.nth(0)).toBeDisabled();await expect(actions.nth(1)).toBeDisabled();
+ await actions.nth(1).dispatchEvent('click');expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(0);
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(0);
+ await expect(page.locator('.docsbot-user-chat-message-container')).toHaveCount(0);
+ await page.getByRole('textbox',{name:/^Email/}).fill('fixture@example.invalid');
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>window.fixtureRequests.length)).toBe(1);
+ await expect(page.locator('.docsbot-user-chat-message-container')).toHaveCount(1);
+ await finish(page,null,'Synthetic action accepted.');
+ await expect(page.locator('[data-action-status="submitted"]')).toHaveCount(1);
+ await expect(actions.nth(0)).toBeDisabled();await expect(actions.nth(1)).toBeEnabled();
+ await actions.nth(0).dispatchEvent('click');expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(1);
+});
+
+test('reset cancels deferred UI lead intent without sending or leaving phantom turns',async({page})=>{
+ await installFixture(page,{leadCollect:{enabled:true,mode:'before_response',fields:[{key:'email',label:'Email',type:'email',required:true}]}});await page.goto('/__openui-fixture?lead=1');
+ await expect(page.getByRole('textbox',{name:'Send a message...',exact:true})).toBeVisible();
+ await page.evaluate(response=>DocsBotAI.addUIMessage({response}),lifecycleHost);
+ await page.getByRole('button',{name:'Save demo choice',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Email',exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(0);
+ await page.getByRole('button',{name:'Reset conversation',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Email',exact:true})).toHaveCount(0);
+ await expect(page.locator('.docsbot-user-chat-message-container')).toHaveCount(0);
+ await page.evaluate(response=>DocsBotAI.addUIMessage({response}),lifecycleHost);
+ await page.getByRole('button',{name:'Save demo choice',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Email',exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(0);
+ await expect(page.locator('.docsbot-user-chat-message-container')).toHaveCount(0);
+ await page.getByRole('textbox',{name:/^Email/}).fill('reset-fixture@example.invalid');await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>window.fixtureRequests.length)).toBe(1);
+ await expect(page.locator('.docsbot-user-chat-message-container')).toHaveCount(1);
+ await finish(page,null,'New intent accepted after lead completion.');
+ await expect(page.getByRole('button',{name:'Save demo choice',exact:true})).toBeDisabled();
+});
+
+test('required lead completion resumes a non-agent host action exactly once',async({page})=>{
+ await page.addInitScript(()=>{window.fixtureWSRequests=[];window.WebSocket=class{constructor(){window.fixtureSocket=this;setTimeout(()=>this.onopen?.({}),0)}send(data){window.fixtureWSRequests.push(JSON.parse(data))}close(){this.onclose?.({wasClean:true})}}});
+ await installFixture(page,{isAgent:false,leadCollect:{enabled:true,mode:'before_response',fields:[{key:'email',label:'Email',type:'email',required:true}]}});await page.goto('/__openui-fixture?agent=0&lead=1');
+ await expect(page.getByRole('textbox',{name:'Send a message...',exact:true})).toBeVisible();await page.evaluate(response=>DocsBotAI.addUIMessage({response}),lifecycleHost);
+ const action=page.getByRole('button',{name:'Save demo choice',exact:true});await action.click();
+ await expect(page.getByRole('textbox',{name:'Email',exact:true})).toBeVisible();await expect(action).toBeDisabled();
+ await action.dispatchEvent('click');expect(await page.evaluate(()=>window.fixtureWSRequests.length)).toBe(0);await expect(page.locator('.docsbot-user-chat-message-container')).toHaveCount(0);
+ await page.getByRole('textbox',{name:/^Email/}).fill('websocket-fixture@example.invalid');await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>window.fixtureWSRequests.length)).toBe(1);await expect(page.locator('.docsbot-user-chat-message-container')).toHaveCount(1);
+ await page.evaluate(()=>window.fixtureSocket.onmessage({data:JSON.stringify({sender:'bot',type:'end',message:JSON.stringify({answer:'Accepted by the fixture.',history:[],id:'fixture-answer'})})}));
+ await expect(page.locator('[data-action-status="submitted"]')).toHaveCount(1);
+ await expect(action).toBeDisabled();await action.dispatchEvent('click');expect(await page.evaluate(()=>window.fixtureWSRequests.length)).toBe(1);
+});
+
+test('deferred UI action can retry a failed reply after completing required leads',async({page})=>{
+ await installFixture(page,{leadCollect:{enabled:true,mode:'before_response',fields:[{key:'email',label:'Email',type:'email',required:true}]}});await page.goto('/__openui-fixture?lead=1');
+ await expect(page.getByRole('textbox',{name:'Send a message...',exact:true})).toBeVisible();await page.evaluate(response=>DocsBotAI.addUIMessage({response}),lifecycleHost);
+ const action=page.getByRole('button',{name:'Save demo choice',exact:true});await action.click();await page.getByRole('textbox',{name:/^Email/}).fill('retry-fixture@example.invalid');await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>window.fixtureRequests.length)).toBe(1);
+ await page.evaluate(()=>window.fixtureController.error(new Error('Synthetic interrupted reply')));
+ await expect(page.locator('[data-action-status="retry"]')).toHaveCount(1);await expect(action).toBeEnabled();
+ await action.click();await expect.poll(()=>page.evaluate(()=>window.fixtureRequests.length)).toBe(2);
+ await expect(page.getByRole('textbox',{name:'Email',exact:true})).toHaveCount(0);
+ await finish(page,null,'Retried action accepted.');await expect(page.locator('[data-action-status="submitted"]')).toHaveCount(1);
 });

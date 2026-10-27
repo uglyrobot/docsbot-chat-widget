@@ -365,6 +365,20 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	);
 	const [pendingLeadCapture, setPendingLeadCapture] = useState(null);
 	const [isLeadCaptureLocked, setIsLeadCaptureLocked] = useState(false);
+    const leadCollectionPendingRef = useRef(false);
+    const generatedUiSendBusyRef = useRef(false);
+    const pendingGeneratedUiResultRef = useRef(null);
+    const cancelPendingGeneratedUiAction = () => {
+        leadCollectionPendingRef.current = false;
+        const resolve = pendingGeneratedUiResultRef.current;
+        pendingGeneratedUiResultRef.current = null;
+        resolve?.(false);
+    };
+    useEffect(() => () => {
+        const resolve = pendingGeneratedUiResultRef.current;
+        pendingGeneratedUiResultRef.current = null;
+        resolve?.(false);
+    }, []);
 	const [leadCollected, setLeadCollected] = useState(false);
 	const [isPiiRedactionLoading, setIsPiiRedactionLoading] = useState(false);
 	const [
@@ -1043,6 +1057,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			};
 		});
 
+        leadCollectionPendingRef.current = true;
 		return {
 			id: uuidv4(),
 			variant: 'chatbot',
@@ -1228,6 +1243,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				imageUrls: activeLeadContext?.imageUrls,
 				audio: activeLeadContext?.audio,
 				audioUserMessageId: activeLeadContext?.audioUserMessageId,
+                generatedUiAction: activeLeadContext?.generatedUiAction === true,
 				nextAction: isBeforeVoiceCall
 					? 'start_voice_call'
 					: isBeforeResponse
@@ -1346,6 +1362,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
 	const finalizeLeadSubmission = (data, metadata, options = {}) => {
 		const { messageId, event } = options;
+        leadCollectionPendingRef.current = false;
 		setIsLeadCaptureLocked(false);
 		setLeadCollected(true);
 
@@ -1358,12 +1375,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
 		if (data?.nextAction === 'send_message') {
 			setPendingLeadCapture(null);
+            const resolve = pendingGeneratedUiResultRef.current;
+            pendingGeneratedUiResultRef.current = null;
 			fetchAnswer(data.question, data.imageUrls || [], {
 				bypassLeadCollect: true,
 				metadataOverride: metadata,
 				audio: data.audio,
-				audioUserMessageId: data.audioUserMessageId
-			});
+				audioUserMessageId: data.audioUserMessageId,
+                generatedUiAction: data.generatedUiAction === true
+			}).then(result => resolve?.(result === true), () => resolve?.(false));
 			return;
 		}
 
@@ -2111,6 +2131,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	};
 
 	const refreshChatHistory = async () => {
+        cancelPendingGeneratedUiAction();
 		activeRequestIdRef.current = null;
 		setIsFetching(false);
 
@@ -2332,9 +2353,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		};
 	}, [isTidyCalEnabled]);
 
+    async function sendGeneratedUiMessage(message) {
+        if (generatedUiSendBusyRef.current || leadCollectionPendingRef.current || isLeadCaptureLocked || isLeadFormVisible || isFetching) return false;
+        generatedUiSendBusyRef.current = true;
+        try { return await fetchAnswer(message, [], {generatedUiAction:true}); }
+        finally { generatedUiSendBusyRef.current = false; }
+    }
+
 	async function fetchAnswer(question, image_urls = [], options = {}) {
         let uiMessageAccepted = false;
+        if (!options.bypassLeadCollect && (leadCollectionPendingRef.current || isLeadCaptureLocked || isLeadFormVisible)) return false;
 		if (!options.bypassLeadCollect && shouldRequireLeadBeforeSend()) {
+            leadCollectionPendingRef.current = true;
 			setIsLeadCaptureLocked(true);
 			setPendingLeadCapture({
 				type: 'before_response',
@@ -2342,6 +2372,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				imageUrls: image_urls,
 				audio: options.audio,
 				audioUserMessageId: options.audioUserMessageId,
+                generatedUiAction: options.generatedUiAction === true,
 				trigger: false
 			});
 			const leadMessage = buildLeadFormMessage('before_response');
@@ -2355,16 +2386,20 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							question,
 							imageUrls: image_urls,
 							audio: options.audio,
-							audioUserMessageId: options.audioUserMessageId
+							audioUserMessageId: options.audioUserMessageId,
+                            generatedUiAction: options.generatedUiAction === true
 						}
 					}
 				});
 				scrollToBottom(ref);
+                if (options.generatedUiAction) return new Promise(resolve => {pendingGeneratedUiResultRef.current = resolve;});
 				return;
 			}
+            leadCollectionPendingRef.current = false;
 			setIsLeadCaptureLocked(false);
 		}
 
+        if (options.generatedUiAction) dispatch({type:'add_message',payload:{id:uuidv4(),variant:'user',message:question,timestamp:Date.now(),loading:false}});
 		const id = uuidv4();
 		const audio = typeof options.audio === 'string' ? options.audio : null;
 		const audioUserMessageId = options.audioUserMessageId || null;
@@ -3630,6 +3665,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 																		)
 																	}
 																	onLeadCollectCancel={() => {
+                                                        cancelPendingGeneratedUiAction();
 																		setPendingLeadCapture(
 																			null
 																		);
@@ -3658,6 +3694,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 													}
 													chatContainerRef={ref}
 													fetchAnswer={fetchAnswer}
+                                                onSendGeneratedUiMessage={sendGeneratedUiMessage}
+                                                uiActionsPending={isFetching || isLeadFormVisible || isLeadCaptureLocked}
 													inputRef={inputRef}
 													onLeadCollectSubmit={(
 														data,
@@ -3681,6 +3719,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 														);
 													}}
 													onLeadCollectCancel={() => {
+                                                        cancelPendingGeneratedUiAction();
 														setPendingLeadCapture(
 															null
 														);

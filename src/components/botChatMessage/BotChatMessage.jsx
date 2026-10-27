@@ -286,6 +286,8 @@ export const BotChatMessage = ({
 	payload,
 	messageBoxRef,
 	fetchAnswer,
+    onSendGeneratedUiMessage,
+    uiActionsPending = false,
 	chatContainerRef,
 	inputRef,
 	onLeadCollectSubmit,
@@ -1323,7 +1325,7 @@ export const BotChatMessage = ({
 							return (
 								<>
 									<div dir="auto" ref={contentRef}>
-<MixedAnswer enabled={useGenerativeUI === true || typeof payload.uiReadOnly === 'boolean'} messageId={payload.id} content={payload.message || ''} isStreaming={Boolean(payload.streaming || payload.uiInterrupted)} readOnly={payload.uiReadOnly} lifecycleState={payload.uiLifecycle} onLifecycleState={uiLifecycle=>dispatch({type:'update_message',payload:{id:payload.id,uiLifecycle}})} requestPending={Object.values(state.messages || {}).some(item=>item.loading||item.streaming)} onSend={async message=>{dispatch({type:'add_message',payload:{id:uuidv4(),variant:'user',message,timestamp:Date.now(),loading:false}});return await fetchAnswer(message)}} renderMarkdown={text=>(
+<MixedAnswer enabled={useGenerativeUI === true || typeof payload.uiReadOnly === 'boolean'} messageId={payload.id} content={payload.message || ''} isStreaming={Boolean(payload.streaming || payload.uiInterrupted)} readOnly={payload.uiReadOnly} lifecycleState={payload.uiLifecycle} onLifecycleState={uiLifecycle=>dispatch({type:'update_message',payload:{id:payload.id,uiLifecycle}})} requestPending={uiActionsPending || Object.values(state.messages || {}).some(item=>item.loading||item.streaming||item.type==='lead_collect')} onSend={async message=>{if(uiActionsPending || Object.values(state.messages || {}).some(item=>item.loading||item.streaming||item.type==='lead_collect'))return false;return typeof onSendGeneratedUiMessage==='function' ? await onSendGeneratedUiMessage(message) : false}} renderMarkdown={text=>(
 <TextFrame>
 										<Suspense fallback={<Loader />}>
 											<LazyStreamdown
