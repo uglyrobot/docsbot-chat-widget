@@ -1002,3 +1002,36 @@ test('deferred UI action can retry a failed reply after completing required lead
  await expect(page.getByRole('textbox',{name:'Email',exact:true})).toHaveCount(0);
  await finish(page,null,'Retried action accepted.');await expect(page.locator('[data-action-status="submitted"]')).toHaveCount(1);
 });
+
+for(const mode of ['light','dark'])for(const kind of ['normal','mixed','ui-only'])for(const width of [390,900])for(const avatar of [false,true])test(`response frame background ${mode} ${kind} ${width}px avatar=${avatar}`,async({page},testInfo)=>{
+ await page.setViewportSize({width,height:900});
+ await installFixture(page,{botIcon:avatar?'robot':false});
+ await page.goto(`/__openui-fixture?enabled=1&theme=${mode}`);
+ await ask(page);
+ const code='root = Stack([first,second])\nfirst = Card([TextContent("Initiative one"),TextContent("Readable card content")])\nsecond = Card([TextContent("Initiative two"),TextContent("Another detail")])';
+ const reply=kind==='normal'?'Ordinary answer fixture.':(kind==='mixed'?'Before the cards.\n':'')+'```openui-lang\n'+code+'\n```'+(kind==='mixed'?'\nAfter the cards.':'');
+ await finish(page,null,reply);
+ const target=kind==='normal'?page.getByText('Ordinary answer fixture.',{exact:true}):page.getByRole('group',{name:'Generated interface'});
+ await expect(target).toBeVisible();
+ if(kind!=='normal')await expect(target.getByText('Initiative two',{exact:true})).toBeVisible();
+ const metrics=await target.evaluate(el=>{
+  const frame=el.closest('[data-docsbot-response-frame]')||el.closest('.docsbot-chat-bot-message');
+  const style=getComputedStyle(frame),surface=frame.querySelector('.docsbot-openui-surface');
+  const bubbles=Array.from(frame.querySelectorAll('.docsbot-chat-text-segment')).map(b=>getComputedStyle(b).backgroundColor);
+  return{background:style.backgroundColor,padding:style.padding,bubbles,cardPaddings:Array.from(frame.querySelectorAll('.openui-card')).map(c=>parseFloat(getComputedStyle(c).paddingLeft)),frameWidth:frame.getBoundingClientRect().width,surfaceWidth:surface?.getBoundingClientRect().width,avatarGutter:!!frame.closest('.has-avatar'),overflow:document.documentElement.scrollWidth>innerWidth};
+ });
+ const transparent=value=>value==='transparent'||value==='rgba(0, 0, 0, 0)';
+ if(kind==='normal')expect(transparent(metrics.background)).toBe(false);
+ else{
+  expect(transparent(metrics.background)).toBe(true);
+  expect(metrics.padding).toBe('0px');
+  expect(metrics.cardPaddings).toHaveLength(2);
+  expect(metrics.cardPaddings.every(value=>value>=12)).toBe(true);
+  expect(Math.abs(metrics.frameWidth-metrics.surfaceWidth)).toBeLessThan(2);
+ }
+ expect(metrics.bubbles).toHaveLength(kind==='mixed'?2:0);
+ expect(metrics.bubbles.every(value=>!transparent(value))).toBe(true);
+ expect(metrics.avatarGutter).toBe(kind==='normal'&&avatar);
+ expect(metrics.overflow).toBe(false);
+ await screenshot(page,`response-frame-${mode}-${kind}-${width}-avatar-${avatar}`,testInfo);
+});

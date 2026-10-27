@@ -1007,7 +1007,8 @@ export const BotChatMessage = ({
 					{showMessageBubble ? (
 					<MessageFrame
 						className={clsx(
-							'docsbot-chat-bot-message bg-slate-100 text-slate-800',
+							'docsbot-chat-bot-message text-slate-800',
+							MessageFrame !== AssistantResponseFrame && 'bg-slate-100',
 							payload.error && 'docsbot-message-error'
 						)}
 						role={payload.error ? 'alert' : undefined}
