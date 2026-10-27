@@ -1,0 +1,41 @@
+.docsbot-openui-surface {container-type:inline-size; font-family:var(--openui-font-body); overflow-wrap:anywhere;}
+.docsbot-openui-surface *, .docsbot-openui-surface *::before, .docsbot-openui-surface *::after {box-sizing:border-box;}
+.docsbot-openui-surface .openui-card:not(.openui-card-clear) {border:1px solid var(--openui-border-default);border-radius:12px;padding:16px;box-shadow:none;min-width:0;}
+.docsbot-openui-surface .openui-header-top-left {font:var(--openui-text-heading-xs);color:var(--openui-text-neutral-primary);}
+.docsbot-openui-surface .openui-header-bottom {font:var(--openui-text-body-sm);color:var(--openui-text-neutral-secondary);}
+.docsbot-openui-surface .openui-button-base {border-radius:8px;font:var(--openui-text-label-default-heavy);transition:background-color .15s,border-color .15s,color .15s;}
+.docsbot-openui-surface .openui-button-base-medium {min-height:38px;padding:8px 14px;}
+.docsbot-openui-surface .openui-button-base-secondary {background:var(--openui-highlight);color:var(--openui-text-brand);border:1px solid var(--openui-border-accent);}
+.docsbot-openui-surface .openui-button-base-secondary:hover:not(:disabled){background:var(--openui-highlight-strong);border-color:var(--openui-border-accent-emphasis);}
+.docsbot-openui-surface .openui-button-base-tertiary {color:var(--openui-text-brand);}
+.docsbot-openui-surface :is(button,input,textarea,select,[role="combobox"],[role="slider"],[role="option"],[role="tab"]):focus-visible {outline:2px solid var(--openui-border-accent-emphasis);outline-offset:3px;}
+.docsbot-openui-surface :is(input,textarea,select,[role="combobox"]) {font:var(--openui-text-body-default);border-radius:8px;}
+.docsbot-openui-surface :is(input:not([type="checkbox"]):not([type="radio"]),select,[role="combobox"]) {min-height:38px;}
+.docsbot-openui-surface textarea {padding:10px 12px;resize:vertical;}
+.docsbot-openui-surface :is(button,input,textarea,select):disabled {cursor:not-allowed;opacity:.55;}
+.docsbot-openui-surface a {color:var(--openui-text-neutral-link);text-underline-offset:3px;}
+.docsbot-openui-surface img {max-width:100%;}
+.docsbot-openui-surface :is(.openui-snippet-card-block,.openui-overview-card-block,.openui-context-card-block,.openui-composite-card-block,.openui-visual-card-block) {min-width:0;}
+@container (max-width:480px) {
+ .docsbot-openui-surface .openui-card:not(.openui-card-clear) {padding:14px;}
+}
+
+
+/* Match the widget input's iOS zoom safeguard, without enlarging desktop fields. */
+@media (max-width:640px) {
+ .docsbot-openui-surface :is(input:not([type="checkbox"]):not([type="radio"]),textarea,select) {font-size:16px;line-height:1.4;}
+}
+/* Historical/submitted values stay legible; only their interaction is retired. */
+.docsbot-openui-surface [data-docsbot-ui-frozen="true"] :is(input,textarea,select):disabled {opacity:1;color:var(--openui-text-neutral-primary);-webkit-text-fill-color:var(--openui-text-neutral-primary);cursor:default;}
+.docsbot-openui-surface [data-docsbot-ui-frozen="true"] button:disabled,
+.docsbot-openui-surface button[data-docsbot-duplicate-disabled="true"] {opacity:1;color:var(--openui-text-neutral-secondary);background:var(--openui-sunk);border-color:var(--openui-border-default);box-shadow:none;cursor:default;}
+
+/* Only recognized card collections participate; tables, forms, and generic rows keep their layout. */
+.docsbot-openui-surface [data-docsbot-card-grid] > * {min-width:0;max-width:100%;}
+.docsbot-openui-surface [data-docsbot-card-block] > :is(.openui-small-card-block,.openui-medium-card-block) > :is(.openui-small-card-block__grid,.openui-medium-card-block__grid) {display:grid;grid-template-columns:repeat(var(--docsbot-card-columns),minmax(0,1fr));gap:12px;min-width:0;}
+.docsbot-openui-surface [data-docsbot-card-block] :is(.openui-small-card-block__row,.openui-medium-card-block__row) {display:contents!important;}
+.docsbot-openui-surface [data-docsbot-card-block] :is(.openui-small-card-block__item,.openui-medium-card-block__item) {min-width:0;max-width:100%;grid-column:auto!important;}
+.docsbot-openui-surface :is(.openui-metric-indicator__main-value,.openui-metric-indicator__previous-value) {white-space:nowrap;overflow-wrap:normal;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+.docsbot-openui-surface [data-docsbot-card-grid] .openui-button-base {min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;}
+
+.docsbot-openui-surface :is(.openui-text-block--number-text,.openui-text-block--number-title-text) .openui-text-block__primary {white-space:nowrap;overflow-wrap:normal;max-width:100%;overflow:hidden;text-overflow:ellipsis;}

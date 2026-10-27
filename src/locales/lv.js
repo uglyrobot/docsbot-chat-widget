@@ -3,6 +3,11 @@ export default {
   "name": "Latviešu (Latvian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Saskarnes sagatavošana…",
+    "uiUnavailable": "Saskarni nevar parādīt. Mēģiniet vēlreiz.",
+    "uiInterrupted": "Atbilde pārtraukta. Mēģiniet vēlreiz.",
+    "uiRegion": "Ģenerēta saskarne",
+
     "stopResponse": "Apturēt atbildi",
     "poweredBy": "Darbina",
     "inputPlaceholder": "Sūtīt ziņu...",

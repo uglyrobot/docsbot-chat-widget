@@ -43,7 +43,8 @@ const booleanKeys = new Set([
 	'hideHeader',
 	'showButtonLabel',
 	'keepFooterVisible',
-	'showAgentActivity'
+	'showAgentActivity',
+	'useGenerativeUI'
 ]);
 const enums = {
 	theme: ['auto', 'light', 'dark'],

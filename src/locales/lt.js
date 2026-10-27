@@ -3,6 +3,11 @@ export default {
   "name": "Lietuvių (Lithuanian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Ruošiama sąsaja…",
+    "uiUnavailable": "Sąsajos parodyti nepavyko. Bandykite dar kartą.",
+    "uiInterrupted": "Atsakymas nutrūko. Bandykite dar kartą.",
+    "uiRegion": "Sugeneruota sąsaja",
+
     "stopResponse": "Stabdyti atsakymą",
     "poweredBy": "Sukurta naudojant",
     "inputPlaceholder": "Siųsti žinutę...",

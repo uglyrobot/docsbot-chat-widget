@@ -3,6 +3,11 @@ export default {
   "name": "Nederlands (Dutch)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Interface voorbereiden…",
+    "uiUnavailable": "Interface kan niet worden weergegeven. Probeer opnieuw.",
+    "uiInterrupted": "Antwoord onderbroken. Probeer opnieuw.",
+    "uiRegion": "Gegenereerde interface",
+
     "stopResponse": "Antwoord stoppen",
     "poweredBy": "Aangeboden door",
     "inputPlaceholder": "Stuur een bericht...",

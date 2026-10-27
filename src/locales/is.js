@@ -3,6 +3,11 @@ export default {
   "name": "Íslenska (Icelandic)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Undirbý viðmót…",
+    "uiUnavailable": "Ekki er hægt að birta viðmótið. Reyndu aftur.",
+    "uiInterrupted": "Svarið rofnaði. Reyndu aftur.",
+    "uiRegion": "Myndað viðmót",
+
     "stopResponse": "Stöðva svar",
     "poweredBy": "Knúið af",
     "inputPlaceholder": "Sendu skilaboð...",

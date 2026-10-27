@@ -3,6 +3,11 @@ export default {
   "name": "עברית (Hebrew)",
   "isRTL": true,
   "labels": {
+    "uiPreparing": "מכין ממשק…",
+    "uiUnavailable": "לא ניתן להציג את הממשק. נסה שוב.",
+    "uiInterrupted": "התשובה נקטעה. נסה שוב.",
+    "uiRegion": "ממשק שנוצר",
+
     "stopResponse": "עצירת התשובה",
     "poweredBy": "מופעל על ידי",
     "inputPlaceholder": "שלח הודעה...",

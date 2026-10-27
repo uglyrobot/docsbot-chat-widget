@@ -3,6 +3,11 @@ export default {
   "name": "Suomi (Finnish)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Valmistellaan käyttöliittymää…",
+    "uiUnavailable": "Käyttöliittymää ei voi näyttää. Yritä uudelleen.",
+    "uiInterrupted": "Vastaus keskeytyi. Yritä uudelleen.",
+    "uiRegion": "Luotu käyttöliittymä",
+
     "stopResponse": "Pysäytä vastaus",
     "poweredBy": "Tarjoaa",
     "inputPlaceholder": "Lähetä viesti...",

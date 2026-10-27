@@ -3,6 +3,11 @@ export default {
   "name": "ไทย (Thai)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "กำลังเตรียมส่วนติดต่อ…",
+    "uiUnavailable": "ไม่สามารถแสดงส่วนติดต่อได้ โปรดลองอีกครั้ง",
+    "uiInterrupted": "การตอบกลับถูกขัดจังหวะ โปรดลองอีกครั้ง",
+    "uiRegion": "ส่วนติดต่อที่สร้างขึ้น",
+
     "stopResponse": "หยุดการตอบ",
     "poweredBy": "ขับเคลื่อนโดย",
     "inputPlaceholder": "ส่งข้อความ...",

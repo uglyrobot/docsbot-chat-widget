@@ -3,6 +3,11 @@ export default {
   "name": "Հայերեն (Armenian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Միջերեսի պատրաստում…",
+    "uiUnavailable": "Հնարավոր չէ ցուցադրել միջերեսը։ Փորձեք կրկին։",
+    "uiInterrupted": "Պատասխանը ընդհատվել է։ Փորձեք կրկին։",
+    "uiRegion": "Ստեղծված միջերես",
+
     "stopResponse": "Դադարեցնել պատասխանը",
     "poweredBy": "Աջակցում է",
     "inputPlaceholder": "Ուղարկեք հաղորդագրություն...",

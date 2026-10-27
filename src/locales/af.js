@@ -3,6 +3,11 @@ export default {
   "name": "Afrikaans (Afrikaans)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Koppelvlak word voorberei…",
+    "uiUnavailable": "Kan nie koppelvlak wys nie. Probeer weer.",
+    "uiInterrupted": "Antwoord onderbreek. Probeer weer.",
+    "uiRegion": "Gegenereerde koppelvlak",
+
     "stopResponse": "Stop antwoord",
     "poweredBy": "Aangedryf deur",
     "inputPlaceholder": "Stuur ’n boodskap...",

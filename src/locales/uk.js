@@ -3,6 +3,11 @@ export default {
   "name": "Українська (Ukrainian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Підготовка інтерфейсу…",
+    "uiUnavailable": "Не вдалося показати інтерфейс. Спробуйте ще раз.",
+    "uiInterrupted": "Відповідь перервано. Спробуйте ще раз.",
+    "uiRegion": "Згенерований інтерфейс",
+
     "stopResponse": "Зупинити відповідь",
     "poweredBy": "На базі",
     "inputPlaceholder": "Надішліть повідомлення...",

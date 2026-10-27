@@ -3,6 +3,11 @@ export default {
   "name": "नेपाली (Nepali)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "इन्टरफेस तयार हुँदैछ…",
+    "uiUnavailable": "इन्टरफेस देखाउन सकिएन। फेरि प्रयास गर्नुहोस्।",
+    "uiInterrupted": "जवाफ अवरुद्ध भयो। फेरि प्रयास गर्नुहोस्।",
+    "uiRegion": "तयार गरिएको इन्टरफेस",
+
     "stopResponse": "जवाफ रोक्नुहोस्",
     "poweredBy": "द्वारा सञ्चालित",
     "inputPlaceholder": "सन्देश पठाउनुहोस्...",

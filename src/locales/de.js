@@ -3,6 +3,11 @@ export default {
   "name": "Deutsch (German)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Oberfläche wird vorbereitet…",
+    "uiUnavailable": "Oberfläche kann nicht angezeigt werden. Bitte erneut versuchen.",
+    "uiInterrupted": "Antwort unterbrochen. Bitte erneut versuchen.",
+    "uiRegion": "Generierte Oberfläche",
+
     "stopResponse": "Antwort stoppen",
     "poweredBy": "Bereitgestellt von",
     "inputPlaceholder": "Eine Nachricht schicken...",

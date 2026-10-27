@@ -3,6 +3,11 @@ export default {
   "name": "Norsk (Norwegian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Forbereder grensesnitt…",
+    "uiUnavailable": "Grensesnittet kan ikke vises. Prøv igjen.",
+    "uiInterrupted": "Svaret ble avbrutt. Prøv igjen.",
+    "uiRegion": "Generert grensesnitt",
+
     "stopResponse": "Stopp svar",
     "poweredBy": "Levert av",
     "inputPlaceholder": "Send en melding...",

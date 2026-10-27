@@ -21,7 +21,7 @@ function chatbotReducer(state, action) {
       )
       return {
         ...state,
-        messages: stopResponseMessages(state.messages),
+        messages: stopResponseMessages(state.messages, {labels:action.labels}),
         chatHistory,
       }
     }
@@ -103,6 +103,8 @@ function chatbotReducer(state, action) {
         },
       }
     case "update_message":
+      // A cancelled action may finish after reset removed its message.
+      if (!Object.prototype.hasOwnProperty.call(state.messages, action.payload.id)) return state
       return {
         ...state,
         messages: {

@@ -3,6 +3,11 @@ export default {
   "name": "简体中文 (Chinese Simplified)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "正在准备界面…",
+    "uiUnavailable": "无法显示界面。请重试。",
+    "uiInterrupted": "回复已中断。请重试。",
+    "uiRegion": "生成的界面",
+
     "stopResponse": "停止回复",
     "poweredBy": "由...提供",
     "inputPlaceholder": "发送一条消息...",

@@ -3,6 +3,11 @@ export default {
   "name": "Tiếng Việt (Vietnamese)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Đang chuẩn bị giao diện…",
+    "uiUnavailable": "Không thể hiển thị giao diện. Vui lòng thử lại.",
+    "uiInterrupted": "Phản hồi bị gián đoạn. Vui lòng thử lại.",
+    "uiRegion": "Giao diện được tạo",
+
     "stopResponse": "Dừng phản hồi",
     "poweredBy": "Được hỗ trợ bởi",
     "inputPlaceholder": "Gửi tin nhắn...",

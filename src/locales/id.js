@@ -3,6 +3,11 @@ export default {
   "name": "Bahasa Indonesia (Indonesian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Menyiapkan antarmuka…",
+    "uiUnavailable": "Antarmuka tidak dapat ditampilkan. Coba lagi.",
+    "uiInterrupted": "Respons terputus. Coba lagi.",
+    "uiRegion": "Antarmuka yang dihasilkan",
+
     "stopResponse": "Hentikan respons",
     "poweredBy": "Didukung oleh",
     "inputPlaceholder": "Kirim pesan...",

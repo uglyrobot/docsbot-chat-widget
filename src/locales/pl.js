@@ -3,6 +3,11 @@ export default {
   "name": "Polski (Polish)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Przygotowywanie interfejsu…",
+    "uiUnavailable": "Nie można wyświetlić interfejsu. Spróbuj ponownie.",
+    "uiInterrupted": "Odpowiedź przerwana. Spróbuj ponownie.",
+    "uiRegion": "Wygenerowany interfejs",
+
     "stopResponse": "Zatrzymaj odpowiedź",
     "poweredBy": "Napędzane przez",
     "inputPlaceholder": "Wyślij wiadomość...",

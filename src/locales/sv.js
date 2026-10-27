@@ -3,6 +3,11 @@ export default {
   "name": "Svenska (Swedish)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Förbereder gränssnitt…",
+    "uiUnavailable": "Gränssnittet kan inte visas. Försök igen.",
+    "uiInterrupted": "Svaret avbröts. Försök igen.",
+    "uiRegion": "Genererat gränssnitt",
+
     "stopResponse": "Stoppa svaret",
     "poweredBy": "Drivs av",
     "inputPlaceholder": "Skicka ett meddelande...",

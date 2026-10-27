@@ -3,6 +3,11 @@ export default {
   "name": "বাংলা (Bengali)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "ইন্টারফেস প্রস্তুত হচ্ছে…",
+    "uiUnavailable": "ইন্টারফেস দেখানো যায়নি। আবার চেষ্টা করুন।",
+    "uiInterrupted": "উত্তর বাধাগ্রস্ত হয়েছে। আবার চেষ্টা করুন।",
+    "uiRegion": "তৈরি করা ইন্টারফেস",
+
     "stopResponse": "উত্তর থামান",
     "poweredBy": "দ্বারা চালিত",
     "inputPlaceholder": "একটি বার্তা পাঠান...",

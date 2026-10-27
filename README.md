@@ -195,3 +195,102 @@ Omitted keys stay unchanged. `labels` merges per key and accepts string values (
 Suggestions retain their existing visibility rule: they appear before the conversation gets underway. Updating `labels.firstMessage` affects the next chat reset or fresh chat, not messages already displayed. Runtime changes last for this mounted instance; pass page-specific initial options again after a full page load. Agent mode, locale, authentication, domain restrictions, and capability settings remain initialization-only.
 
 Verification: `npm run test:options` runs merge/validation tests. With `npm run dev:web` already running, `npm run test:options:browser` checks both widget surfaces without triggering a production build. Set `WIDGET_TEST_URL` to use another development-server URL.
+
+### Generated UI actions and host-authored interfaces
+
+OpenUI remains optional. Enabling generation preloads its renderer when the widget opens;
+when generation is disabled, adding/restoring an actual UI message loads it on demand.
+
+A submitted form keeps a visible user turn with the action label. Expand that turn to
+read the submitted field/value pairs. The existing API receives the label, form name,
+values and action parameters as plain text; raw JSON is not printed in the transcript.
+This is a submission snapshot, not an indication that a business operation succeeded.
+The bot or your application must confirm the result. Form drafts are not persisted by
+this action API. No Firestore schema or API request fields are added.
+
+Host JavaScript can render an interface without asking the model:
+
+```js
+await DocsBotAI.addUIMessage({
+  message: 'Choose an item.',
+  response: `root = Stack([Card([TextContent("Demo item"), choose])])
+choose = Button("Choose this item", @ToAssistant("Choose demo item", "item-42"))`,
+});
+```
+
+This returns a Promise (false for invalid input/unmounted widget), opens a floating
+widget if necessary, and uses the same official component allowlist and styles.
+It is display-only and makes no API call. It does not add that interface to server
+conversation history, so include the necessary item context in the action. Existing
+`addBotMessage(text)` and `addUserMessage(text, send)` work as before.
+
+Every supported generated action (buttons, forms, follow-ups, clickable cards/list
+items) dispatches a cancelable `docsbot_ui_action` event on `document`. It includes
+`type`, `humanFriendlyMessage`, `formName`, `formState`, `params`, `teamId`, `botId`,
+`messageId`, `response` (the UI program), and `message` (the model-facing text).
+
+```js
+document.addEventListener('docsbot_ui_action', async event => {
+  const { params, formState, messageId } = event.detail;
+  if (params?.context !== 'item-42') return; // Default: send a user turn to the bot.
+  event.preventDefault(); // Take ownership synchronously, before awaiting anything.
+  console.log('Selected item', { formState, messageId });
+  await DocsBotAI.addBotMessage('Your application handled this selection.');
+});
+```
+
+Without cancellation the widget adds the user turn and requests the next bot reply.
+Cancellation skips both. This hook handles explicitly clicked actions, not every
+keystroke or local tab/accordion change. Invalid form submits and streaming controls
+do not emit actions. The current contract supports `@ToAssistant` only: it does not
+execute model-supplied JavaScript, navigate arbitrary URLs, or register UI tools.
+Host code maps known contexts to its own application handlers.
+
+References: [OpenUI custom chat actions](https://www.openui.com/docs/build-agents/custom-chat-ui),
+[conversation history and form state](https://www.openui.com/docs/build-agents/conversation-history).
+Offline regression captures can be regenerated with `npm run test:openui:browser`, then
+`node scripts/openui-actions-gallery.mjs`; preview `/openui-gallery/actions/index.html`.
+
+### One-time and repeatable action groups
+
+The pinned DocsBot library adds **ActionGroup** around the official components:
+
+```text
+root = Stack([decision])
+decision = ActionGroup("demo-choice", "once", [Card([CardHeader("Request a demo?"), choices])], {pending:"Sending…", submitted:"Submitted", retry:"Response interrupted — review and retry"})
+choices = Buttons([Button("Yes", @ToAssistant("Request a demo")), Button("Maybe later", @ToAssistant("Skip the demo"), "secondary")])
+```
+
+- `once` retires the entire form/choice group after an acknowledged conversation turn.
+- `repeatable` stays usable; a repeatable form prevents identical-value submission and
+  re-enables its action buttons after values change. Unwrapped official actions remain repeatable.
+- Supply all three status labels in the UI language. Use unique group names; groups cannot nest.
+- Pending requests prevent duplicate clicks. A failed/interrupted response restores retry.
+  The user should review the transcript before retrying an interrupted response: an external
+  operation may have completed even if the response was interrupted.
+- Submitted controls stay readable. Other groups, tabs, charts, images stay usable in a live chat.
+- Widget submission state and form snapshots are saved in its existing local transcript.
+  Reopening/reloading retains completed locks. This is browser-local interaction state,
+  not a backend idempotency guarantee or a cross-device transaction record.
+- Dashboard logs always override the lifecycle to read-only. Live dashboard chat keeps
+  lifecycle state for its current conversation; server-side draft/lock persistence is not added.
+
+Host actions may own asynchronous completion:
+
+```js
+document.addEventListener('docsbot_ui_action', event => {
+  if (event.detail.actionGroup?.name !== 'my-group') return;
+  event.preventDefault();
+  // Call synchronously; resolve true only after your application accepts the action.
+  event.detail.respondWith(handleKnownApplicationAction(event.detail));
+});
+```
+
+Cancellation without `respondWith` leaves the group available. A resolved false or
+rejection restores retry. `addUIMessage({response,message,readOnly:true})` can also
+show a completely frozen host-authored snapshot. Business operations must use their
+backend's own duplicate protection; no new mutation tools are introduced here.
+
+Run the offline browser suite and then `node scripts/openui-lifecycle-gallery.mjs`
+for eight full-conversation examples, four views, and before/pending/after/retry/history
+captures at `/openui-gallery/lifecycle/index.html`.

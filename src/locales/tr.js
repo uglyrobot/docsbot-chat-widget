@@ -3,6 +3,11 @@ export default {
   "name": "Türkçe (Turkish)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Arayüz hazırlanıyor…",
+    "uiUnavailable": "Arayüz görüntülenemiyor. Tekrar deneyin.",
+    "uiInterrupted": "Yanıt kesildi. Tekrar deneyin.",
+    "uiRegion": "Oluşturulan arayüz",
+
     "stopResponse": "Yanıtı durdur",
     "poweredBy": "Tarafından desteklenmektedir",
     "inputPlaceholder": "Bir mesaj gönder...",

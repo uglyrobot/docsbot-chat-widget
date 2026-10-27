@@ -3,6 +3,11 @@ export default {
   "name": "日本語 (Japanese)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "インターフェースを準備中…",
+    "uiUnavailable": "インターフェースを表示できません。もう一度お試しください。",
+    "uiInterrupted": "応答が中断されました。もう一度お試しください。",
+    "uiRegion": "生成されたインターフェース",
+
     "stopResponse": "応答を停止",
     "poweredBy": "提供元：",
     "inputPlaceholder": "メッセージを送信...",

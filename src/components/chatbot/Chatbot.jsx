@@ -1,3 +1,6 @@
+import { decodeAnswerDelta } from '../../utils/answerDelta.mjs';
+import { preloadOpenUIRenderer } from '../generativeUi/OpenUIResponse';
+import { observeMessageViewport } from '../../utils/observeMessageViewport.mjs';
 /** @format */
 
 import {
@@ -268,6 +271,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		useVoiceAgent, // Server-gated browser Realtime voice calling
 		useWebSearch, // If agent web search tool is enabled (API)
 		useCustomButtons, // Agent API: request custom_button terminal events
+		useGenerativeUI, // Opt-in OpenUI Lang output from the Agent API
 		useCalendly,
 		useCalCom,
 		useTidyCal,
@@ -335,6 +339,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const piiRedactionBypassedRef = useRef(false);
 	const piiRedactionSessionKeyRef = useRef('');
 	const stateMessagesRef = useRef(state.messages);
+	useEffect(() => {
+		if (useGenerativeUI === true) preloadOpenUIRenderer().catch(() => {});
+	}, [useGenerativeUI]);
+
 	const chatHistoryRef = useRef(state.chatHistory);
 	const voiceHistoryItemIndicesRef = useRef(
 		state.voiceHistoryItemIndices || {}
@@ -357,6 +365,20 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	);
 	const [pendingLeadCapture, setPendingLeadCapture] = useState(null);
 	const [isLeadCaptureLocked, setIsLeadCaptureLocked] = useState(false);
+    const leadCollectionPendingRef = useRef(false);
+    const generatedUiSendBusyRef = useRef(false);
+    const pendingGeneratedUiResultRef = useRef(null);
+    const cancelPendingGeneratedUiAction = () => {
+        leadCollectionPendingRef.current = false;
+        const resolve = pendingGeneratedUiResultRef.current;
+        pendingGeneratedUiResultRef.current = null;
+        resolve?.(false);
+    };
+    useEffect(() => () => {
+        const resolve = pendingGeneratedUiResultRef.current;
+        pendingGeneratedUiResultRef.current = null;
+        resolve?.(false);
+    }, []);
 	const [leadCollected, setLeadCollected] = useState(false);
 	const [isPiiRedactionLoading, setIsPiiRedactionLoading] = useState(false);
 	const [
@@ -944,13 +966,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			Emitter.emit('docsbot_add_user_message_complete');
 		});
 
-		Emitter.on('docsbot_add_bot_message', async ({ message }) => {
+		Emitter.on('docsbot_add_bot_message', async ({ message, uiReadOnly }) => {
 			await dispatch({
 				type: 'add_message',
 				payload: {
 					id: uuidv4(),
 					variant: 'chatbot',
 					message: message,
+					uiReadOnly,
 					loading: false,
 					streaming: false,
 					timestamp: Date.now()
@@ -1034,6 +1057,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			};
 		});
 
+        leadCollectionPendingRef.current = true;
 		return {
 			id: uuidv4(),
 			variant: 'chatbot',
@@ -1219,6 +1243,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				imageUrls: activeLeadContext?.imageUrls,
 				audio: activeLeadContext?.audio,
 				audioUserMessageId: activeLeadContext?.audioUserMessageId,
+                generatedUiAction: activeLeadContext?.generatedUiAction === true,
 				nextAction: isBeforeVoiceCall
 					? 'start_voice_call'
 					: isBeforeResponse
@@ -1337,6 +1362,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
 	const finalizeLeadSubmission = (data, metadata, options = {}) => {
 		const { messageId, event } = options;
+        leadCollectionPendingRef.current = false;
 		setIsLeadCaptureLocked(false);
 		setLeadCollected(true);
 
@@ -1349,12 +1375,15 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
 		if (data?.nextAction === 'send_message') {
 			setPendingLeadCapture(null);
+            const resolve = pendingGeneratedUiResultRef.current;
+            pendingGeneratedUiResultRef.current = null;
 			fetchAnswer(data.question, data.imageUrls || [], {
 				bypassLeadCollect: true,
 				metadataOverride: metadata,
 				audio: data.audio,
-				audioUserMessageId: data.audioUserMessageId
-			});
+				audioUserMessageId: data.audioUserMessageId,
+                generatedUiAction: data.generatedUiAction === true
+			}).then(result => resolve?.(result === true), () => resolve?.(false));
 			return;
 		}
 
@@ -2097,11 +2126,12 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		setStreamController(null);
 		controller?.abort?.();
 		controller?.close?.();
-		dispatch({ type: 'stop_response' });
+		dispatch({ type: 'stop_response', labels });
 		setIsFetching(false);
 	};
 
 	const refreshChatHistory = async () => {
+        cancelPendingGeneratedUiAction();
 		activeRequestIdRef.current = null;
 		setIsFetching(false);
 
@@ -2226,7 +2256,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 											sanitizeRestoredConversation(
 												savedConversation,
 												{
-													allowLeadCollect:
+													labels,
+                                                allowLeadCollect:
 														isLeadCollectEnabled()
 												}
 											)
@@ -2322,8 +2353,18 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		};
 	}, [isTidyCalEnabled]);
 
+    async function sendGeneratedUiMessage(message) {
+        if (generatedUiSendBusyRef.current || leadCollectionPendingRef.current || isLeadCaptureLocked || isLeadFormVisible || isFetching) return false;
+        generatedUiSendBusyRef.current = true;
+        try { return await fetchAnswer(message, [], {generatedUiAction:true}); }
+        finally { generatedUiSendBusyRef.current = false; }
+    }
+
 	async function fetchAnswer(question, image_urls = [], options = {}) {
+        let uiMessageAccepted = false;
+        if (!options.bypassLeadCollect && (leadCollectionPendingRef.current || isLeadCaptureLocked || isLeadFormVisible)) return false;
 		if (!options.bypassLeadCollect && shouldRequireLeadBeforeSend()) {
+            leadCollectionPendingRef.current = true;
 			setIsLeadCaptureLocked(true);
 			setPendingLeadCapture({
 				type: 'before_response',
@@ -2331,6 +2372,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				imageUrls: image_urls,
 				audio: options.audio,
 				audioUserMessageId: options.audioUserMessageId,
+                generatedUiAction: options.generatedUiAction === true,
 				trigger: false
 			});
 			const leadMessage = buildLeadFormMessage('before_response');
@@ -2344,16 +2386,20 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							question,
 							imageUrls: image_urls,
 							audio: options.audio,
-							audioUserMessageId: options.audioUserMessageId
+							audioUserMessageId: options.audioUserMessageId,
+                            generatedUiAction: options.generatedUiAction === true
 						}
 					}
 				});
 				scrollToBottom(ref);
+                if (options.generatedUiAction) return new Promise(resolve => {pendingGeneratedUiResultRef.current = resolve;});
 				return;
 			}
+            leadCollectionPendingRef.current = false;
 			setIsLeadCaptureLocked(false);
 		}
 
+        if (options.generatedUiAction) dispatch({type:'add_message',payload:{id:uuidv4(),variant:'user',message:question,timestamp:Date.now(),loading:false}});
 		const id = uuidv4();
 		const audio = typeof options.audio === 'string' ? options.audio : null;
 		const audioUserMessageId = options.audioUserMessageId || null;
@@ -2437,7 +2483,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 						reasoning_effort: reasoningEffort
 					}),
 				...(useWebSearch && { web_search: true }),
-				...(useCustomButtons && { custom_buttons: true })
+				...(useCustomButtons && { custom_buttons: true }),
+				...(useGenerativeUI === true && { generative_ui: true })
 			};
 
 			// Track retry attempts - start at 0 so we get a total of 3 attempts (initial + 2 retries)
@@ -2656,6 +2703,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							return;
 						}
 
+                        if (data.event === 'answer_delta') {
+                            hasStartedStreaming = true;
+                            currentAgentActivity = null;
+                            answer += decodeAnswerDelta(data.data);
+                            dispatch({type:'update_message',payload:{id,message:revealTextFromResponse(answer),loading:false,streaming:true,agentActivity:null}});
+                            return;
+                        }
+
 						if (data.event === 'stream') {
 							hasStartedStreaming = true;
 							// Handle empty data fields as line breaks to preserve formatting
@@ -2736,6 +2791,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 											}
 										}),
 										sources: finalData.sources || null,
+									uiInterrupted: false,
 										answerId:
 											answerId || finalData.id || null, // use saved prev id for feedback button
 										conversationId: requestConversationId,
@@ -2753,7 +2809,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 								currentAgentActivity = null;
 
 								answerId = finalData.id || null; // save the answer id for the feedback button
-								let newChatHistory = finalData.history;
+								uiMessageAccepted = true;
+                                let newChatHistory = finalData.history;
 
 								dispatch({
 									type: 'save_history',
@@ -2805,6 +2862,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 						throw wrapped;
 					}
 				});
+                if (isCurrentRequest() && !uiMessageAccepted) throw new FatalError(labels.uiInterrupted);
 			} catch (error) {
 				if (!isCurrentRequest()) {
 					return;
@@ -2871,6 +2929,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			setStreamController(ws);
 			streamControllerRef.current = ws;
 
+			let finishWebSocket;
+			const webSocketResult = new Promise(resolve => { finishWebSocket = resolve; });
+
 			// Send message to server when connection is established
 			ws.onopen = function (event) {
 				if (!isCurrentRequest()) return;
@@ -2878,6 +2939,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			};
 
 			ws.onerror = function (event) {
+                finishWebSocket(false);
 				if (!isCurrentRequest()) return;
 				console.error('DOCSBOT: WebSocket error', event);
 				dispatch({
@@ -2898,6 +2960,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			};
 
 			ws.onclose = function (event) {
+                finishWebSocket(false);
 				if (!isCurrentRequest()) return;
 				if (!event.wasClean) {
 					dispatch({
@@ -2944,6 +3007,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 					} else if (data.type === 'end') {
 						const rawFinalData = JSON.parse(data.message);
 						const finalData = revealResponsePayload(rawFinalData);
+                        finishWebSocket(!finalData.error);
 						dispatch({
 							type: 'update_message',
 							payload: {
@@ -2976,6 +3040,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							setIsFetching(false);
 						}
 					} else if (data.type === 'error') {
+                        finishWebSocket(false);
 						dispatch({
 							type: 'update_message',
 							payload: {
@@ -2994,7 +3059,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 					}
 				}
 			};
+            uiMessageAccepted = await webSocketResult;
 		}
+        return uiMessageAccepted;
 	}
 
 	async function handleSubmit(event) {
@@ -3147,18 +3214,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	};
 
 	useEffect(() => {
-		const chatContainer = ref.current;
-
-		if (chatContainer) {
-			chatContainer.addEventListener('scroll', syncAtBottom);
-			syncAtBottom();
-		}
-
-		return () => {
-			if (chatContainer) {
-				chatContainer.removeEventListener('scroll', syncAtBottom);
-			}
-		};
+		// Composer growth and container resizing change the visible bottom even
+		// without a scroll event. Keep the latest-message control reachable.
+		return observeMessageViewport(ref.current, syncAtBottom);
 	}, [bottomScrollSpacerHeight]);
 
 	useLayoutEffect(() => {
@@ -3607,6 +3665,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 																		)
 																	}
 																	onLeadCollectCancel={() => {
+                                                        cancelPendingGeneratedUiAction();
 																		setPendingLeadCapture(
 																			null
 																		);
@@ -3635,6 +3694,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 													}
 													chatContainerRef={ref}
 													fetchAnswer={fetchAnswer}
+                                                onSendGeneratedUiMessage={sendGeneratedUiMessage}
+                                                uiActionsPending={isFetching || isLeadFormVisible || isLeadCaptureLocked}
 													inputRef={inputRef}
 													onLeadCollectSubmit={(
 														data,
@@ -3658,6 +3719,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 														);
 													}}
 													onLeadCollectCancel={() => {
+                                                        cancelPendingGeneratedUiAction();
 														setPendingLeadCapture(
 															null
 														);

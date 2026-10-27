@@ -1,4 +1,4 @@
-const HISTORY_TEXT_KEYS = ["content", "message", "answer", "question"];
+const HISTORY_TEXT_KEYS = ["content", "message", "answer", "question", "AI", "Human"];
 
 export async function mapChatHistoryStrings(history, mapString) {
 	if (!Array.isArray(history) || typeof mapString !== "function") {

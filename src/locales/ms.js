@@ -3,6 +3,11 @@ export default {
   "name": "Bahasa Melayu (Malay)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Menyediakan antara muka…",
+    "uiUnavailable": "Antara muka tidak dapat dipaparkan. Cuba lagi.",
+    "uiInterrupted": "Respons terganggu. Cuba lagi.",
+    "uiRegion": "Antara muka yang dijana",
+
     "stopResponse": "Hentikan respons",
     "poweredBy": "Dikuasakan oleh",
     "inputPlaceholder": "Hantar mesej...",

@@ -3,6 +3,11 @@ export default {
   "name": "Magyar (Hungarian)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Felület előkészítése…",
+    "uiUnavailable": "A felület nem jeleníthető meg. Próbálja újra.",
+    "uiInterrupted": "A válasz megszakadt. Próbálja újra.",
+    "uiRegion": "Létrehozott felület",
+
     "stopResponse": "Válasz leállítása",
     "poweredBy": "Szolgáltató",
     "inputPlaceholder": "Üzenet küldése...",

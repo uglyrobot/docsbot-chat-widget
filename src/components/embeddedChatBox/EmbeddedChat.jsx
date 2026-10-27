@@ -8,7 +8,7 @@ import fontAwesomeStyles from "!raw-loader!@fortawesome/fontawesome-svg-core/sty
 import reactTailwindStyles from "!../../assets/css/docsbot-tw.min.css?raw";
 import reactChatbotStyles from "!../../assets/css/chatbot.min.css?raw";
 import katexStyles from "!../../assets/css/katex.min.css?raw";
-import floatingButtonStyles from "!../../assets/css/FloatingButton.min.css?raw";
+import floatingButtonStyles from "!../../assets/css/floatingButton.min.css?raw";
 import optionsStyles from "!../../assets/css/Options.min.css?raw";
 import linkListStyles from "!../../assets/css/LinkList.min.css?raw";
 import embeddedChatStyles from "!../../assets/css/embeddedChat.min.css?raw";

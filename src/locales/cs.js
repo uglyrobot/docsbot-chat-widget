@@ -3,6 +3,11 @@ export default {
   "name": "Čeština (Czech)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Příprava rozhraní…",
+    "uiUnavailable": "Rozhraní nelze zobrazit. Zkuste to znovu.",
+    "uiInterrupted": "Odpověď byla přerušena. Zkuste to znovu.",
+    "uiRegion": "Vygenerované rozhraní",
+
     "stopResponse": "Zastavit odpověď",
     "poweredBy": "Poskytováno",
     "inputPlaceholder": "Poslat zprávu...",

@@ -3,6 +3,11 @@ export default {
   "name": "Ελληνικά (Greek)",
   "isRTL": false,
   "labels": {
+    "uiPreparing": "Προετοιμασία διεπαφής…",
+    "uiUnavailable": "Δεν είναι δυνατή η εμφάνιση της διεπαφής. Δοκιμάστε ξανά.",
+    "uiInterrupted": "Η απάντηση διακόπηκε. Δοκιμάστε ξανά.",
+    "uiRegion": "Δημιουργημένη διεπαφή",
+
     "stopResponse": "Διακοπή απάντησης",
     "poweredBy": "Παρέχεται από",
     "inputPlaceholder": "Στείλτε ένα μήνυμα...",
