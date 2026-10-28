@@ -19,11 +19,21 @@ class OpenUIErrorBoundary extends React.Component {
 }
 
 function ThemeSurface({ children, isStreaming }) {
-  const { theme } = useTheme()
+  const { theme, portalThemeClassName } = useTheme()
   const {labels} = useConfig()
   const ref = useRef(null)
   const labelPrefix = React.useId().replace(/:/g, "")
   const variables = Object.fromEntries(Object.entries(theme).filter(([, value]) => typeof value === 'string').map(([key, value]) => ['--openui-' + key.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/([A-Z])([A-Z])/g, '$1-$2').replace(/([a-z])(\d)/g, '$1-$2').toLowerCase(), value]))
+  useLayoutEffect(() => {
+    // OpenUI portals escape the widget's Shadow DOM and stacking context.
+    // Scope the document-level override to this provider's tooltip elements.
+    const style = document.createElement('style')
+    style.dataset.docsbotOpenuiTooltips = ''
+    const scope = '.' + CSS.escape(portalThemeClassName)
+    style.textContent = `${scope}:is(.openui-portal-tooltip, .openui-tooltip-content, .openui-citation-tooltip) { z-index: 1000000; }`
+    document.head.appendChild(style)
+    return () => style.remove()
+  }, [portalThemeClassName])
   useLayoutEffect(() => {
     const root = ref.current?.getRootNode()
     for (const target of [root, document.head]) {

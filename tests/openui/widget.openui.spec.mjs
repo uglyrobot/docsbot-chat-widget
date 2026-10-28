@@ -298,6 +298,31 @@ for (const [name, chart] of [
   });
 }
 
+for (const mode of ['light', 'dark']) {
+  test(`floating chart tooltip paints above the widget in ${mode} mode`, async ({ page }) => {
+    await installFixture(page);
+    await page.goto(`/__openui-fixture?floating=1&theme=${mode}`);
+    await page.getByRole('button', { name: 'Help', exact: true }).click();
+    await ask(page);
+    await finish(page, payload('root = Stack([card])\ncard = Card([graph])\ngraph = BarChart(["Jan", "Feb", "Mar"], [Series("Resolved", [20, 35, 42])], "grouped")'));
+    const chart = page.locator('[data-openui-chart]');
+    await expect(chart).toBeVisible();
+    await chart.hover({ position: { x: 150, y: 100 } });
+    const tooltip = page.locator('body > .openui-portal-tooltip');
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toContainText('Resolved');
+    // Tooltips disable pointer events. Enable them only for this paint-order
+    // probe so hit testing can detect an overlay hidden behind the widget.
+    await expect.poll(() => tooltip.evaluate(el => {
+      const bounds = el.getBoundingClientRect();
+      el.style.pointerEvents = 'auto';
+      const top = document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+      el.style.pointerEvents = '';
+      return el === top || el.contains(top);
+    })).toBe(true);
+  });
+}
+
 const formProgram = [
   'root = Stack([card])',
   'card = Card([CardHeader("Demo preferences", "Synthetic form values stay in the intercepted chat"), form])',
