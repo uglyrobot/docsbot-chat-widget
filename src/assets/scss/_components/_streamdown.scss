@@ -47,6 +47,14 @@
 	padding-inline-start: 1.5em;
 }
 
+.docsbot-streamdown [data-streamdown='ordered-list'] {
+	padding-inline-start: var(--docsbot-list-gutter, calc(2ch + 0.75em));
+
+	> [data-streamdown='list-item']::marker {
+		font-variant-numeric: tabular-nums;
+	}
+}
+
 .docsbot-streamdown [data-streamdown='list-item'] {
 	min-width: 0;
 
