@@ -3,6 +3,10 @@ export default {
   "name": "Română (Romanian)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Solicitarea dvs. a fost trimisă către asistență.",
+    "waitingForAgent": "Se așteaptă un agent de asistență…",
+    "helpdeskError": "Nu s-a putut contacta asistența. Încercați din nou.",
+
     "uiPreparing": "Se pregătește interfața…",
     "uiUnavailable": "Interfața nu poate fi afișată. Încercați din nou.",
     "uiInterrupted": "Răspuns întrerupt. Încercați din nou.",

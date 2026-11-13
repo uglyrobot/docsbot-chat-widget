@@ -3,6 +3,10 @@ export default {
   "name": "Nederlands (Dutch)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Je verzoek is naar de klantenservice gestuurd.",
+    "waitingForAgent": "Wachten op een supportmedewerker…",
+    "helpdeskError": "De klantenservice is niet bereikbaar. Probeer het opnieuw.",
+
     "uiPreparing": "Interface voorbereiden…",
     "uiUnavailable": "Interface kan niet worden weergegeven. Probeer opnieuw.",
     "uiInterrupted": "Antwoord onderbroken. Probeer opnieuw.",

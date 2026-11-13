@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from "react";
+import helpdeskStyles from "!raw-loader!../../assets/helpdesk/helpdesk.css";
 import ReactShadowRoot from "react-shadow-root";
 import { FloatingButton } from "../floatingButton/FloatingButton";
 import { config as fontAwesomeConfig } from "@fortawesome/fontawesome-svg-core";
@@ -87,6 +88,7 @@ function App() {
         <style type="text/css">{floatingButtonStyles}</style>
         <style type="text/css">{optionsStyles}</style>
         <style type="text/css">{linkListStyles}</style>
+        <style type="text/css">{helpdeskStyles}</style>
         {customCSS ? <style type="text/css">{customCSS}</style> : null}
 
         <FloatingButton

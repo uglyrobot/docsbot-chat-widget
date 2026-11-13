@@ -3,6 +3,10 @@ export default {
   "name": "हिन्दी (Hindi)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "आपका अनुरोध सहायता टीम को भेज दिया गया है।",
+    "waitingForAgent": "सहायता एजेंट की प्रतीक्षा की जा रही है…",
+    "helpdeskError": "सहायता टीम से संपर्क नहीं हो सका। कृपया फिर प्रयास करें।",
+
     "uiPreparing": "इंटरफ़ेस तैयार हो रहा है…",
     "uiUnavailable": "इंटरफ़ेस नहीं दिखाया जा सका। फिर कोशिश करें।",
     "uiInterrupted": "जवाब बाधित हुआ। फिर कोशिश करें।",

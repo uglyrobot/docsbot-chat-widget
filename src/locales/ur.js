@@ -3,6 +3,10 @@ export default {
   "name": "اردو (Urdu)",
   "isRTL": true,
   "labels": {
+    "ticketSubmitted": "آپ کی درخواست سپورٹ کو بھیج دی گئی ہے۔",
+    "waitingForAgent": "سپورٹ ایجنٹ کا انتظار ہے…",
+    "helpdeskError": "سپورٹ سے رابطہ نہیں ہو سکا۔ براہ کرم دوبارہ کوشش کریں۔",
+
     "uiPreparing": "انٹرفیس تیار ہو رہا ہے…",
     "uiUnavailable": "انٹرفیس دکھایا نہیں جا سکا۔ دوبارہ کوشش کریں۔",
     "uiInterrupted": "جواب منقطع ہوگیا۔ دوبارہ کوشش کریں۔",

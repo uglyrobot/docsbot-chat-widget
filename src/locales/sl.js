@@ -3,6 +3,10 @@ export default {
   "name": "Slovenščina (Slovenian)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Vaša zahteva je bila poslana podpori.",
+    "waitingForAgent": "Čakanje na sodelavca podpore…",
+    "helpdeskError": "Podpore ni bilo mogoče doseči. Poskusite znova.",
+
     "uiPreparing": "Priprava vmesnika…",
     "uiUnavailable": "Vmesnika ni mogoče prikazati. Poskusite znova.",
     "uiInterrupted": "Odgovor je prekinjen. Poskusite znova.",

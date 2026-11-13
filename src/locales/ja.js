@@ -3,6 +3,10 @@ export default {
   "name": "日本語 (Japanese)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "お問い合わせをサポートに送信しました。",
+    "waitingForAgent": "サポート担当者を待っています…",
+    "helpdeskError": "サポートに接続できませんでした。もう一度お試しください。",
+
     "uiPreparing": "インターフェースを準備中…",
     "uiUnavailable": "インターフェースを表示できません。もう一度お試しください。",
     "uiInterrupted": "応答が中断されました。もう一度お試しください。",

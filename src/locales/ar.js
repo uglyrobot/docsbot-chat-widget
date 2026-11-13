@@ -3,6 +3,10 @@ export default {
   "name": "العربية (Arabic)",
   "isRTL": true,
   "labels": {
+    "ticketSubmitted": "تم إرسال طلبك إلى الدعم.",
+    "waitingForAgent": "في انتظار أحد موظفي الدعم…",
+    "helpdeskError": "تعذر الاتصال بالدعم. يرجى المحاولة مرة أخرى.",
+
     "uiPreparing": "جارٍ إعداد الواجهة…",
     "uiUnavailable": "تعذر عرض الواجهة. حاول مجددًا.",
     "uiInterrupted": "انقطع الرد. حاول مجددًا.",

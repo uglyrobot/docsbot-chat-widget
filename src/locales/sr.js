@@ -3,6 +3,10 @@ export default {
   "name": "Српски (Serbian)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Ваш захтев је послат подршци.",
+    "waitingForAgent": "Чекање агента подршке…",
+    "helpdeskError": "Није могуће контактирати подршку. Покушајте поново.",
+
     "uiPreparing": "Припрема интерфејса…",
     "uiUnavailable": "Интерфејс се не може приказати. Покушајте поново.",
     "uiInterrupted": "Одговор је прекинут. Покушајте поново.",
