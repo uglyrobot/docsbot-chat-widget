@@ -3,6 +3,10 @@ export default {
   "name": "فارسی (Persian)",
   "isRTL": true,
   "labels": {
+    "ticketSubmitted": "درخواست شما به پشتیبانی ارسال شد.",
+    "waitingForAgent": "در انتظار کارشناس پشتیبانی…",
+    "helpdeskError": "ارتباط با پشتیبانی برقرار نشد. دوباره تلاش کنید.",
+
     "uiPreparing": "در حال آماده‌سازی رابط…",
     "uiUnavailable": "نمایش رابط ممکن نیست. دوباره تلاش کنید.",
     "uiInterrupted": "پاسخ قطع شد. دوباره تلاش کنید.",

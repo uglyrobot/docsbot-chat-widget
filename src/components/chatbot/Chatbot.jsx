@@ -1,3 +1,5 @@
+import { startHelpdeskRealtime } from '../../utils/helpdeskRealtime.mjs';
+import { helpdeskStorageKey, readHelpdeskSession, isLiveHelpdesk, publicHelpdeskMessages, publicHelpdeskAttachments, safeHelpdeskFilename } from '../../utils/helpdeskSession.mjs';
 import { decodeAnswerDelta } from '../../utils/answerDelta.mjs';
 import { preloadOpenUIRenderer } from '../generativeUi/OpenUIResponse';
 import { observeMessageViewport } from '../../utils/observeMessageViewport.mjs';
@@ -235,6 +237,28 @@ const LeadCollectBlock = ({ message, children }) => {
 	return children(ready);
 };
 
+const HelpdeskIcon = ({ kind }) => (
+	<svg className="docsbot-helpdesk-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+		{kind === 'file' ? <><path d="M6.5 3.5h7l4 4v13h-11z"/><path d="M13.5 3.5v4h4M9 12h6M9 15.5h6"/></> : kind === 'waiting' ? <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></> : kind === 'error' ? <><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.5h.01"/></> : <><circle cx="12" cy="12" r="9"/><path d="M8 12.2l2.6 2.6 5.4-5.5"/></>}
+	</svg>
+);
+
+const HelpdeskAttachments = ({ files, conversationId, onDownload, labels }) => {
+	const [busyId, setBusyId] = useState(null);
+	const [failed, setFailed] = useState(false);
+	if (!Array.isArray(files) || files.length === 0) return null;
+	return <div className="docsbot-helpdesk-files">
+		{files.map((file) => <button type="button" className="docsbot-helpdesk-file" key={file.id} disabled={busyId !== null}
+			aria-busy={busyId === file.id} onClick={async () => {
+				setBusyId(file.id);
+				try { await onDownload(file, conversationId); setFailed(false); }
+				catch { setFailed(true); }
+				finally { setBusyId(null); }
+			}}><span className="docsbot-helpdesk-file-icon"><HelpdeskIcon kind="file" /></span><span className="docsbot-helpdesk-file-name" dir="auto">{safeHelpdeskFilename(file.name)}</span><svg className="docsbot-helpdesk-download-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M12 4v10m-4-4 4 4 4-4M5 17v3h14v-3" /></svg></button>)}
+		{failed && <div className="docsbot-helpdesk-inline-error" role="alert"><HelpdeskIcon kind="error" /><span>{labels.helpdeskError}</span></div>}
+	</div>;
+};
+
 export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const [chatInput, setChatInput] = useState('');
 	const [selectedImages, setSelectedImages] = useState([]);
@@ -266,6 +290,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		reasoningEffort, // Optional reasoning_effort override
 		useFeedback, // If feedback collection is enabled
 		useEscalation, // If escalation collection is enabled
+		helpdesk,
 		useImageUpload, // If image upload is enabled
 		useAudioUpload, // If audio message recording is enabled
 		useVoiceAgent, // Server-gated browser Realtime voice calling
@@ -310,6 +335,22 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const mediaMatch = window.matchMedia('(min-width: 480px)');
 	const messagesRefs = useRef({});
 	const [isFetching, setIsFetching] = useState(false);
+	const [helpdeskTicket, setHelpdeskTicket] = useState(null);
+	const [helpdeskSession, setHelpdeskSession] = useState(null);
+	const [helpdeskError, setHelpdeskError] = useState(false);
+	const [helpdeskAgentReplied, setHelpdeskAgentReplied] = useState(false);
+	const helpdeskSessionRef = useRef(null);
+	const helpdeskInitRef = useRef(null);
+	const helpdeskGenerationRef = useRef(0);
+	const helpdeskRetryRef = useRef(null);
+	const helpdeskTurnRef = useRef(null);
+	const helpdeskRealtimeStopRef = useRef(null);
+	const helpdeskSnapshotSequenceRef = useRef(0);
+	const helpdeskLatestSnapshotRef = useRef(null);
+	const [helpdeskSessionInvalid, setHelpdeskSessionInvalid] = useState(false);
+	const helpdeskEnabled = isAgent && helpdesk?.enabled === true;
+	const helpdeskKey = helpdeskStorageKey(teamId, botId);
+	const helpdeskActive = helpdeskEnabled || Boolean(readHelpdeskSession(localStorage, helpdeskKey, localStorage.getItem(`DocsBot_${botId}_conversationId`))) || Boolean(localStorage.getItem(`DocsBot_${botId}_conversationId`)?.startsWith('hd_'));
 	const [isAtBottom, setIsAtBottom] = useState(true);
 	const [pendingTopScrollMessageId, setPendingTopScrollMessageId] =
 		useState(null);
@@ -461,7 +502,8 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		typeof navigator !== 'undefined' &&
 		Boolean(navigator.mediaDevices?.getUserMedia) &&
 		typeof window.MediaRecorder !== 'undefined';
-	const isVoiceAgentCallAvailable = useVoiceAgent === true;
+	const hasProtectedVoiceConversation = () => Boolean(helpdeskSessionRef.current || localStorage.getItem(`DocsBot_${botId}_conversationId`)?.startsWith('hd_'));
+	const isVoiceAgentCallAvailable = useVoiceAgent === true && !hasProtectedVoiceConversation();
 	const showAudioRecordButton =
 		isAudioUploadEnabled && !isRecordingAudio && chatInput === '';
 	// Voice start control lives in the send slot (orb). Swap to send as soon
@@ -1120,7 +1162,9 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	};
 
 	const captureLead = async (metadata, fields) => {
-		const conversationId = getConversationId();
+		let session;
+		try { session = helpdeskActive && pendingLeadCapture?.type !== 'before_voice_call' ? await ensureHelpdeskSession() : null; } catch { return; }
+		const conversationId = session?.conversationId || getConversationId();
 		const apiBase = apiBaseUrl;
 		const apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${conversationId}/lead`;
 
@@ -1130,6 +1174,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				headers: {
 					'Content-Type': 'application/json',
 					accept: 'application/json',
+					...(session?.token && { 'X-Helpdesk-Token': session.token }),
 					...(signature && {
 						Authorization: `Bearer ${signature}`
 					})
@@ -1158,6 +1203,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
 	const updateConversationMetadata = async (metadata) => {
 		const conversationId = getConversationId();
+		const session = readHelpdeskSession(localStorage, helpdeskKey, conversationId);
 		const apiBase = apiBaseUrl;
 		const apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/conversations/${conversationId}`;
 		console.log('Updating Conversation Metadata:', {
@@ -1172,6 +1218,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				headers: {
 					'Content-Type': 'application/json',
 					accept: 'application/json',
+					...(session?.token && { 'X-Helpdesk-Token': session.token }),
 					...(signature && {
 						Authorization: `Bearer ${signature}`
 					})
@@ -1260,6 +1307,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
 	const triggerSupportEscalationFromLead = async (event, metadata) => {
 		const history = pendingLeadCapture?.history || state.chatHistory || [];
+		const session = readHelpdeskSession(localStorage, helpdeskKey, getConversationId());
 		let shouldOpenLink = true;
 		const hasSupportLink = Boolean(supportLink && supportLink !== '#');
 		const supportWindow =
@@ -1311,6 +1359,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 									headers: {
 										'Content-Type': 'application/json',
 										accept: 'application/json',
+										...(session?.token && { 'X-Helpdesk-Token': session.token }),
 										...(signature && {
 											Authorization: `Bearer ${signature}`
 										})
@@ -1351,6 +1400,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			headers: {
 				'Content-Type': 'application/json',
 				accept: 'application/json',
+				...(session?.token && { 'X-Helpdesk-Token': session.token }),
 				...(signature && {
 					Authorization: `Bearer ${signature}`
 				})
@@ -1440,6 +1490,147 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			return false;
 		}
 	};
+
+	const helpdeskHeaders = (session) => ({
+		'Content-Type': 'application/json',
+		accept: 'application/json',
+		...(signature && { Authorization: `Bearer ${signature}` }),
+		...(session?.token && { 'X-Helpdesk-Token': session.token })
+	});
+	const helpdeskUrl = (session) => `${apiBaseUrl}/teams/${teamId}/bots/${botId}/conversations/${encodeURIComponent(session.conversationId)}/helpdesk`;
+	const getHelpdeskSession = () => readHelpdeskSession(localStorage, helpdeskKey, localStorage.getItem(conversationIdStorageKey));
+	const ensureHelpdeskSession = async () => {
+		const existing = getHelpdeskSession();
+		if (existing) { helpdeskSessionRef.current = existing; return existing; }
+		if (!helpdeskEnabled && !localStorage.getItem(conversationIdStorageKey)?.startsWith('hd_')) return null;
+		// Existing histories have no capability and cannot be claimed. They remain
+		// on the legacy path until the visitor resets the conversation.
+		let oldHistory = [];
+		try { oldHistory = JSON.parse(localStorage.getItem(`DocsBot_${botId}_localChatHistory`) || '[]'); } catch {}
+		const storedConversationId = localStorage.getItem(conversationIdStorageKey);
+		if (storedConversationId?.startsWith('hd_')) { setHelpdeskSessionInvalid(true); throw new Error('Helpdesk capability unavailable'); }
+		if (oldHistory?.length || chatHistoryRef.current?.length) return null;
+		if (helpdeskInitRef.current) return helpdeskInitRef.current;
+		const generation = helpdeskGenerationRef.current;
+		const promise = (async () => {
+			const response = await fetch(`${apiBaseUrl}/teams/${teamId}/bots/${botId}/helpdesk/sessions`, { method: 'POST', headers: helpdeskHeaders() });
+			if (!response.ok) throw new Error('Helpdesk session failed');
+			const session = await response.json();
+			if (!session?.conversationId || !session?.token || generation !== helpdeskGenerationRef.current) throw new Error('Invalid helpdesk session');
+			localStorage.setItem(helpdeskKey, JSON.stringify(session));
+			persistConversationId(session.conversationId);
+			helpdeskSessionRef.current = session;
+			setHelpdeskSession(session);
+			return session;
+		})();
+		helpdeskInitRef.current = promise;
+		try { return await promise; } finally { if (helpdeskInitRef.current === promise) helpdeskInitRef.current = null; }
+	};
+	const interruptHelpdeskTurn = () => {
+		const turn = helpdeskTurnRef.current;
+		if (!turn || activeRequestIdRef.current !== turn.requestId) return;
+		helpdeskTurnRef.current = null;
+		activeRequestIdRef.current = null;
+		streamControllerRef.current?.abort?.();
+		streamControllerRef.current = null;
+		setStreamController(null);
+		dispatch({ type: 'remove_message', payload: { id: turn.answerId } });
+		if (turn.userMessageId) {
+			dispatch({ type: 'remove_message', payload: { id: turn.userMessageId } });
+			helpdeskRetryRef.current = { text: turn.question, id: turn.userMessageId };
+			setChatInput(turn.question);
+		}
+		setIsFetching(false);
+	};
+	const checkHelpdeskResponse = (response) => {
+		if ([401, 403, 404].includes(response.status)) setHelpdeskSessionInvalid(true);
+		if (!response.ok) throw new Error('Helpdesk request failed');
+	};
+	const applyHelpdeskState = (data, session) => {
+		if (getHelpdeskSession()?.conversationId !== session.conversationId) return;
+		setHelpdeskTicket(data.ticket || null);
+		if (isLiveHelpdesk(data.ticket)) interruptHelpdeskTurn();
+		const replies = publicHelpdeskMessages(data.messages);
+		setHelpdeskAgentReplied(replies.length > 0);
+		for (const message of replies) {
+			const id = `helpdesk_${message.id}`;
+			if (stateMessagesRef.current?.[id]) continue;
+			dispatch({ type: 'add_message', payload: { id, variant: 'chatbot', type: 'helpdesk_reply', conversationId: session.conversationId, message: message.text && message.authorName ? `${message.authorName}: ${message.text}` : message.text, helpdeskAttachments: publicHelpdeskAttachments(message), timestamp: Date.parse(message.createdAt) || Date.now(), loading: false } });
+		}
+	};
+	const downloadHelpdeskAttachment = async (file, conversationId) => {
+		const session = getHelpdeskSession();
+		if (!session || session.conversationId !== conversationId) throw new Error('Helpdesk session unavailable');
+		const response = await fetch(`${helpdeskUrl(session)}/attachments/${encodeURIComponent(file.id)}`, {
+			headers: { ...helpdeskHeaders(session), 'Cache-Control': 'no-store' }, cache: 'no-store'
+		});
+		checkHelpdeskResponse(response);
+		const blob = await response.blob();
+		const current = getHelpdeskSession();
+		if (!current || current.conversationId !== conversationId || current.token !== session.token) throw new Error('Helpdesk session changed');
+		// Force an inert download even if the server supplied an active MIME type.
+		const url = URL.createObjectURL(new Blob([blob], { type: 'application/octet-stream' }));
+		const anchor = document.createElement('a');
+		anchor.href = url;
+		anchor.download = safeHelpdeskFilename(file.name);
+		document.body.appendChild(anchor);
+		try { anchor.click(); } finally { anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+	};
+	const refreshHelpdesk = async (session, options = {}) => {
+		const sequence = ++helpdeskSnapshotSequenceRef.current;
+		const response = await fetch(helpdeskUrl(session), { headers: { ...helpdeskHeaders(session), 'Cache-Control': 'no-store' }, cache: 'no-store', signal: options.signal });
+		if (options.isCurrent && !options.isCurrent()) return null;
+		checkHelpdeskResponse(response);
+		const data = await response.json();
+		if (options.isCurrent && !options.isCurrent()) return null;
+		const current = getHelpdeskSession();
+		if (current?.conversationId !== session.conversationId || current?.token !== session.token) return null;
+		const latest = helpdeskLatestSnapshotRef.current;
+		if (latest?.conversationId === session.conversationId && latest.sequence > sequence) return latest.data;
+		helpdeskLatestSnapshotRef.current = { conversationId: session.conversationId, sequence, data };
+		applyHelpdeskState(data, session);
+		setHelpdeskError(false);
+		return data;
+	};
+	const startNativeHelpdesk = async () => {
+		const session = getHelpdeskSession();
+		if (!session) throw new Error('Helpdesk session unavailable');
+		const response = await fetch(helpdeskUrl(session), { method: 'POST', headers: helpdeskHeaders(session), body: JSON.stringify({ mode: helpdesk.mode }) });
+		checkHelpdeskResponse(response);
+		const data = await response.json();
+		const current = getHelpdeskSession();
+		if (current?.conversationId !== session.conversationId || current?.token !== session.token) return;
+		helpdeskLatestSnapshotRef.current = { conversationId: session.conversationId, sequence: ++helpdeskSnapshotSequenceRef.current, data };
+		applyHelpdeskState(data, session);
+		setHelpdeskError(false);
+	};
+	useEffect(() => {
+		if (!helpdeskActive) return;
+		const session = getHelpdeskSession();
+		if (!session) return;
+		const generation = helpdeskGenerationRef.current;
+		const isCurrent = () => {
+			const current = getHelpdeskSession();
+			return generation === helpdeskGenerationRef.current && current?.conversationId === session.conversationId && current?.token === session.token;
+		};
+		const stop = startHelpdeskRealtime({
+			isCurrent,
+			refresh: options => refreshHelpdesk(session, options),
+			onError: () => { if (isCurrent()) setHelpdeskError(true); },
+			getGrant: async ({ signal }) => {
+				const response = await fetch(`${helpdeskUrl(session)}/realtime`, {
+					method: 'POST', headers: helpdeskHeaders(session), cache: 'no-store', signal
+				});
+				if (!response.ok) throw new Error('Realtime unavailable');
+				return response.json();
+			}
+		});
+		helpdeskRealtimeStopRef.current = stop;
+		return () => {
+			stop();
+			if (helpdeskRealtimeStopRef.current === stop) helpdeskRealtimeStopRef.current = null;
+		};
+	}, [helpdeskActive, teamId, botId, helpdeskSession?.conversationId]);
 
 	const createConversationId = () => {
 		const conversationId = uuidv4();
@@ -1763,7 +1954,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 	const pendingVoiceAfterLeadRef = useRef(false);
 
 	const startVoiceCall = () => {
-		if (!isVoiceAgentCallAvailable || isFetching || isLeadFormVisible) {
+		if (!isVoiceAgentCallAvailable || hasProtectedVoiceConversation() || isFetching || isLeadFormVisible) {
 			return false;
 		}
 		if (isVoiceCallView || voiceStartRequestedRef.current) {
@@ -2151,6 +2342,20 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		localStorage.removeItem(`DocsBot_${botId}_chatHistory`);
 		localStorage.removeItem(`DocsBot_${botId}_localChatHistory`);
 		clearPiiRedactionSession();
+		helpdeskGenerationRef.current += 1;
+		helpdeskRealtimeStopRef.current?.();
+		helpdeskRealtimeStopRef.current = null;
+		helpdeskLatestSnapshotRef.current = null;
+		helpdeskInitRef.current = null;
+		helpdeskSessionRef.current = null;
+		helpdeskRetryRef.current = null;
+		helpdeskTurnRef.current = null;
+		setHelpdeskSessionInvalid(false);
+		setHelpdeskTicket(null);
+		setHelpdeskSession(null);
+		setHelpdeskAgentReplied(false);
+		setHelpdeskError(false);
+		localStorage.removeItem(helpdeskKey);
 		conversationIdRef.current = null;
 		localStorage.removeItem(conversationIdStorageKey);
 		createConversationId();
@@ -2400,6 +2605,38 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		}
 
         if (options.generatedUiAction) dispatch({type:'add_message',payload:{id:uuidv4(),variant:'user',message:question,timestamp:Date.now(),loading:false}});
+		let helpdeskSession = null;
+		const helpdeskGeneration = helpdeskGenerationRef.current;
+		if (helpdeskActive) {
+			setIsFetching(true);
+			try {
+				helpdeskSession = await ensureHelpdeskSession();
+				if (helpdeskGeneration !== helpdeskGenerationRef.current) return false;
+				if (helpdeskSession) {
+					const current = await refreshHelpdesk(helpdeskSession);
+					if (helpdeskGeneration !== helpdeskGenerationRef.current) return false;
+					if (isLiveHelpdesk(current.ticket)) {
+						if (image_urls.length || options.audio) throw new Error('Live support accepts text only');
+						const clientMessageId = options.userMessageId || uuidv4();
+						const response = await fetch(`${helpdeskUrl(helpdeskSession)}/messages`, { method: 'POST', headers: helpdeskHeaders(helpdeskSession), body: JSON.stringify({ text: await protectTextForRequest(question), clientMessageId }) });
+						checkHelpdeskResponse(response);
+						helpdeskRetryRef.current = null;
+						setIsFetching(false);
+						return true;
+					}
+				}
+			} catch (error) {
+				if (helpdeskGeneration !== helpdeskGenerationRef.current) return false;
+				setHelpdeskError(true);
+				if (options.userMessageId) {
+					helpdeskRetryRef.current = { text: question, id: options.userMessageId };
+					dispatch({ type: 'remove_message', payload: { id: options.userMessageId } });
+					setChatInput(question);
+				}
+				setIsFetching(false);
+				return false;
+			}
+		}
 		const id = uuidv4();
 		const audio = typeof options.audio === 'string' ? options.audio : null;
 		const audioUserMessageId = options.audioUserMessageId || null;
@@ -2414,6 +2651,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		setStreamController(abortController);
 		streamControllerRef.current = abortController;
 		const requestConversationId = isAgent ? getConversationId() : null;
+		if (helpdeskSession) helpdeskTurnRef.current = { requestId, answerId: id, userMessageId: options.userMessageId, question };
 		const isCurrentRequest = () =>
 			activeRequestIdRef.current === requestId &&
 			!abortController.signal.aborted;
@@ -2461,7 +2699,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				stream: true,
 				...(audio ? { audio } : { question: safeQuestion }),
 				format: 'markdown',
-				human_escalation: useEscalation ? true : false,
+				human_escalation: useEscalation || helpdeskEnabled ? true : false,
 				followup_rating: useFeedback ? true : false,
 				document_retriever: true,
 				calendly: isCalendlyEnabled,
@@ -2471,6 +2709,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 				metadata,
 				testing: Boolean(testing),
 				conversationId: requestConversationId,
+				...(helpdeskSession && { helpdesk_token: helpdeskSession.token }),
 				context_items: contextItems || 6,
 				autocut: 2,
 				default_language: browserRequestLanguageTag,
@@ -2494,6 +2733,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			try {
 				//console.log(sse_req);
 				const apiUrl = `${apiBaseUrl}/teams/${teamId}/bots/${botId}/chat-agent`;
+				let helpdeskPausedConflict = false;
 				await fetchEventSource(apiUrl, {
 					signal: abortController.signal,
 					// Default false aborts SSE on tab blur and POSTs again on focus — skip that.
@@ -2501,6 +2741,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 					headers: {
 						'Content-Type': 'application/json',
 						accept: 'application/json',
+						...(helpdeskSession && { 'X-Helpdesk-Token': helpdeskSession.token }),
 						// Set Authorization header if signature is provided
 						...(signature && {
 							Authorization: `Bearer ${signature}`
@@ -2516,6 +2757,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							response.status >= 400 &&
 							response.status < 500
 						) {
+							if (response.status === 409 && helpdeskSession) helpdeskPausedConflict = true;
 							// All client-side errors (including 429) are not retriable
 							let errorMessage = `HTTP error ${response.status}`;
 
@@ -2545,6 +2787,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 							// Create error with status code
 							const error = new FatalError(errorMessage);
 							error.status = response.status;
+							error.helpdeskPausedConflict = helpdeskPausedConflict;
 							throw error;
 						} else {
 							// Server errors or network issues should be retried
@@ -2563,6 +2806,14 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 
 						// If server sends an error event, handle accordingly
 						if (data.event === 'error') {
+							let errorCode;
+							try { errorCode = JSON.parse(data.data)?.code; } catch {}
+							if (helpdeskSession && errorCode === 'HELPDESK_AI_PAUSED') {
+								interruptHelpdeskTurn();
+								try { await refreshHelpdesk(helpdeskSession); } catch { setHelpdeskError(true); }
+								return;
+							}
+							helpdeskTurnRef.current = null;
 							const errorMessage =
 								data.data ||
 								'Sorry, something went wrong. Please try again.';
@@ -2826,6 +3077,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 										{ detail: finalData }
 									)
 								);
+								helpdeskTurnRef.current = null;
 								setIsFetching(false);
 							} else {
 								console.warn(
@@ -2868,6 +3120,17 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 					return;
 				}
 
+				if (helpdeskSession && error?.status === 409 && options.userMessageId) {
+					dispatch({ type: 'remove_message', payload: { id } });
+					dispatch({ type: 'remove_message', payload: { id: options.userMessageId } });
+					helpdeskRetryRef.current = { text: question, id: options.userMessageId };
+					setChatInput(question);
+					helpdeskTurnRef.current = null;
+					setIsFetching(false);
+					try { await refreshHelpdesk(helpdeskSession); } catch { setHelpdeskError(true); }
+					return false;
+				}
+				helpdeskTurnRef.current = null;
 				console.error('DOCSBOT: Failed to fetch answer:', error);
 
 				let errorMessage = 'Unknown error. Please try again later.';
@@ -3105,7 +3368,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 			useImageUpload && selectedImages.length > 0
 				? selectedImages.map((img) => img.thumbnailUrl)
 				: undefined;
-		const userMessageId = uuidv4();
+		const userMessageId = helpdeskRetryRef.current?.text === chatInput ? helpdeskRetryRef.current.id : uuidv4();
 
 		dispatch({
 			type: 'add_message',
@@ -3120,7 +3383,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 		});
 
 		// Add full-size image_urls to the API request if image upload is enabled
-		fetchAnswer(chatInput, useImageUpload ? imageUrls : []);
+		fetchAnswer(chatInput, useImageUpload ? imageUrls : [], { userMessageId });
 
 		// Clear the input and images after sending
 		setChatInput('');
@@ -3694,6 +3957,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 													}
 													chatContainerRef={ref}
 													fetchAnswer={fetchAnswer}
+                                                    onNativeEscalate={helpdeskEnabled && getHelpdeskSession() ? startNativeHelpdesk : null}
                                                 onSendGeneratedUiMessage={sendGeneratedUiMessage}
                                                 uiActionsPending={isFetching || isLeadFormVisible || isLeadCaptureLocked}
 													inputRef={inputRef}
@@ -3758,6 +4022,7 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 													}
 												/>
 											)}
+											<HelpdeskAttachments files={message.helpdeskAttachments} conversationId={message.conversationId} onDownload={downloadHelpdeskAttachment} labels={labels} />
 											{message?.options ? (
 												<Options
 													key={key + 'opts'}
@@ -3939,6 +4204,10 @@ export const Chatbot = ({ isOpen, setIsOpen, isEmbeddedBox, chatPanelId }) => {
 														</button>
 													)}
 											</div>
+										)}
+										{helpdeskError && <div className="docsbot-helpdesk-notice is-error" role="alert"><span className="docsbot-helpdesk-notice-icon"><HelpdeskIcon kind="error" /></span><div className="docsbot-helpdesk-notice-content"><span>{labels.helpdeskError}</span>{helpdeskSessionInvalid && <button className="docsbot-helpdesk-reset" type="button" onClick={refreshChatHistory}>{labels.resetChat}</button>}</div></div>}
+										{isLiveHelpdesk(helpdeskTicket) && (helpdeskTicket.mode === 'ticket' || !helpdeskAgentReplied) && (
+											<div className="docsbot-helpdesk-notice" role="status"><span className="docsbot-helpdesk-notice-icon"><HelpdeskIcon kind={helpdeskTicket.mode === 'ticket' ? 'success' : 'waiting'} /></span><span>{helpdeskTicket.mode === 'ticket' ? labels.ticketSubmitted : labels.waitingForAgent}</span></div>
 										)}
 										<form
 											className={`docsbot-chat-input-form ${hasDisabledSubmit && !isFetching ? 'has-disabled-submit' : ''} ${isRecordingAudio ? 'is-recording-audio' : ''}`}

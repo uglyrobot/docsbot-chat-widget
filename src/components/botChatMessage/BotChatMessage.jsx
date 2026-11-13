@@ -1,3 +1,5 @@
+import { revealWidgetControl } from '../../utils/revealWidgetControl.mjs';
+import { helpdeskStorageKey, readHelpdeskSession } from '../../utils/helpdeskSession.mjs';
 import {AssistantResponseFrame,AssistantTextBubble} from '../generativeUi/AssistantResponseFrame';
 import MixedAnswer from '../generativeUi/MixedAnswer';
 import {plainMixedAnswer,hasMixedUi} from '../../utils/mixedAnswer.mjs';
@@ -300,7 +302,8 @@ export const BotChatMessage = ({
 	isCalendlyScriptReady,
 	isTidyCalScriptReady,
 	onEndVoiceCall,
-	onSendVoiceUserText
+	onSendVoiceUserText,
+	onNativeEscalate
 }) => {
 	const [rating, setRating] = useState(payload.rating || 0);
 	const [ratingSubmitted, setRatingSubmitted] = useState(false);
@@ -337,6 +340,14 @@ export const BotChatMessage = ({
 	}
 	const contentRef = useRef(null);
 	const [isSupportLoading, setIsSupportLoading] = useState(false);
+	const [supportError, setSupportError] = useState(false);
+	const [supportResolved, setSupportResolved] = useState(false);
+	const supportControlsRef = useRef(null);
+	useEffect(() => {
+		if (payload.type !== 'support_escalation' || !payload.isLast || supportResolved) return;
+		const frame = requestAnimationFrame(() => revealWidgetControl(chatContainerRef?.current, supportControlsRef.current));
+		return () => cancelAnimationFrame(frame);
+	}, [payload.type, payload.isLast, supportError, supportResolved, chatContainerRef]);
 	const [isCopied, setIsCopied] = useState(false);
 	const [lightboxImage, setLightboxImage] = useState(null);
 	const [lightboxTrigger, setLightboxTrigger] = useState(null);
@@ -529,6 +540,18 @@ export const BotChatMessage = ({
 
 	const runSupportCallback = async (e, history, metadataOverride) => {
 		setIsSupportLoading(true);
+		if (onNativeEscalate) {
+			try {
+				await onNativeEscalate();
+				setSupportError(false);
+				setSupportResolved(true);
+			} catch {
+				setSupportError(true);
+			} finally {
+				setIsSupportLoading(false);
+			}
+			return;
+		}
 
 		// Prevent default to ensure we complete the request before navigation, not really needed as they are not links anymore
 		if (e && e.preventDefault) {
@@ -540,6 +563,8 @@ export const BotChatMessage = ({
 			? `http://127.0.0.1:9000`
 			: `https://api.docsbot.ai`;
 
+		const session = readHelpdeskSession(localStorage, helpdeskStorageKey(teamId, botId), payload.conversationId);
+		const conversationHeaders = { ...headers, ...(session?.token && { 'X-Helpdesk-Token': session.token }) };
 		let apiUrl;
 		if (payload.answerId) {
 			apiUrl = `${apiBase}/teams/${teamId}/bots/${botId}/support/${payload.answerId}`;
@@ -573,7 +598,7 @@ export const BotChatMessage = ({
 			// Make the API call
 			await fetch(apiUrl, {
 				method: 'PUT',
-				headers
+				headers: payload.answerId ? headers : conversationHeaders
 			});
 
 			// run callback if provided
@@ -613,7 +638,7 @@ export const BotChatMessage = ({
 						const ticketResponse = await fetch(
 							`${apiBase}/teams/${teamId}/bots/${botId}/conversations/${payload.conversationId}/ticket`,
 							{
-								headers
+								headers: conversationHeaders
 							}
 						);
 						const ticket = await ticketResponse.json();
@@ -892,6 +917,7 @@ export const BotChatMessage = ({
 		Boolean(payload.schedulerEmbed?.path) ||
 		Boolean(payload.stripeBilling) ||
 		payload.type === 'support_escalation' ||
+		payload.type === 'helpdesk_reply' ||
 		(payload.type === 'custom_button' && Boolean(payload.voiceCall));
 	const showMessageBubble =
 		payload.loading ||
@@ -1616,23 +1642,28 @@ export const BotChatMessage = ({
         It shows a custom thumbs up/down button for the user to rate the answer.
         The saveRating function makes an API call to store the user's feedback.
       */}
-			{useEscalation &&
+			{(useEscalation || onNativeEscalate) &&
 				isAgent &&
 				payload.isLast &&
 				!(payload.voiceCall && voiceEscalationResolved) &&
 				payload.type == 'support_escalation' &&
-				(supportLink ||
+				!supportResolved &&
+				(onNativeEscalate || supportLink ||
 					(supportCallback &&
 						typeof supportCallback === 'function')) && (
 					<>
 						<div
 							className={clsx(
 								'docbot-chat-bot-message-rate',
+								'docsbot-helpdesk-actions',
 								botIcon && 'has-avatar'
 							)}
+							ref={supportControlsRef}
 						>
+							{supportError && <div className="docsbot-helpdesk-inline-error" role="alert"><svg className="docsbot-helpdesk-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.5h.01"/></svg><span>{labels.helpdeskError}</span></div>}
 							<button
 								type="button"
+								className="docsbot-helpdesk-action-primary"
 								disabled={isSupportLoading}
 								onClick={(e) => {
 									let history = state.chatHistory || [];
@@ -1717,7 +1748,7 @@ export const BotChatMessage = ({
 											inputRef.current.focus();
 										}
 									}}
-									className=""
+									className="docsbot-helpdesk-action-secondary"
 								>
 									<span dir="auto">
 										{payload.responses?.no ||

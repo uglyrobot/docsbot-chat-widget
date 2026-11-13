@@ -3,6 +3,10 @@ export default {
   "name": "ქართული (Georgian)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "თქვენი მოთხოვნა მხარდაჭერას გაეგზავნა.",
+    "waitingForAgent": "ველოდებით მხარდაჭერის თანამშრომელს…",
+    "helpdeskError": "მხარდაჭერასთან დაკავშირება ვერ მოხერხდა. სცადეთ ხელახლა.",
+
     "uiPreparing": "ინტერფეისის მომზადება…",
     "uiUnavailable": "ინტერფეისი ვერ გამოჩნდა. სცადეთ ხელახლა.",
     "uiInterrupted": "პასუხი შეწყდა. სცადეთ ხელახლა.",

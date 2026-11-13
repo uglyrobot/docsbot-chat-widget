@@ -3,6 +3,10 @@ export default {
   "name": "සිංහල (Sinhala)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "ඔබගේ ඉල්ලීම සහාය කණ්ඩායමට යවා ඇත.",
+    "waitingForAgent": "සහාය නියෝජිතයකු බලාපොරොත්තුවෙන්…",
+    "helpdeskError": "සහාය කණ්ඩායම සම්බන්ධ කරගත නොහැකි විය. නැවත උත්සාහ කරන්න.",
+
     "uiPreparing": "අතුරුමුහුණත සූදානම් කරමින්…",
     "uiUnavailable": "අතුරුමුහුණත පෙන්විය නොහැක. නැවත උත්සාහ කරන්න.",
     "uiInterrupted": "පිළිතුර බාධා විය. නැවත උත්සාහ කරන්න.",

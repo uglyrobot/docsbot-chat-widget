@@ -3,6 +3,10 @@ export default {
   "name": "Kiswahili (Swahili)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Ombi lako limetumwa kwa usaidizi.",
+    "waitingForAgent": "Inasubiri mhudumu wa usaidizi…",
+    "helpdeskError": "Imeshindikana kuwasiliana na usaidizi. Tafadhali jaribu tena.",
+
     "uiPreparing": "Inaandaa kiolesura…",
     "uiUnavailable": "Haiwezi kuonyesha kiolesura. Jaribu tena.",
     "uiInterrupted": "Jibu limekatizwa. Jaribu tena.",

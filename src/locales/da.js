@@ -3,6 +3,10 @@ export default {
   "name": "Dansk (Danish)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Din anmodning er sendt til support.",
+    "waitingForAgent": "Venter på en supportmedarbejder…",
+    "helpdeskError": "Kunne ikke kontakte support. Prøv igen.",
+
     "uiPreparing": "Forbereder grænseflade…",
     "uiUnavailable": "Grænsefladen kan ikke vises. Prøv igen.",
     "uiInterrupted": "Svaret blev afbrudt. Prøv igen.",

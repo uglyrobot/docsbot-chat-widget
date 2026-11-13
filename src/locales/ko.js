@@ -3,6 +3,10 @@ export default {
   "name": "한국어 (Korean)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "요청이 지원팀에 전달되었습니다.",
+    "waitingForAgent": "지원 담당자를 기다리는 중…",
+    "helpdeskError": "지원팀에 연결할 수 없습니다. 다시 시도해 주세요.",
+
     "uiPreparing": "인터페이스 준비 중…",
     "uiUnavailable": "인터페이스를 표시할 수 없습니다. 다시 시도하세요.",
     "uiInterrupted": "응답이 중단되었습니다. 다시 시도하세요.",

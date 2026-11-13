@@ -3,6 +3,10 @@ export default {
   "name": "Italiano (Italian)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "La tua richiesta è stata inviata all’assistenza.",
+    "waitingForAgent": "In attesa di un operatore dell’assistenza…",
+    "helpdeskError": "Impossibile contattare l’assistenza. Riprova.",
+
     "uiPreparing": "Preparazione dell’interfaccia…",
     "uiUnavailable": "Impossibile visualizzare l’interfaccia. Riprova.",
     "uiInterrupted": "Risposta interrotta. Riprova.",
