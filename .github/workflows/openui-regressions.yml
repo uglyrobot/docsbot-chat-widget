@@ -1,0 +1,48 @@
+name: OpenUI regressions
+on:
+  pull_request:
+    paths:
+      - 'src/components/generativeUi/**'
+      - 'src/utils/generativeUiPayload*'
+      - 'tests/openui/**'
+      - 'package*.json'
+      - '.github/workflows/openui-regressions.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install pinned dependencies without production build hooks
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test payload and component helpers
+        run: node --test src/utils/*.test.mjs src/components/generativeUi/*.test.mjs
+      - name: Lint application
+        run: npm run a11y:lint
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+      - name: Start development widget
+        run: |
+          npm start > /tmp/widget-dev.log 2>&1 &
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent http://127.0.0.1:3005/ > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/widget-dev.log
+          exit 1
+      - name: Exercise rejected Modal and retained safe UI with synthetic transport
+        run: npm run test:openui:browser -- --grep 'generated Modal|all six components coexist|partial SSE and UI chunks|saved conversation replays all components'
+      - name: Preserve synthetic test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openui-regressions
+          path: output/playwright/openui/
+          retention-days: 7

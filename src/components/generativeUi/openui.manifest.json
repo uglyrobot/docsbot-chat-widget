@@ -13,7 +13,11 @@
     "name": "@openuidev/cli",
     "version": "0.6.0"
   },
-  "specSha256": "a29e034f124e44a6631b072396158a0f93359129d05aa86646f90be709322f6b",
-  "generatedPromptSha256": "9f04d917459b23b5955267c9978845f3512bb0adeadd6e3f90f64f27689d0025",
-  "backendPromptSha256": "67b6aaac68c3f35dd8673ee8c79e9d82c8f3f5cb47ce5ab2dc224dfe6cea1dd6"
+  "generatorCorePackage": {
+    "name": "@openuidev/lang-core",
+    "version": "1.0.1"
+  },
+  "specSha256": "513deb936a10d97c4322bf48fb670768daa59398d1753f3d096edfd579afbf9a",
+  "generatedPromptSha256": "9a2ce29a244938611bf291fdd967fae28e78b4f12254b63df0fe90e1432e84e5",
+  "backendPromptSha256": "1b5451017d9c3042bacfa6f0ddbd0ebc774832471ee1800d57883508abf32749"
 }

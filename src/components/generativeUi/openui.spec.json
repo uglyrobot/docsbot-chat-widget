@@ -325,10 +325,6 @@
       "signature": "VisualCardBlock(items: VisualCardItem[], layout?: \"grid\" | \"carousel\", responsive?: boolean, action?: ActionExpression, gap?: number | string)",
       "description": "A grid or carousel of photo-first cards: a full-bleed background image with a tag on top and a bold text panel at the bottom; an optional action makes every card clickable."
     },
-    "Modal": {
-      "signature": "Modal(title: string, open?: $binding<boolean>, children: (TextContent | MarkDownRenderer | CardHeader | Callout | TextCallout | CodeBlock | Image | ImageBlock | ImageGallery | Separator | HorizontalBarChart | RadarChart | PieChart | RadialChart | SingleStackedBarChart | ScatterChart | AreaChart | BarChart | LineChart | Table | TagBlock | Form | Buttons | IconButton | Steps | InlineHeader | EntityList | EditableTable | SnippetCardBlock | OverviewCardBlock | ContextCardBlock | CompositeCardBlock | VisualCardBlock)[], size?: \"sm\" | \"md\" | \"lg\")",
-      "description": "Modal dialog. open is a reactive $boolean binding — set to true to open, X/Escape/backdrop auto-closes. Put Form with buttons inside children."
-    },
     "ActionGroup": {
       "signature": "ActionGroup(name: string, policy: \"once\" | \"repeatable\", children: any[], labels: {pending: string, submitted: string, retry: string})",
       "description": "DocsBot action lifecycle group. Wrap a whole form or alternative choices. Use once for confirmations/submissions, repeatable for exploration or editable filters. Unwrapped actions are repeatable. Give each group a unique name within the response; never nest groups. Supply concise pending/submitted/retry labels in the user language. Submitted means the intent was sent, not that a booking/payment succeeded."
@@ -346,15 +342,13 @@
         "Steps",
         "StepsItem",
         "Carousel",
-        "Separator",
-        "Modal"
+        "Separator"
       ],
       "notes": [
         "- For grid-like layouts, use Stack with direction \"row\" and wrap set to true.",
         "- Prefer justify \"start\" (or omit justify) with wrap=true for stable columns instead of uneven gutters.",
         "- Use nested Stacks when you need explicit rows/sections.",
         "- Show/hide sections: $editId != \"\" ? Card([editForm]) : null",
-        "- Modal: Modal(\"Title\", $showModal, [content]) — $showModal is boolean, X/Escape auto-closes. Put Form with its own buttons inside children.",
         "- Use Tabs for alternative views (chart types, data sections) — no $variable needed",
         "- Shared filter across Tabs: same $days binding in Query args works across all TabItems"
       ]
@@ -471,8 +465,7 @@
         "- rules is an optional object: {required: true, email: true, minLength: 8, maxLength: 100}",
         "- Available rules: required, email, min, max, minLength, maxLength, pattern, url, numeric",
         "- The renderer shows error messages automatically — do NOT generate error text in the UI",
-        "- Conditional fields: $country == \"US\" ? stateField : $country == \"UK\" ? postcodeField : addressField",
-        "- Edit form in Modal: Modal(\"Edit\", $showEdit, [Form(\"edit\", Buttons([saveBtn, cancelBtn]), [fields...])]). Save button should include @Set($showEdit, false) to close modal."
+        "- Conditional fields: $country == \"US\" ? stateField : $country == \"UK\" ? postcodeField : addressField"
       ]
     },
     {
@@ -782,9 +775,6 @@
       "VisualCardBlock": {
         "$ref": "#/$defs/VisualCardBlock"
       },
-      "Modal": {
-        "$ref": "#/$defs/Modal"
-      },
       "ActionGroup": {
         "$ref": "#/$defs/ActionGroup"
       }
@@ -871,7 +861,6 @@
       "CompositeCardBlock",
       "VisualCardItem",
       "VisualCardBlock",
-      "Modal",
       "ActionGroup"
     ],
     "additionalProperties": false,
@@ -4396,138 +4385,6 @@
         "additionalProperties": false,
         "id": "AccordionItem",
         "description": "value is unique id, trigger is section title"
-      },
-      "Modal": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "open": {
-            "type": "boolean"
-          },
-          "children": {
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/TextContent"
-                },
-                {
-                  "$ref": "#/$defs/MarkDownRenderer"
-                },
-                {
-                  "$ref": "#/$defs/CardHeader"
-                },
-                {
-                  "$ref": "#/$defs/Callout"
-                },
-                {
-                  "$ref": "#/$defs/TextCallout"
-                },
-                {
-                  "$ref": "#/$defs/CodeBlock"
-                },
-                {
-                  "$ref": "#/$defs/Image"
-                },
-                {
-                  "$ref": "#/$defs/ImageBlock"
-                },
-                {
-                  "$ref": "#/$defs/ImageGallery"
-                },
-                {
-                  "$ref": "#/$defs/Separator"
-                },
-                {
-                  "$ref": "#/$defs/HorizontalBarChart"
-                },
-                {
-                  "$ref": "#/$defs/RadarChart"
-                },
-                {
-                  "$ref": "#/$defs/PieChart"
-                },
-                {
-                  "$ref": "#/$defs/RadialChart"
-                },
-                {
-                  "$ref": "#/$defs/SingleStackedBarChart"
-                },
-                {
-                  "$ref": "#/$defs/ScatterChart"
-                },
-                {
-                  "$ref": "#/$defs/AreaChart"
-                },
-                {
-                  "$ref": "#/$defs/BarChart"
-                },
-                {
-                  "$ref": "#/$defs/LineChart"
-                },
-                {
-                  "$ref": "#/$defs/Table"
-                },
-                {
-                  "$ref": "#/$defs/TagBlock"
-                },
-                {
-                  "$ref": "#/$defs/Form"
-                },
-                {
-                  "$ref": "#/$defs/Buttons"
-                },
-                {
-                  "$ref": "#/$defs/IconButton"
-                },
-                {
-                  "$ref": "#/$defs/Steps"
-                },
-                {
-                  "$ref": "#/$defs/InlineHeader"
-                },
-                {
-                  "$ref": "#/$defs/EntityList"
-                },
-                {
-                  "$ref": "#/$defs/EditableTable"
-                },
-                {
-                  "$ref": "#/$defs/SnippetCardBlock"
-                },
-                {
-                  "$ref": "#/$defs/OverviewCardBlock"
-                },
-                {
-                  "$ref": "#/$defs/ContextCardBlock"
-                },
-                {
-                  "$ref": "#/$defs/CompositeCardBlock"
-                },
-                {
-                  "$ref": "#/$defs/VisualCardBlock"
-                }
-              ]
-            }
-          },
-          "size": {
-            "type": "string",
-            "enum": [
-              "sm",
-              "md",
-              "lg"
-            ]
-          }
-        },
-        "required": [
-          "title",
-          "children"
-        ],
-        "additionalProperties": false,
-        "id": "Modal",
-        "description": "Modal dialog. open is a reactive $boolean binding — set to true to open, X/Escape/backdrop auto-closes. Put Form with buttons inside children."
       }
     }
   }

@@ -125,8 +125,8 @@ async function push(page, bytes) {
   await page.evaluate(bytes => window.fixtureController.enqueue(new TextEncoder().encode(bytes)), bytes);
 }
 
-async function finish(page, generativeUI, text = answer) {
-  const content = generativeUI ? text+'\n\n```openui-lang\n'+generativeUI.response+'\n```' : text;
+async function finish(page, generativeUI, text = answer, language = 'openui-lang') {
+  const content = generativeUI ? text+'\n\n```'+language+'\n'+generativeUI.response+'\n```' : text;
   await push(page, sse('done', {
     answer: content, id: 'synthetic-answer', sources: [source],
     history: [
@@ -520,7 +520,6 @@ const galleryCases = {
   contextVisual: `root = Stack([CardHeader("Context and visual cards"), ContextCardBlock([ContextCardItem("one", Tag("Featured", Icon("star")), "A fictional cabin retreat", "gray", "${galleryPhoto}", "Cabin"),ContextCardItem("two", "Planning notes", "Bring a jacket and enjoy the view.", "gray")]), VisualCardBlock([VisualCardItem(BoldText("text", "Alpine Cabin", "$99 per night"), "one", "${galleryPhoto}", Tag("Demo"), "Cabin")])])`,
   composite: `root = Stack([CardHeader("Composite cards"), CompositeCardBlock([CompositeCardItem("one", ImageTextLarge("${galleryPhoto}", "Cabin", "Alpine Cabin", "Fictional booking example"), [Text("text", "Quiet mountain retreat"), TagBlock(["Wi-Fi", "Mountain view"]), EntityList([{left:"Guests",right:"4"}])], {price:MetricIndicatorWithStrikethrough("$79", "per night", "$99"),button:Button("Ask about this cabin")}), CompositeCardItem("two", ImageTextLarge("${galleryPhoto}", "Forest lodge", "Forest Lodge", "Fictional family retreat"), [Text("text", "A quiet woodland escape"), TagBlock(["Trail access", "Family friendly"]), EntityList([{left:"Guests",right:"6"}])], {price:BoldText("number", "$119", "per night"),button:Button("Ask about this lodge")})])])`,
   carouselButtons: `root = Stack([CardHeader("Carousel and button variants"), Carousel([[CardHeader("First slide"),TextContent("A fictional overview")],[CardHeader("Second slide"),TextContent("More fictional details")]]), Buttons([Button("Primary"),Button("Secondary", @ToAssistant("Show more fictional details"), "secondary"),Button("Tertiary", @ToAssistant("Explain fictional data"), "tertiary")]), IconButton("Favorite",Icon("star")), Card([TextContent("Sunk card variant")], "sunk")])`,
-  modal: `root = Stack([TextContent("Dialog example below"), Modal("Demo dialog", true, [TextContent("This is an official OpenUI modal inside the widget integration."), Callout("info", "Local UI", "Close with Escape or the close button.")], "md")])`,
 };
 for (const [name, response] of Object.entries(galleryCases)) {
   test(`visual catalogue ${name}`, async ({page}, testInfo) => {
@@ -530,7 +529,6 @@ for (const [name, response] of Object.entries(galleryCases)) {
     await expect(ui.getByText('Unable to display',{exact:false})).toHaveCount(0);
     // Expand the fixture's scroll shell so screenshots show every rendered row.
     await ui.evaluate(el=>{for(let parent=el;parent;parent=parent.parentElement || parent.getRootNode()?.host){parent.style.maxHeight='none';parent.style.height='auto';parent.style.overflow='visible';} document.querySelector('#docsbot-widget-embed').style.height='auto';});
-    if(name==='modal') await expect(page.getByRole('dialog')).toBeVisible();
     await expect.poll(()=>ui.textContent()).not.toBe('');
     await screenshot(page,`catalogue-${name}`,testInfo);
     expect(network.liveApiRequests).toEqual([]);
@@ -1060,3 +1058,28 @@ for(const mode of ['light','dark'])for(const kind of ['normal','mixed','ui-only'
  expect(metrics.overflow).toBe(false);
  await screenshot(page,`response-frame-${mode}-${kind}-${width}-avatar-${avatar}`,testInfo);
 });
+
+for (const language of ['openui', 'openui-lang']) {
+  test(`generated Modal fails closed in streamed and saved ${language} answers`, async ({page}) => {
+    const network = await openFixture(page)
+    await ask(page)
+    const response = 'root = Stack([Card([Modal("UNTRUSTED_MODAL", true, [TextContent("UNTRUSTED_BODY")])])])'
+    await push(page, sse('answer_delta', {delta: answer+'\n\n```'+language+'\n'+response}))
+    await expect(page.getByText('The fictional teams resolved 73 tickets.', {exact:false})).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page.getByRole('group', {name:'Generated interface'})).toHaveCount(0)
+    await finish(page, payload(response), answer, language)
+    await expect(page.getByRole('link', {name:'Synthetic support reference'})).toBeVisible()
+    await expect(page.getByText('UNTRUSTED_MODAL', {exact:false})).toHaveCount(0)
+    await expect(page.getByText('UNTRUSTED_BODY', {exact:false})).toHaveCount(0)
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('DocsBot_fixture-bot_chatHistory') || '')).toContain(language)
+    await page.goto('/__openui-fixture?enabled=1')
+    await expect(page.getByRole('textbox', {name:'Send a message...'})).toBeVisible()
+    await expect(page.getByText('The fictional teams resolved 73 tickets.', {exact:false})).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page.getByRole('group', {name:'Generated interface'})).toHaveCount(0)
+    await expect(page.getByText('UNTRUSTED_BODY', {exact:false})).toHaveCount(0)
+    expect(await page.evaluate(() => window.fixtureRequests)).toEqual([])
+    expect(network.liveApiRequests).toEqual([])
+  })
+}

@@ -15,7 +15,6 @@ const groups=[
  ['Context and visual cards','catalogue-contextVisual','ContextCardItem ContextCardBlock VisualCardItem VisualCardBlock'],
  ['Composite cards','catalogue-composite','CompositeCardItem CompositeCardBlock'],
  ['Carousel, cards and buttons','catalogue-carouselButtons','Carousel Card Buttons Button IconButton'],
- ['Modal dialog','catalogue-modal','Modal'],
  ['Action lifecycle policies','lifecycle-once-form-448-light-after','ActionGroup'],
  ['Form validation and text fields','official-form','Form FormControl Input TextArea'],
  ['Selection and date controls','official-selection-controls','Select SelectItem DatePicker Slider CheckBoxGroup CheckBoxItem RadioGroup RadioItem SwitchGroup SwitchItem Chips ChipItem OptionCards OptionCard'],

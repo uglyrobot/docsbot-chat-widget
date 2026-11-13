@@ -5,8 +5,8 @@ import { manifest } from '../components/generativeUi/contract.mjs'
 
 const payload = (response) => ({
 	response,
-	libraryVersion: '3.0.0',
-	specSha256: 'a29e034f124e44a6631b072396158a0f93359129d05aa86646f90be709322f6b'
+	libraryVersion: manifest.componentLibraryVersion,
+	specSha256: manifest.specSha256
 })
 
 test('accepts the pinned display-only library and trims the response', () => {
@@ -40,4 +40,21 @@ test('official forms accept email data and conversation actions but reject remot
 test('partial strings are data during streaming without allowing remote functions', () => {
  assert.ok(cleanGenerativeUiPayload(payload('root = Stack([heading])\nheading = TextContent("Value < 10 and @Run('),{streaming:true}))
  assert.equal(cleanGenerativeUiPayload(payload('root = Stack([Button("Run", @Run('),{streaming:true}),null)
+})
+
+test('rejects Modal calls at every nesting depth in final and streamed payloads', () => {
+  for (const response of [
+    'root = Stack([Modal("UNTRUSTED_MODAL", true, [])])',
+    'root = Stack([Card([Modal("UNTRUSTED_MODAL", true, [])])])',
+    'root = Stack([content])\ncontent = Modal("UNTRUSTED_MODAL", true, [])',
+    'root = Stack([Button("Continue", @ToAssistant("Continue", {items:[Modal("UNTRUSTED_MODAL", true, [])]}))])',
+  ]) {
+    assert.equal(cleanGenerativeUiPayload(payload(response)), null)
+    assert.equal(cleanGenerativeUiPayload(payload(response), {streaming:true}), null)
+  }
+  const response = 'root = Stack([Card([Modal("UNTRUSTED_MODAL", true, [])])])'
+  for (let end = response.indexOf('Modal(') + 'Modal('.length; end <= response.length; end++) {
+    assert.equal(cleanGenerativeUiPayload(payload(response.slice(0, end)), {streaming:true}), null)
+  }
+  assert.ok(cleanGenerativeUiPayload(payload('root = Stack([TextContent("Modal( is quoted data")])')))
 })
