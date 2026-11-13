@@ -39,14 +39,13 @@ handling. They do not verify live model generation or retrieval quality.
 ## Full component screenshot gallery
 
 After the browser suite, run `node scripts/openui-gallery.mjs`. Open
-`http://localhost:3005/openui-gallery/index.html` for 25 full-resolution widget
+`http://localhost:3005/openui-gallery/index.html` for 24 full-resolution widget
 screenshots and an index of all 82 registered component names. Child/data
 components are represented through their parents. Upstream `Slice` renders null
 and has no standalone visual appearance. Generated gallery assets are ignored.
 
-Eight catalogue cases add the typography primitives, image variants, structured
-lists, editable table, all five card-block families, carousel, button variants
-and modal dialog. Fixture shells expand for screenshots so lower rows remain
+Seven catalogue cases add the typography primitives, image variants, structured
+lists, editable table, all five card-block families, carousel and button variants. Fixture shells expand for screenshots so lower rows remain
 visible; runtime widget dimensions are unchanged.
 
 ## Brand styling review
@@ -73,8 +72,8 @@ and size against surrounding chat in light/dark mode.
 
 Run `node scripts/capture-openui-matrix.mjs`, then
 `node scripts/openui-matrix-gallery.mjs`. The first script reuses the existing
-checked-in synthetic fixture programs to render 24 component combinations at
-448px and 740px, each light/dark (96 captures). It uses a temporary generated
+checked-in synthetic fixture programs to render 23 component combinations at
+448px and 740px, each light/dark (92 captures). It uses a temporary generated
 Playwright spec, removes it afterwards, and blocks nonlocal requests. The
 second script writes `public/openui-gallery/combos/index.html` with combination
 and view filters. Captures contain the full widget, expanded vertically so
