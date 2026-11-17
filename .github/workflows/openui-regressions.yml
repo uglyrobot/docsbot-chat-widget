@@ -7,6 +7,8 @@ on:
       - 'tests/openui/**'
       - 'package*.json'
       - '.github/workflows/openui-regressions.yml'
+      - '.npmrc'
+      - '.node-version'
   workflow_dispatch:
 permissions:
   contents: read
@@ -15,11 +17,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          node-version: 24
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
           cache: npm
+      - name: Verify bundled npm
+        run: test "$(npm --version)" = 11.19.1
       - name: Install pinned dependencies without production build hooks
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Test payload and component helpers
@@ -27,7 +33,7 @@ jobs:
       - name: Lint application
         run: npm run a11y:lint
       - name: Install test browser
-        run: npx playwright install --with-deps chromium
+        run: npm exec --no -- playwright install --with-deps chromium
       - name: Start development widget
         run: |
           npm start > /tmp/widget-dev.log 2>&1 &
@@ -41,7 +47,7 @@ jobs:
         run: npm run test:openui:browser -- --grep 'generated Modal|all six components coexist|partial SSE and UI chunks|saved conversation replays all components'
       - name: Preserve synthetic test evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: openui-regressions
           path: output/playwright/openui/
