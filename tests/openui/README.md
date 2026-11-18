@@ -11,7 +11,7 @@ Start the widget development server on port 3005, then run:
 
 ```bash
 npx playwright install chromium
-npm run test:openui:browser
+pnpm run test:openui:browser
 ```
 
 The default target is `http://127.0.0.1:3005`. `WIDGET_TEST_URL` can select a

@@ -11,6 +11,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v4
+
     - name: Use Node.js 20.x
       uses: actions/setup-node@v3
       with:
@@ -18,8 +21,8 @@ jobs:
 
     - name: Build
       run: |
-        npm install
-        npm run build
+        pnpm install --frozen-lockfile
+        pnpm run build
     
     - name: Deploy to R2 Storage
       uses: ryand56/r2-upload-action@latest # Can be any release
