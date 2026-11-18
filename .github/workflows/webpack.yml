@@ -1,6 +1,8 @@
 name: Build and deploy Release
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [ "main" ]
 
@@ -25,6 +27,7 @@ jobs:
         pnpm run build
     
     - name: Deploy to R2 Storage
+      if: github.event_name == 'push'
       uses: ryand56/r2-upload-action@latest # Can be any release
       with:
         r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
