@@ -1133,3 +1133,23 @@ for (const language of ['openui', 'openui-lang']) {
     expect(network.liveApiRequests).toEqual([])
   })
 }
+
+for (const floating of [false, true]) test(`disabled host snapshot restores ${floating ? 'floating' : 'embedded'}`, async ({page}) => {
+ const network = await installFixture(page);
+ await page.goto('/__openui-fixture?enabled=0' + (floating ? '&floating' : ''));
+ const response = 'root = Stack([TextContent("Host snapshot content"), Button("Frozen action", @ToAssistant("Do not send"))])';
+ expect(await page.evaluate(response => DocsBotAI.addUIMessage({response,readOnly:true}),response)).not.toBe(false);
+ await expect(page.getByText('Host snapshot content',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Frozen action',exact:true})).toBeDisabled();
+ await page.evaluate(response => DocsBotAI.addBotMessage('```openui-lang\n' + response + '\n```'),response);
+ await expect(page.getByRole('group',{name:'Generated interface'})).toHaveCount(1);
+ expect(await page.evaluate(()=>window.fixtureRequests.length)).toBe(0);
+ await page.reload();
+ if(floating) await page.evaluate(()=>DocsBotAI.open());
+ await expect(page.getByRole('textbox',{name:'Send a message...'})).toBeVisible();
+ await expect(page.getByRole('group',{name:'Generated interface'})).toHaveCount(1);
+ await expect(page.getByText('Host snapshot content',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Frozen action',exact:true})).toBeDisabled();
+ await expect(page.getByText('root = Stack',{exact:false})).toHaveCount(0);
+ expect(network.liveApiRequests).toEqual([]);
+});

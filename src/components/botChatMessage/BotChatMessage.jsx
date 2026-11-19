@@ -974,7 +974,8 @@ export const BotChatMessage = ({
 		}
 	};
 
-	const generatedUiEnabled = useGenerativeUI === true;
+	// Explicit host UI (including restored snapshots) is independent of model generation.
+	const generatedUiEnabled = useGenerativeUI === true || typeof payload.uiReadOnly === 'boolean';
 	const hasUiContent = generatedUiEnabled && hasMixedUi(payload.message || '');
 	const reserveAvatar = Boolean(botIcon) && !hasUiContent;
 	const MessageFrame = hasUiContent && !['custom_button','lead_collect'].includes(payload.type) ? AssistantResponseFrame : 'div';
