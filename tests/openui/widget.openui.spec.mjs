@@ -45,7 +45,7 @@ document.addEventListener('docsbot_fetching_answer_complete',()=>window.fixtureE
 DocsBotAI.mount({id:'fixture-team/fixture-bot',options:{localDev:true,localApiBase:'http://127.0.0.1:9000',
 isAgent:new URLSearchParams(location.search).get('agent')!=='0',useGenerativeUI:new URLSearchParams(location.search).get('enabled')!=='0',
 color:new URLSearchParams(location.search).get('brand')||'#0e7490',
-useWebSearch:false,useCustomButtons:false,useCalendly:false,useCalCom:false,useTidyCal:false,
+useWebSearch:false,useCustomButtons:new URLSearchParams(location.search).has('cta'),useCalendly:false,useCalCom:false,useTidyCal:false,
 useFeedback:false,useEscalation:false,useVoiceAgent:false,useImageUpload:false,useAudioUpload:false,
 piiRedaction:false,leadCollect:new URLSearchParams(location.search).has('lead')?{enabled:true,mode:'before_response',fields:[{key:'email',label:'Email',type:'email',required:true}]}:false,testing:true,theme:new URLSearchParams(location.search).get('theme')||'light',questions:[]}});
 </script></html>`;
@@ -199,6 +199,56 @@ test('disabled UI omits the opt-in and preserves a readable text response', asyn
   await expect(page.getByRole('link', { name: 'Synthetic support reference' })).toBeVisible();
   expect(network.liveApiRequests).toEqual([]);
   await screenshot(page, 'ui-disabled-text-fallback', testInfo);
+});
+
+test('custom button terminal events render four generated choices and keep their configured CTA', async ({page}) => {
+  const network = await installFixture(page, {useCustomButtons: true});
+  await page.goto('/__openui-fixture?cta');
+  const input = page.getByRole('textbox', {name: 'Send a message...'});
+  await input.fill('Show a fictional choice');
+  await input.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.fixtureRequests[0]?.custom_buttons)).toBe(true);
+  const choices = 'root = Stack([choices])\nchoices = Buttons([Button("First", @ToAssistant("One")), Button("Second", @ToAssistant("Two")), Button("Third", @ToAssistant("Three")), Button("Fourth", @ToAssistant("Four"))])';
+  const message = 'Before choices.\n\n```openui-lang\n' + choices + '\n```\n\nAfter choices.';
+  await push(page, sse('custom_button', {message, buttonText: 'Separate configured CTA', url: 'https://example.invalid/fixture', id: 'fixture-cta'}));
+  await page.evaluate(() => window.fixtureController.close());
+  const ui = page.getByRole('group', {name: 'Generated interface'});
+  await expect(ui.getByRole('button')).toHaveText(['First', 'Second', 'Third', 'Fourth']);
+  await expect(page.getByText('Before choices.', {exact: true})).toBeVisible();
+  await expect(page.getByText('After choices.', {exact: true})).toBeVisible();
+  await expect(page.getByRole('button', {name: 'Separate configured CTA'})).toBeVisible();
+  await expect(page.getByText('root = Stack', {exact: false})).toHaveCount(0);
+  await input.fill('Now a plain CTA');
+  await input.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.fixtureRequests.length)).toBe(2);
+  await push(page, sse('custom_button', {message:'Plain CTA content.', buttonText:'Plain configured CTA', url:'https://example.invalid/plain', id:'fixture-plain-cta'}));
+  await page.evaluate(() => window.fixtureController.close());
+  await expect(page.getByText('Plain CTA content.', {exact: true})).toBeVisible();
+  await expect(page.getByRole('button', {name: 'Plain configured CTA'})).toBeVisible();
+  expect(network.liveApiRequests).toEqual([]);
+});
+
+test('disabled renderer hides canonical and nested code without hiding normal code during streaming or after restore', async ({page}) => {
+  const network = await openFixture(page, false);
+  await ask(page);
+  const canonical = program + '\n';
+  const nested = ['> ```openui-lang:generated example', '> PRIVATE_OPENUI_BODY', '> ```'].join('\n');
+  const normal = '```js\nconsole.log("ordinary sample");\n```';
+  const first = 'Before guard.\n\n' + nested + '\n\n' + normal + '\n\n```openui-lang\n' + canonical;
+  await push(page, sse('answer_delta', {delta: first}));
+  await expect(page.getByText('Before guard.', {exact:true})).toBeVisible();
+  await expect(page.getByText('PRIVATE_OPENUI_BODY', {exact:false})).toHaveCount(0);
+  await expect(page.getByRole('group', {name:'Generated interface'})).toHaveCount(0);
+  const completed = first + '```\n\nAfter guard.\n\n```openui example\nPRIVATE_TRUNCATED_BODY';
+  await finish(page, null, completed);
+  for (let phase = 0; phase < 2; phase++) {
+    await expect(page.getByText('After guard.', {exact:true})).toBeVisible();
+    await expect(page.locator('code').filter({hasText:'ordinary sample'})).toHaveCount(1);
+    await expect(page.getByText(/PRIVATE_OPENUI_BODY|PRIVATE_TRUNCATED_BODY|root = Stack/)).toHaveCount(0);
+    await expect(page.getByRole('group', {name:'Generated interface'})).toHaveCount(0);
+    if (phase === 0) await page.reload();
+  }
+  expect(network.liveApiRequests).toEqual([]);
 });
 
 for (const [name, badPayload] of [

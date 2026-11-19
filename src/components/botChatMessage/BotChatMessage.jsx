@@ -1,6 +1,7 @@
 import {AssistantResponseFrame,AssistantTextBubble} from '../generativeUi/AssistantResponseFrame';
 import MixedAnswer from '../generativeUi/MixedAnswer';
 import {plainMixedAnswer,hasMixedUi} from '../../utils/mixedAnswer.mjs';
+import {redactOpenUiMarkdown} from '../../utils/openuiMarkdown.mjs';
 import { useState, useEffect, useRef, useCallback, Suspense, Fragment } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Loader } from '../loader/Loader';
@@ -439,7 +440,7 @@ export const BotChatMessage = ({
 		// payload.message contains raw markdown
 		const markdownContent = plainMixedAnswer(payload.message || '', {labels});
 		// Get rendered HTML from Streamdown component
-		const htmlContent = payload.message?.includes('```openui-lang') ? '' : contentRef.current?.innerHTML || '';
+		const htmlContent = hasMixedUi(payload.message || '') ? '' : contentRef.current?.innerHTML || '';
 
 		try {
 			// Try to copy both markdown and HTML formats using ClipboardItem
@@ -973,10 +974,50 @@ export const BotChatMessage = ({
 		}
 	};
 
-	const hasUiContent = (useGenerativeUI === true || typeof payload.uiReadOnly === 'boolean') && hasMixedUi(payload.message || '');
-    const reserveAvatar = Boolean(botIcon) && !hasUiContent;
-    const MessageFrame = hasUiContent && !['custom_button','lead_collect'].includes(payload.type) ? AssistantResponseFrame : 'div';
-    const TextFrame = hasUiContent ? AssistantTextBubble : Fragment;
+	const generatedUiEnabled = useGenerativeUI === true;
+	const hasUiContent = generatedUiEnabled && hasMixedUi(payload.message || '');
+	const reserveAvatar = Boolean(botIcon) && !hasUiContent;
+	const MessageFrame = hasUiContent && !['custom_button','lead_collect'].includes(payload.type) ? AssistantResponseFrame : 'div';
+	const TextFrame = MessageFrame === AssistantResponseFrame ? AssistantTextBubble : Fragment;
+
+	const renderAnswerMarkdown = text => (
+		<TextFrame>
+			<Suspense fallback={<Loader />}>
+				<LazyStreamdown
+					className="docsbot-streamdown"
+					allowedDomains={allowedDomains}
+					linkSafetyEnabled={linkSafetyEnabled}
+					mode={payload.streaming ? undefined : 'static'}
+					isAnimating={Boolean(payload.streaming)}
+				>
+					{preprocessStreamdownMarkdown(text)}
+				</LazyStreamdown>
+			</Suspense>
+		</TextFrame>
+	);
+
+	const generatedUiPending = uiActionsPending || Object.values(state.messages || {}).some(
+		item => item.loading || item.streaming || item.type === 'lead_collect'
+	);
+	const renderMixedAnswer = () => (
+		<MixedAnswer
+			enabled={generatedUiEnabled}
+			messageId={payload.id}
+			content={payload.message || ''}
+			isStreaming={Boolean(payload.streaming || payload.uiInterrupted)}
+			readOnly={payload.uiReadOnly}
+			lifecycleState={payload.uiLifecycle}
+			onLifecycleState={uiLifecycle => dispatch({
+				type: 'update_message', payload: { id: payload.id, uiLifecycle }
+			})}
+			requestPending={generatedUiPending}
+			onSend={async message => {
+				if (generatedUiPending || typeof onSendGeneratedUiMessage !== 'function') return false;
+				return await onSendGeneratedUiMessage(message);
+			}}
+			renderMarkdown={renderAnswerMarkdown}
+		/>
+	);
 
 	return (
 		<>
@@ -1026,33 +1067,9 @@ export const BotChatMessage = ({
 
 							if (payload.type === 'custom_button') {
 								return (
-									<>
-										<div dir="auto" ref={contentRef}>
-											<Suspense fallback={<Loader />}>
-												<LazyStreamdown
-													className="docsbot-streamdown"
-													allowedDomains={
-														allowedDomains
-													}
-													linkSafetyEnabled={
-														linkSafetyEnabled
-													}
-													mode={
-														payload.streaming
-															? undefined
-															: 'static'
-													}
-													isAnimating={Boolean(
-														payload.streaming
-													)}
-												>
-													{preprocessStreamdownMarkdown(
-														payload.message || ''
-													)}
-												</LazyStreamdown>
-											</Suspense>
-										</div>
-									</>
+									<div dir="auto" ref={contentRef}>
+										{renderMixedAnswer()}
+									</div>
 								);
 							}
 
@@ -1069,7 +1086,7 @@ export const BotChatMessage = ({
 											dir="auto"
 											className="text-sm font-medium text-slate-800"
 										>
-											{payload.message}
+											{redactOpenUiMarkdown(payload.message, labels.uiUnavailable)}
 										</div>
 										{fields.length > 0 ? (
 											<form
@@ -1326,29 +1343,7 @@ export const BotChatMessage = ({
 							return (
 								<>
 									<div dir="auto" ref={contentRef}>
-<MixedAnswer enabled={useGenerativeUI === true || typeof payload.uiReadOnly === 'boolean'} messageId={payload.id} content={payload.message || ''} isStreaming={Boolean(payload.streaming || payload.uiInterrupted)} readOnly={payload.uiReadOnly} lifecycleState={payload.uiLifecycle} onLifecycleState={uiLifecycle=>dispatch({type:'update_message',payload:{id:payload.id,uiLifecycle}})} requestPending={uiActionsPending || Object.values(state.messages || {}).some(item=>item.loading||item.streaming||item.type==='lead_collect')} onSend={async message=>{if(uiActionsPending || Object.values(state.messages || {}).some(item=>item.loading||item.streaming||item.type==='lead_collect'))return false;return typeof onSendGeneratedUiMessage==='function' ? await onSendGeneratedUiMessage(message) : false}} renderMarkdown={text=>(
-<TextFrame>
-										<Suspense fallback={<Loader />}>
-											<LazyStreamdown
-												className="docsbot-streamdown"
-												allowedDomains={allowedDomains}
-												linkSafetyEnabled={
-													linkSafetyEnabled
-												}
-												mode={
-													payload.streaming
-														? undefined
-														: 'static'
-												}
-												isAnimating={Boolean(
-													payload.streaming
-												)}
-											>
-												{preprocessStreamdownMarkdown(
-													text
-												)}
-											</LazyStreamdown>
-										</Suspense></TextFrame> )} />
+										{renderMixedAnswer()}
 									</div>
 
 									{(hasVisibleSources ||

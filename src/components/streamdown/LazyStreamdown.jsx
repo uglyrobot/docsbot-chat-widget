@@ -1,4 +1,5 @@
 import React, { lazy, useMemo } from 'react';
+import { remarkHideOpenUiCode } from '../../utils/openuiMarkdown.mjs';
 import { useConfig } from '../configContext/ConfigContext';
 
 /** Hosts always treated as safe when link safety is on (apex + subdomains via isAllowedHost). */
@@ -107,7 +108,11 @@ export const LazyStreamdown = lazy(async () => {
 		linkSafetyEnabled = false,
 		...props
 	}) => {
-		const { effectiveTheme } = useConfig();
+		const { effectiveTheme, labels } = useConfig();
+		const guardedRemarkPlugins = useMemo(
+			() => [...remarkPlugins, [remarkHideOpenUiCode, { label: labels.uiUnavailable }]],
+			[labels.uiUnavailable]
+		);
 		const mermaid = useMemo(
 			() =>
 				createMermaidPlugin({
@@ -144,7 +149,7 @@ export const LazyStreamdown = lazy(async () => {
 					math,
 					cjk
 				}}
-				remarkPlugins={remarkPlugins}
+				remarkPlugins={guardedRemarkPlugins}
 				rehypePlugins={rehypePlugins}
 			>
 				{children}
