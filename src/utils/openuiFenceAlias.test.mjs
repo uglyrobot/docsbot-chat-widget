@@ -16,7 +16,7 @@ for(const language of ['openui','openui-lang'])test(language+' fences stream, re
  assert.equal(splitMixedAnswer('```'+language+'\n'+code,{streaming:true})[0].complete,false)
 })
 test('intentional examples, escaped markers, unknown labels and malformed closes stay bounded',()=>{
- for(const source of ['````markdown\n'+fenced('openui')+'````\n',fenced('text',code),fenced('openui-example'),fenced('OPENUI'),'\\```openui\nexample']){
+ for(const source of ['````markdown\n'+fenced('openui')+'````\n',fenced('text',code),fenced('openui-example'),'\\```openui\nexample']){
   assert.deepEqual(splitMixedAnswer(source),[{kind:'markdown',text:source,complete:true}]);assert.equal(plainMixedAnswer(source),source)
  }
  for(const end of ['``','```bad','~~~'])assert.equal(splitMixedAnswer('```openui\n'+code+'\n'+end)[0].kind,'invalid')

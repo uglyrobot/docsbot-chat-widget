@@ -40,7 +40,7 @@ jobs:
           cat /tmp/widget-dev.log
           exit 1
       - name: Exercise rejected Modal and retained safe UI with synthetic transport
-        run: pnpm run test:openui:browser --grep 'generated Modal|all six components coexist|partial SSE and UI chunks|saved conversation replays all components'
+        run: pnpm run test:openui:browser --grep 'generated Modal|all six components coexist|partial SSE and UI chunks|saved conversation replays all components|custom button terminal|disabled renderer hides|host UI works|disabled host snapshot restores'
       - name: Preserve synthetic test evidence
         if: always()
         uses: actions/upload-artifact@v4
