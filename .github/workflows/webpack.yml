@@ -1,39 +1,98 @@
 name: Build and deploy Release
 
 on:
-  pull_request:
-    branches: [main]
   push:
     branches: [ "main" ]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Serialize production releases without interrupting an upload already in progress.
+concurrency:
+  group: widget-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      manifest-sha256: ${{ steps.manifest.outputs.sha256 }}
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+      - name: Verify toolchain
+        run: |
+          test "$(node --version)" = "v$(cat .node-version)"
+          test "pnpm@$(pnpm --version)" = "$(node -p 'require("./package.json").packageManager')"
+      - name: Install the reviewed dependency tree without install hooks
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Test helpers and release manifest
+        run: node --test src/utils/*.test.mjs src/components/generativeUi/*.test.mjs scripts/release-manifest.test.mjs
+      - name: Build once, explicitly
+        run: pnpm run build
+      - name: Check required production assets
+        run: |
+          test -s build/chat.js
+          test -s build/index.html
+          test -s build/THIRD_PARTY_NOTICES.txt
+          test -s build/rampart-runtime/index.js
+          test -s build/rampart-runtime/ort-wasm-simd-threaded.jsep.wasm
+          test -s build/rampart-model/tokenizer.json
+          test -n "$(find build/rampart-model/onnx -type f -name '*.onnx' -size +0c -print -quit)"
+          test -n "$(find build -maxdepth 1 -name '*.[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f].js' -size +0c -print -quit)"
+      - name: Record release file hashes
+        id: manifest
+        run: |
+          node scripts/release-manifest.mjs create build "$GITHUB_SHA"
+          echo "sha256=$(sha256sum build/release-manifest.json | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - name: Retain complete release for inspection and recovery
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: widget-release-${{ github.sha }}
+          path: build/
+          if-no-files-found: error
+          retention-days: 90
 
-    - name: Set up pnpm
-      uses: pnpm/action-setup@v4
-
-    - name: Use Node.js 20.x
-      uses: actions/setup-node@v3
-      with:
-        node-version: 20.x
-
-    - name: Build
-      run: |
-        pnpm install --frozen-lockfile
-        pnpm run build
-    
-    - name: Deploy to R2 Storage
-      if: github.event_name == 'push'
-      uses: ryand56/r2-upload-action@latest # Can be any release
-      with:
-        r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
-        r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
-        r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        r2-bucket: ${{ secrets.R2_BUCKET }}
-        source-dir: build
-        destination-dir: ./
-        keep-file-fresh: true
+  verify-and-deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: widget-release-${{ github.sha }}
+          path: release/
+      - name: Verify exact build output before making credentials available
+        env:
+          EXPECTED_MANIFEST_SHA256: ${{ needs.build.outputs.manifest-sha256 }}
+        run: |
+          node scripts/release-manifest.mjs verify release "$GITHUB_SHA" "$EXPECTED_MANIFEST_SHA256"
+          # Keep the manifest in GitHub only, not in the existing CDN namespace.
+          rm release/release-manifest.json
+      # No package installation or application bundle code runs in this job.
+      - name: Deploy verified artifact to R2 Storage
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: ryand56/r2-upload-action@33ebb7a494b3a8a3c5ed2ea6bbdc72e707090317 # snapshot of latest, 2026-11-17
+        with:
+          r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ secrets.R2_BUCKET }}
+          source-dir: release
+          destination-dir: ./
+          keep-file-fresh: true
+          output-file-url: false

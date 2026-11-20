@@ -9,28 +9,28 @@ importers:
   .:
     dependencies:
       '@calcom/embed-react':
-        specifier: ^1.5.3
+        specifier: 1.5.3
         version: 1.5.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@fortawesome/fontawesome-svg-core':
-        specifier: ^6.3.0
+        specifier: 6.7.2
         version: 6.7.2
       '@fortawesome/free-regular-svg-icons':
-        specifier: ^6.4.0
+        specifier: 6.7.2
         version: 6.7.2
       '@fortawesome/free-solid-svg-icons':
-        specifier: ^6.3.0
+        specifier: 6.7.2
         version: 6.7.2
       '@fortawesome/react-fontawesome':
-        specifier: ^0.2.0
+        specifier: 0.2.2
         version: 0.2.2(@fortawesome/fontawesome-svg-core@6.7.2)(react@18.3.1)
       '@huggingface/transformers':
-        specifier: ^4.2.0
+        specifier: 4.2.0
         version: 4.2.0
       '@microsoft/fetch-event-source':
-        specifier: ^2.0.1
+        specifier: 2.0.1
         version: 2.0.1
       '@nationaldesignstudio/rampart':
-        specifier: ^0.1.2
+        specifier: 0.1.2
         version: 0.1.2(@huggingface/transformers@4.2.0)
       '@openuidev/react-lang':
         specifier: 1.0.1
@@ -39,176 +39,176 @@ importers:
         specifier: 0.18.1
         version: 0.18.1(@openuidev/react-headless@0.18.1(react@18.3.1)(zustand@4.5.7(@types/react@19.3.0)(react@18.3.1)))(@openuidev/react-lang@1.0.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(zod@4.6.7))(@types/react@19.3.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(zod@4.6.7)(zustand@4.5.7(@types/react@19.3.0)(react@18.3.1))
       '@streamdown/cjk':
-        specifier: ^1.0.1
+        specifier: 1.0.1
         version: 1.0.1(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@18.3.1)(unified@11.0.5)
       '@streamdown/code':
-        specifier: ^1.0.1
+        specifier: 1.0.1
         version: 1.0.1(react@18.3.1)
       '@streamdown/math':
-        specifier: ^1.0.1
+        specifier: 1.0.1
         version: 1.0.1(react@18.3.1)
       '@streamdown/mermaid':
-        specifier: ^1.0.1
+        specifier: 1.0.1
         version: 1.0.1(react@18.3.1)
       clsx:
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
       eventemitter3:
-        specifier: ^5.0.0
+        specifier: 5.0.1
         version: 5.0.1
       mdast-util-from-markdown:
         specifier: 2.1.0
         version: 2.1.0
       react:
-        specifier: ^18.2.0
+        specifier: 18.3.1
         version: 18.3.1
       react-dom:
-        specifier: ^18.2.0
+        specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
       react-shadow-root:
-        specifier: ^6.2.0
+        specifier: 6.2.0
         version: 6.2.0(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       rehype-harden:
-        specifier: ^1.1.7
+        specifier: 1.1.7
         version: 1.1.7
       remark-external-links:
-        specifier: ^9.0.1
+        specifier: 9.0.1
         version: 9.0.1
       streamdown:
-        specifier: ^2.1.0
+        specifier: 2.1.0
         version: 2.1.0(react@18.3.1)
       tailwind-merge:
-        specifier: ^3.4.0
+        specifier: 3.4.0
         version: 3.4.0
       thinking-orbs:
         specifier: 0.1.1
         version: 0.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       tw-animate-css:
-        specifier: ^1.4.0
+        specifier: 1.4.0
         version: 1.4.0
       uuid:
-        specifier: ^9.0.0
+        specifier: 9.0.1
         version: 9.0.1
       zod:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
       '@axe-core/playwright':
-        specifier: ^4.11.1
+        specifier: 4.11.1
         version: 4.11.1(playwright-core@1.59.1)
       '@babel/core':
-        specifier: ^7.21.0
+        specifier: 7.26.10
         version: 7.26.10
       '@babel/preset-env':
-        specifier: ^7.20.2
+        specifier: 7.26.9
         version: 7.26.9(@babel/core@7.26.10)
       '@babel/preset-react':
-        specifier: ^7.18.6
+        specifier: 7.26.3
         version: 7.26.3(@babel/core@7.26.10)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       '@svgr/webpack':
-        specifier: ^8.1.0
+        specifier: 8.1.0
         version: 8.1.0
       '@tailwindcss/postcss':
-        specifier: ^4.1.18
+        specifier: 4.1.18
         version: 4.1.18
       '@tailwindcss/typography':
-        specifier: ^0.5.19
+        specifier: 0.5.19
         version: 0.5.19(tailwindcss@4.1.18)
       babel-loader:
-        specifier: ^9.1.2
+        specifier: 9.2.1
         version: 9.2.1(@babel/core@7.26.10)(webpack@5.98.0)
       clean-webpack-plugin:
-        specifier: ^4.0.0
+        specifier: 4.0.0
         version: 4.0.0(webpack@5.98.0)
       copy-webpack-plugin:
-        specifier: ^11.0.0
+        specifier: 11.0.0
         version: 11.0.0(webpack@5.98.0)
       css-loader:
-        specifier: ^6.7.3
+        specifier: 6.11.0
         version: 6.11.0(webpack@5.98.0)
       cssnano:
-        specifier: ^7.1.2
+        specifier: 7.1.2
         version: 7.1.2(postcss@8.5.6)
       del:
-        specifier: ^8.0.0
+        specifier: 8.0.0
         version: 8.0.0
       eslint:
-        specifier: ^9.39.4
+        specifier: 9.39.4
         version: 9.39.4(jiti@2.6.1)
       eslint-plugin-jsx-a11y:
-        specifier: ^6.10.2
+        specifier: 6.10.2
         version: 6.10.2(eslint@9.39.4(jiti@2.6.1))
       globals:
-        specifier: ^17.5.0
+        specifier: 17.5.0
         version: 17.5.0
       gulp:
-        specifier: ^5.0.1
+        specifier: 5.0.1
         version: 5.0.1
       gulp-autoprefixer:
-        specifier: ^8.0.0
+        specifier: 8.0.0
         version: 8.0.0(gulp@5.0.1)
       gulp-clean-css:
-        specifier: ^4.3.0
+        specifier: 4.3.0
         version: 4.3.0
       gulp-header:
-        specifier: ^1.8.9
+        specifier: 1.8.9
         version: 1.8.9
       gulp-postcss:
-        specifier: ^10.0.0
+        specifier: 10.0.0
         version: 10.0.0(jiti@2.6.1)(postcss@8.5.6)
       gulp-rename:
-        specifier: ^2.0.0
+        specifier: 2.0.0
         version: 2.0.0
       gulp-sass:
-        specifier: ^6.0.1
+        specifier: 6.0.1
         version: 6.0.1
       html-webpack-plugin:
-        specifier: ^5.5.0
+        specifier: 5.6.3
         version: 5.6.3(webpack@5.98.0)
       katex:
         specifier: 0.16.27
         version: 0.16.27
       npm-run-all:
-        specifier: ^4.1.5
+        specifier: 4.1.5
         version: 4.1.5
       postcss:
-        specifier: ^8.5.6
+        specifier: 8.5.6
         version: 8.5.6
       prettier:
         specifier: 3.5.3
         version: 3.5.3
       raw-loader:
-        specifier: ^4.0.2
+        specifier: 4.0.2
         version: 4.0.2(webpack@5.98.0)
       sass:
-        specifier: ^1.86.0
+        specifier: 1.86.0
         version: 1.86.0
       serve:
-        specifier: ^14.2.0
+        specifier: 14.2.5
         version: 14.2.5
       style-loader:
-        specifier: ^3.3.1
+        specifier: 3.3.4
         version: 3.3.4(webpack@5.98.0)
       tailwindcss:
-        specifier: ^4.1.18
+        specifier: 4.1.18
         version: 4.1.18
       terser-webpack-plugin:
-        specifier: ^5.3.6
+        specifier: 5.3.14
         version: 5.3.14(webpack@5.98.0)
       webpack:
-        specifier: ^5.75.0
+        specifier: 5.98.0
         version: 5.98.0(webpack-cli@5.1.4)
       webpack-bundle-analyzer:
-        specifier: ^4.10.2
+        specifier: 4.10.2
         version: 4.10.2
       webpack-cli:
-        specifier: ^5.0.1
+        specifier: 5.1.4
         version: 5.1.4(webpack-bundle-analyzer@4.10.2)(webpack-dev-server@4.15.2)(webpack@5.98.0)
       webpack-dev-server:
-        specifier: ^4.11.1
+        specifier: 4.15.2
         version: 4.15.2(webpack-cli@5.1.4)(webpack@5.98.0)
 
 packages:
