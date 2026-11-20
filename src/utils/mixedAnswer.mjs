@@ -1,3 +1,4 @@
+import {redactOpenUiMarkdown} from './openuiMarkdown.mjs'
 import {defaultLabels} from '../constants/defaultLabels.mjs'
 // Canonical upstream syntax plus its explicit model-emitted alias. Ordinary code stays Markdown.
 const isUiFence = language => language === 'openui-lang' || language === 'openui'
@@ -134,9 +135,9 @@ export function projectUiContent(program){
 }
 export function plainMixedAnswer(source='', {interrupted=false,labels=defaultLabels}={}) {
  const blocks=splitMixedAnswer(source,{streaming:interrupted})
- if(!blocks.some(block=>block.kind==='ui'||block.kind==='invalid'||block.kind==='pending'))return source
+ if(!blocks.some(block=>block.kind==='ui'||block.kind==='invalid'||block.kind==='pending'))return redactOpenUiMarkdown(source,labels.uiUnavailable)
  return blocks.map(block=>{
-  if(block.kind==='markdown')return block.text
+  if(block.kind==='markdown')return redactOpenUiMarkdown(block.text,labels.uiUnavailable)
   if(block.kind!=='ui')return labels.uiInterrupted
   const program=withoutActions(block.text)
   return projectUiContent(program)||labels.uiUnavailable

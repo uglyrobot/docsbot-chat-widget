@@ -4,11 +4,16 @@ on:
     paths:
       - 'src/components/generativeUi/**'
       - 'src/utils/generativeUiPayload*'
+      - 'src/utils/mixedAnswer*'
+      - 'src/utils/openui*'
+      - 'src/components/botChatMessage/**'
+      - 'src/components/streamdown/**'
       - 'tests/openui/**'
-      - 'package*.json'
-      - '.github/workflows/openui-regressions.yml'
+      - 'package.json'
       - '.npmrc'
       - '.node-version'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/openui-regressions.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -20,23 +25,25 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .node-version
-          cache: npm
-      - name: Verify bundled npm
-        run: test "$(npm --version)" = 11.19.1
+      - name: Verify toolchain
+        run: |
+          test "$(node --version)" = "v$(cat .node-version)"
+          test "pnpm@$(pnpm --version)" = "$(node -p 'require("./package.json").packageManager')"
       - name: Install pinned dependencies without production build hooks
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Test payload and component helpers
         run: node --test src/utils/*.test.mjs src/components/generativeUi/*.test.mjs
       - name: Lint application
-        run: npm run a11y:lint
+        run: pnpm run a11y:lint
       - name: Install test browser
-        run: npm exec --no -- playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
       - name: Start development widget
         run: |
-          npm start > /tmp/widget-dev.log 2>&1 &
+          pnpm start > /tmp/widget-dev.log 2>&1 &
           for attempt in $(seq 1 90); do
             if curl --fail --silent http://127.0.0.1:3005/ > /dev/null; then exit 0; fi
             sleep 2
@@ -44,7 +51,7 @@ jobs:
           cat /tmp/widget-dev.log
           exit 1
       - name: Exercise rejected Modal and retained safe UI with synthetic transport
-        run: npm run test:openui:browser -- --grep 'generated Modal|all six components coexist|partial SSE and UI chunks|saved conversation replays all components'
+        run: pnpm run test:openui:browser --grep 'generated Modal|all six components coexist|partial SSE and UI chunks|saved conversation replays all components|custom button terminal|disabled renderer hides|host UI works|disabled host snapshot restores'
       - name: Preserve synthetic test evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

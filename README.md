@@ -148,12 +148,12 @@ contrast-safe text, focus, link, and icon colors from the brand.
 
 ## Locales
 
-Non-English strings live under **`src/locales/`** (one module per language). English defaults are in **`src/constants/defaultLabels.mjs`**. At runtime the widget merges defaults with the lazy-loaded locale. To add a language, add **`src/locales/<code>.js`** and register it in **`src/utils/localeImports.js`**. Run **`npm run test:labels`** to verify every locale has required keys and differs from English where expected. English matches in **`src/utils/localeLabelAllowlist.mjs`** should stay limited to rare cases where a specific term is genuinely identical in that language, not as a fallback for unfinished translations.
+Non-English strings live under **`src/locales/`** (one module per language). English defaults are in **`src/constants/defaultLabels.mjs`**. At runtime the widget merges defaults with the lazy-loaded locale. To add a language, add **`src/locales/<code>.js`** and register it in **`src/utils/localeImports.js`**. Run **`pnpm run test:labels`** to verify every locale has required keys and differs from English where expected. English matches in **`src/utils/localeLabelAllowlist.mjs`** should stay limited to rare cases where a specific term is genuinely identical in that language, not as a fallback for unfinished translations.
 
 ## Development
 
-- `npm install` to install dependencies.
-- `npm run start` to spin up a local server with hot reloading that can be accessed at http://localhost:3005/. The html for this page is found in `public/index.html`, and is used to test the embeddable chat widget on a local server. The embed code is using a test bot from the DocsBot.ai staff account.
+- `pnpm install` to install dependencies.
+- `pnpm run start` to spin up a local server with hot reloading that can be accessed at http://localhost:3005/. The html for this page is found in `public/index.html`, and is used to test the embeddable chat widget on a local server. The embed code is using a test bot from the DocsBot.ai staff account.
 
 ## Production Deployment
 
@@ -194,7 +194,7 @@ Omitted keys stay unchanged. `labels` merges per key and accepts string values (
 
 Suggestions retain their existing visibility rule: they appear before the conversation gets underway. Updating `labels.firstMessage` affects the next chat reset or fresh chat, not messages already displayed. Runtime changes last for this mounted instance; pass page-specific initial options again after a full page load. Agent mode, locale, authentication, domain restrictions, and capability settings remain initialization-only.
 
-Verification: `npm run test:options` runs merge/validation tests. With `npm run dev:web` already running, `npm run test:options:browser` checks both widget surfaces without triggering a production build. Set `WIDGET_TEST_URL` to use another development-server URL.
+Verification: `pnpm run test:options` runs merge/validation tests. With `pnpm run dev:web` already running, `pnpm run test:options:browser` checks both widget surfaces without triggering a production build. Set `WIDGET_TEST_URL` to use another development-server URL.
 
 ### Generated UI actions and host-authored interfaces
 
@@ -248,7 +248,7 @@ Host code maps known contexts to its own application handlers.
 
 References: [OpenUI custom chat actions](https://www.openui.com/docs/build-agents/custom-chat-ui),
 [conversation history and form state](https://www.openui.com/docs/build-agents/conversation-history).
-Offline regression captures can be regenerated with `npm run test:openui:browser`, then
+Offline regression captures can be regenerated with `pnpm run test:openui:browser`, then
 `node scripts/openui-actions-gallery.mjs`; preview `/openui-gallery/actions/index.html`.
 
 ### One-time and repeatable action groups

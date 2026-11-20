@@ -1,19 +1,19 @@
 // Dependency-free verification runs in the deployment job. Never execute bundle code here.
 import { createHash } from 'node:crypto';
 import { lstatSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const manifestName = 'release-manifest.json';
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 function inventory(root, dir = root) {
-  const files = {};
+  const files = Object.create(null);
   for (const name of readdirSync(dir).sort()) {
     const path = join(dir, name);
     const stat = lstatSync(path);
     if (stat.isSymbolicLink()) throw new Error(`Symlink is not a release artifact: ${path}`);
     if (stat.isDirectory()) Object.assign(files, inventory(root, path));
     else if (stat.isFile()) {
-      const key = relative(root, path).split('\\').join('/');
+      const key = relative(root, path).split(sep).join('/');
       if (key !== manifestName) files[key] = sha256(readFileSync(path));
     } else throw new Error(`Non-regular release artifact: ${path}`);
   }
