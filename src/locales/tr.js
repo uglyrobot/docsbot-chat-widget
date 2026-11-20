@@ -3,6 +3,10 @@ export default {
   "name": "Türkçe (Turkish)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Talebiniz destek ekibine gönderildi.",
+    "waitingForAgent": "Bir destek temsilcisi bekleniyor…",
+    "helpdeskError": "Destek ekibine ulaşılamadı. Lütfen tekrar deneyin.",
+
     "uiPreparing": "Arayüz hazırlanıyor…",
     "uiUnavailable": "Arayüz görüntülenemiyor. Tekrar deneyin.",
     "uiInterrupted": "Yanıt kesildi. Tekrar deneyin.",

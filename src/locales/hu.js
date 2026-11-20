@@ -3,6 +3,10 @@ export default {
   "name": "Magyar (Hungarian)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Kérését elküldtük az ügyfélszolgálatnak.",
+    "waitingForAgent": "Várakozás egy ügyfélszolgálati munkatársra…",
+    "helpdeskError": "Nem sikerült elérni az ügyfélszolgálatot. Próbálja újra.",
+
     "uiPreparing": "Felület előkészítése…",
     "uiUnavailable": "A felület nem jeleníthető meg. Próbálja újra.",
     "uiInterrupted": "A válasz megszakadt. Próbálja újra.",

@@ -3,6 +3,10 @@ export default {
   "name": "Tiếng Việt (Vietnamese)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Yêu cầu của bạn đã được gửi đến bộ phận hỗ trợ.",
+    "waitingForAgent": "Đang chờ nhân viên hỗ trợ…",
+    "helpdeskError": "Không thể liên hệ bộ phận hỗ trợ. Vui lòng thử lại.",
+
     "uiPreparing": "Đang chuẩn bị giao diện…",
     "uiUnavailable": "Không thể hiển thị giao diện. Vui lòng thử lại.",
     "uiInterrupted": "Phản hồi bị gián đoạn. Vui lòng thử lại.",

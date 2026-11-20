@@ -3,6 +3,10 @@ export default {
   "name": "Bahasa Melayu (Malay)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Permintaan anda telah dihantar kepada sokongan.",
+    "waitingForAgent": "Menunggu ejen sokongan…",
+    "helpdeskError": "Tidak dapat menghubungi sokongan. Sila cuba lagi.",
+
     "uiPreparing": "Menyediakan antara muka…",
     "uiUnavailable": "Antara muka tidak dapat dipaparkan. Cuba lagi.",
     "uiInterrupted": "Respons terganggu. Cuba lagi.",

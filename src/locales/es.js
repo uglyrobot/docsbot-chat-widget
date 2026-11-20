@@ -3,6 +3,10 @@ export default {
   "name": "Español (Spanish)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Tu solicitud se ha enviado a soporte.",
+    "waitingForAgent": "Esperando a un agente de soporte…",
+    "helpdeskError": "No se pudo contactar con soporte. Inténtalo de nuevo.",
+
     "uiPreparing": "Preparando interfaz…",
     "uiUnavailable": "No se puede mostrar la interfaz. Inténtalo de nuevo.",
     "uiInterrupted": "Respuesta interrumpida. Inténtalo de nuevo.",

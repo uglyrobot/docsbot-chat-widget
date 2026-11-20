@@ -3,6 +3,10 @@ export default {
   "name": "Հայերեն (Armenian)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Ձեր հարցումն ուղարկվել է աջակցությանը։",
+    "waitingForAgent": "Սպասում ենք աջակցության մասնագետին…",
+    "helpdeskError": "Չհաջողվեց կապվել աջակցության հետ։ Կրկին փորձեք։",
+
     "uiPreparing": "Միջերեսի պատրաստում…",
     "uiUnavailable": "Հնարավոր չէ ցուցադրել միջերեսը։ Փորձեք կրկին։",
     "uiInterrupted": "Պատասխանը ընդհատվել է։ Փորձեք կրկին։",

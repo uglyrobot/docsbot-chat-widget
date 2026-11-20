@@ -2,6 +2,9 @@
  * English defaults for widget `labels` (bundled; merged with lazy locale + API + options).
  */
 export const defaultLabels = {
+  ticketSubmitted: "Your request has been sent to support.",
+  waitingForAgent: "Waiting for a support agent…",
+  helpdeskError: "Could not reach support. Please try again.",
   uiPreparing: "Preparing interface…",
   uiUnavailable: "The interface could not be displayed. Please retry your request.",
   uiInterrupted: "The interface was interrupted. Please retry your request.",

@@ -3,6 +3,10 @@ export default {
   "name": "Polski (Polish)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Twoje zgłoszenie zostało wysłane do pomocy technicznej.",
+    "waitingForAgent": "Oczekiwanie na pracownika pomocy technicznej…",
+    "helpdeskError": "Nie udało się połączyć z pomocą techniczną. Spróbuj ponownie.",
+
     "uiPreparing": "Przygotowywanie interfejsu…",
     "uiUnavailable": "Nie można wyświetlić interfejsu. Spróbuj ponownie.",
     "uiInterrupted": "Odpowiedź przerwana. Spróbuj ponownie.",

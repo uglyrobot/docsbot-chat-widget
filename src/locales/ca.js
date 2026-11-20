@@ -3,6 +3,10 @@ export default {
   "name": "Català (Catalan)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "La teva sol·licitud s’ha enviat a suport.",
+    "waitingForAgent": "Esperant un agent de suport…",
+    "helpdeskError": "No s’ha pogut contactar amb suport. Torna-ho a provar.",
+
     "uiPreparing": "S’està preparant la interfície…",
     "uiUnavailable": "No es pot mostrar la interfície. Torna-ho a provar.",
     "uiInterrupted": "Resposta interrompuda. Torna-ho a provar.",

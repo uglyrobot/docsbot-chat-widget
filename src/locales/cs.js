@@ -3,6 +3,10 @@ export default {
   "name": "Čeština (Czech)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Váš požadavek byl odeslán podpoře.",
+    "waitingForAgent": "Čekání na pracovníka podpory…",
+    "helpdeskError": "Podporu se nepodařilo kontaktovat. Zkuste to znovu.",
+
     "uiPreparing": "Příprava rozhraní…",
     "uiUnavailable": "Rozhraní nelze zobrazit. Zkuste to znovu.",
     "uiInterrupted": "Odpověď byla přerušena. Zkuste to znovu.",

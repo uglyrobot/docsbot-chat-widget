@@ -3,6 +3,10 @@ export default {
   "name": "Íslenska (Icelandic)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Beiðnin þín hefur verið send til þjónustudeildar.",
+    "waitingForAgent": "Bíður eftir þjónustufulltrúa…",
+    "helpdeskError": "Ekki tókst að ná sambandi við þjónustudeild. Reyndu aftur.",
+
     "uiPreparing": "Undirbý viðmót…",
     "uiUnavailable": "Ekki er hægt að birta viðmótið. Reyndu aftur.",
     "uiInterrupted": "Svarið rofnaði. Reyndu aftur.",

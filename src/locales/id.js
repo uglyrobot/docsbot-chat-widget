@@ -3,6 +3,10 @@ export default {
   "name": "Bahasa Indonesia (Indonesian)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Permintaan Anda telah dikirim ke dukungan.",
+    "waitingForAgent": "Menunggu petugas dukungan…",
+    "helpdeskError": "Tidak dapat menghubungi dukungan. Silakan coba lagi.",
+
     "uiPreparing": "Menyiapkan antarmuka…",
     "uiUnavailable": "Antarmuka tidak dapat ditampilkan. Coba lagi.",
     "uiInterrupted": "Respons terputus. Coba lagi.",

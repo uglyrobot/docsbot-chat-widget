@@ -3,6 +3,10 @@ export default {
   "name": "Hrvatski (Croatian)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Vaš zahtjev poslan je podršci.",
+    "waitingForAgent": "Čekanje djelatnika podrške…",
+    "helpdeskError": "Nije moguće kontaktirati podršku. Pokušajte ponovno.",
+
     "uiPreparing": "Priprema sučelja…",
     "uiUnavailable": "Sučelje se ne može prikazati. Pokušajte ponovno.",
     "uiInterrupted": "Odgovor je prekinut. Pokušajte ponovno.",

@@ -115,6 +115,8 @@ data: ${JSON.stringify({
 }
 
 export async function installWidgetMocks(page, widgetConfig = mockWidgetConfig) {
+  // Most widget tests exercise HTTP fallback; realtime-specific tests override this.
+  await page.route("https://api.docsbot.ai/teams/**/conversations/**/helpdesk/realtime", (route) => route.fulfill({json:{enabled:false}}));
   await page.route(/(?:docsbot\.ai\/api|localhost:3000\/api)\/widget\//, async (route) => {
     await route.fulfill({
       status: 200,

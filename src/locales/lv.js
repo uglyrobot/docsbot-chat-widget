@@ -3,6 +3,10 @@ export default {
   "name": "Latviešu (Latvian)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Jūsu pieprasījums ir nosūtīts atbalsta dienestam.",
+    "waitingForAgent": "Gaida atbalsta darbinieku…",
+    "helpdeskError": "Neizdevās sazināties ar atbalsta dienestu. Mēģiniet vēlreiz.",
+
     "uiPreparing": "Saskarnes sagatavošana…",
     "uiUnavailable": "Saskarni nevar parādīt. Mēģiniet vēlreiz.",
     "uiInterrupted": "Atbilde pārtraukta. Mēģiniet vēlreiz.",

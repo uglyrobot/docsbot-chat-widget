@@ -3,6 +3,10 @@ export default {
   "name": "Deutsch (German)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Ihre Anfrage wurde an den Support gesendet.",
+    "waitingForAgent": "Warten auf einen Supportmitarbeiter…",
+    "helpdeskError": "Der Support konnte nicht erreicht werden. Bitte versuchen Sie es erneut.",
+
     "uiPreparing": "Oberfläche wird vorbereitet…",
     "uiUnavailable": "Oberfläche kann nicht angezeigt werden. Bitte erneut versuchen.",
     "uiInterrupted": "Antwort unterbrochen. Bitte erneut versuchen.",

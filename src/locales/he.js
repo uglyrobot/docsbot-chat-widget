@@ -3,6 +3,10 @@ export default {
   "name": "עברית (Hebrew)",
   "isRTL": true,
   "labels": {
+    "ticketSubmitted": "הבקשה שלך נשלחה לתמיכה.",
+    "waitingForAgent": "ממתינים לנציג תמיכה…",
+    "helpdeskError": "לא ניתן ליצור קשר עם התמיכה. יש לנסות שוב.",
+
     "uiPreparing": "מכין ממשק…",
     "uiUnavailable": "לא ניתן להציג את הממשק. נסה שוב.",
     "uiInterrupted": "התשובה נקטעה. נסה שוב.",

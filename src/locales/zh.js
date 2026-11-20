@@ -3,6 +3,10 @@ export default {
   "name": "简体中文 (Chinese Simplified)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "您的请求已发送给支持团队。",
+    "waitingForAgent": "正在等待支持人员…",
+    "helpdeskError": "无法联系支持团队，请重试。",
+
     "uiPreparing": "正在准备界面…",
     "uiUnavailable": "无法显示界面。请重试。",
     "uiInterrupted": "回复已中断。请重试。",

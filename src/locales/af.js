@@ -3,6 +3,10 @@ export default {
   "name": "Afrikaans (Afrikaans)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Jou versoek is na ondersteuning gestuur.",
+    "waitingForAgent": "Wag vir ’n ondersteuningsagent…",
+    "helpdeskError": "Kon nie ondersteuning bereik nie. Probeer asseblief weer.",
+
     "uiPreparing": "Koppelvlak word voorberei…",
     "uiUnavailable": "Kan nie koppelvlak wys nie. Probeer weer.",
     "uiInterrupted": "Antwoord onderbreek. Probeer weer.",

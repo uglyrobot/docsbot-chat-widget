@@ -3,6 +3,10 @@ export default {
   "name": "Lietuvių (Lithuanian)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Jūsų užklausa išsiųsta pagalbos tarnybai.",
+    "waitingForAgent": "Laukiama pagalbos darbuotojo…",
+    "helpdeskError": "Nepavyko susisiekti su pagalbos tarnyba. Bandykite dar kartą.",
+
     "uiPreparing": "Ruošiama sąsaja…",
     "uiUnavailable": "Sąsajos parodyti nepavyko. Bandykite dar kartą.",
     "uiInterrupted": "Atsakymas nutrūko. Bandykite dar kartą.",

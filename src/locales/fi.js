@@ -3,6 +3,10 @@ export default {
   "name": "Suomi (Finnish)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Pyyntösi on lähetetty tukeen.",
+    "waitingForAgent": "Odotetaan tukihenkilöä…",
+    "helpdeskError": "Tukeen ei saatu yhteyttä. Yritä uudelleen.",
+
     "uiPreparing": "Valmistellaan käyttöliittymää…",
     "uiUnavailable": "Käyttöliittymää ei voi näyttää. Yritä uudelleen.",
     "uiInterrupted": "Vastaus keskeytyi. Yritä uudelleen.",

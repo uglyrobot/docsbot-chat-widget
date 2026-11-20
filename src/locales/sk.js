@@ -3,6 +3,10 @@ export default {
   "name": "Slovenčina (Slovak)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Vaša požiadavka bola odoslaná podpore.",
+    "waitingForAgent": "Čaká sa na pracovníka podpory…",
+    "helpdeskError": "Podporu sa nepodarilo kontaktovať. Skúste to znova.",
+
     "uiPreparing": "Príprava rozhrania…",
     "uiUnavailable": "Rozhranie sa nedá zobraziť. Skúste to znova.",
     "uiInterrupted": "Odpoveď bola prerušená. Skúste to znova.",

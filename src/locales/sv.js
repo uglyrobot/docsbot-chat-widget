@@ -3,6 +3,10 @@ export default {
   "name": "Svenska (Swedish)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Din förfrågan har skickats till supporten.",
+    "waitingForAgent": "Väntar på en supportmedarbetare…",
+    "helpdeskError": "Det gick inte att nå supporten. Försök igen.",
+
     "uiPreparing": "Förbereder gränssnitt…",
     "uiUnavailable": "Gränssnittet kan inte visas. Försök igen.",
     "uiInterrupted": "Svaret avbröts. Försök igen.",

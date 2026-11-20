@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import helpdeskStyles from "!raw-loader!../../assets/helpdesk/helpdesk.css";
 import { Chatbot } from "../chatbot/Chatbot";
 import { ChatbotProvider } from "../chatbotContext/ChatbotContext";
 import { useConfig } from "../configContext/ConfigContext";
@@ -41,6 +42,7 @@ const EmbeddedChat = () => {
         <style type="text/css">{optionsStyles}</style>
         <style type="text/css">{linkListStyles}</style>
         <style type="text/css">{embeddedChatStyles}</style>
+        <style type="text/css">{helpdeskStyles}</style>
         {customCSS ? <style type="text/css">{customCSS}</style> : null}
 
         <div className="docsbot-iframe-box">

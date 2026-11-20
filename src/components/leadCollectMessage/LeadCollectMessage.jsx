@@ -1,3 +1,4 @@
+import { revealWidgetControl } from '../../utils/revealWidgetControl.mjs';
 import { useEffect, useState, useRef } from 'react';
 import { useConfig } from '../configContext/ConfigContext';
 
@@ -13,6 +14,15 @@ export const LeadCollectMessage = ({
 	const [hasSubmitted, setHasSubmitted] = useState(false);
 	const [isWide, setIsWide] = useState(false);
 	const leadMessageRef = useRef(null);
+
+	// The form mounts after its prompt; make its controls reachable in short chats.
+	useEffect(() => {
+		const frame = requestAnimationFrame(() => {
+			const form = leadMessageRef.current;
+			revealWidgetControl(form?.closest('.docsbot-chat-message-container'), form);
+		});
+		return () => cancelAnimationFrame(frame);
+	}, []);
 
 	// Observe the container's own width to toggle 2-column layout
 	useEffect(() => {
@@ -264,6 +274,7 @@ export const LeadCollectMessage = ({
 													<select
 														{...sharedProps}
 														className={`${sharedProps.className} appearance-none pr-10`}
+																title={(field.options || []).map(option => typeof option === 'string' ? {value:option,label:option} : option).find(option => String(option.value) === String(fieldValue))?.label || field.placeholder || undefined}
 														style={{
 															backgroundImage:
 																"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7.5L10 12.5L15 7.5' stroke='%23475569' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",

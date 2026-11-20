@@ -3,6 +3,10 @@ export default {
   "name": "Eesti (Estonian)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Teie päring saadeti kasutajatoele.",
+    "waitingForAgent": "Ootame kasutajatoe töötajat…",
+    "helpdeskError": "Kasutajatoega ei õnnestunud ühendust saada. Proovige uuesti.",
+
     "uiPreparing": "Liidese ettevalmistamine…",
     "uiUnavailable": "Liidest ei saa kuvada. Proovige uuesti.",
     "uiInterrupted": "Vastus katkes. Proovige uuesti.",

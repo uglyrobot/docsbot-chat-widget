@@ -3,6 +3,10 @@ export default {
   "name": "Norsk (Norwegian)",
   "isRTL": false,
   "labels": {
+    "ticketSubmitted": "Forespørselen din er sendt til brukerstøtte.",
+    "waitingForAgent": "Venter på en kundebehandler…",
+    "helpdeskError": "Kunne ikke kontakte brukerstøtte. Prøv igjen.",
+
     "uiPreparing": "Forbereder grensesnitt…",
     "uiUnavailable": "Grensesnittet kan ikke vises. Prøv igjen.",
     "uiInterrupted": "Svaret ble avbrutt. Prøv igjen.",
