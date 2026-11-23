@@ -210,6 +210,11 @@ export function voiceToolNameFromEvent(event) {
 export function voiceToolCallFromEvent(event) {
 	event = unwrapLiveResponseEvent(event);
 	if (!event || typeof event.type !== 'string') return null;
+	if (event.type === 'docsbot.tool_started') {
+		const callId = functionCallId({ call_id: event.call_id });
+		const name = sanitizeVoiceToolName(event.tool_name);
+		return callId && name ? { callId, name, data: null } : null;
+	}
 
 	if (
 		(event.type === 'response.output_item.added' ||
@@ -636,6 +641,12 @@ export function reduceVoiceRealtimeEvent(state, event) {
 			return nested === event
 				? state
 				: reduceVoiceRealtimeEvent(state, nested);
+		}
+		case 'docsbot.tool_started': {
+			const toolCall = voiceToolCallFromEvent(event);
+			return toolCall
+				? withPendingToolCall(state, toolCall.callId, toolCall.name)
+				: state;
 		}
 		case 'docsbot.tool_result':
 			return withoutPendingToolCall(state, functionCallId({

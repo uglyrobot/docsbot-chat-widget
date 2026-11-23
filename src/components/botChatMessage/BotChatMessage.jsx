@@ -345,6 +345,8 @@ export const BotChatMessage = ({
 	const [leadFormTouched, setLeadFormTouched] = useState(false);
 	const [voiceEscalationResolved, setVoiceEscalationResolved] =
 		useState(false);
+	const [voiceDeclinePending, setVoiceDeclinePending] = useState(false);
+	const voiceDeclinePendingRef = useRef(false);
 	const assistantMessagePrefix = `${botName || 'Assistant'}: `;
 
 	const openImageLightbox = useCallback((image, triggerElement) => {
@@ -1629,8 +1631,9 @@ export const BotChatMessage = ({
 						>
 							<button
 								type="button"
-								disabled={isSupportLoading}
+								disabled={isSupportLoading || voiceDeclinePending}
 								onClick={(e) => {
+									if (voiceDeclinePendingRef.current) return;
 									let history = state.chatHistory || [];
 									if (payload.voiceCall) {
 										setVoiceEscalationResolved(true);
@@ -1672,7 +1675,9 @@ export const BotChatMessage = ({
 							{!isSupportLoading && (
 								<button
 									type="button"
-									onClick={(e) => {
+									disabled={voiceDeclinePending}
+									onClick={async (e) => {
+										if (voiceDeclinePendingRef.current) return;
 										const message =
 											payload.responses?.no ||
 											labels.feedbackNo ||
@@ -1682,9 +1687,15 @@ export const BotChatMessage = ({
 												typeof onSendVoiceUserText ===
 												'function'
 											) {
-												const sent =
-													onSendVoiceUserText(message);
-												if (!sent) return;
+												voiceDeclinePendingRef.current = true;
+												setVoiceDeclinePending(true);
+												try {
+													const sent = await onSendVoiceUserText(message);
+													if (!sent) return;
+												} finally {
+													voiceDeclinePendingRef.current = false;
+													setVoiceDeclinePending(false);
+												}
 												setVoiceEscalationResolved(true);
 												dispatch({
 													type: 'update_message',
