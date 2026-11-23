@@ -68,7 +68,7 @@ function createTrack() {
 	};
 }
 
-function createHarness({ responseOk = true } = {}) {
+function createHarness({ responseOk = true, responseHeaders = {} } = {}) {
 	const calls = [];
 	const localTrack = createTrack();
 	const remoteTrack = createTrack();
@@ -160,7 +160,8 @@ function createHarness({ responseOk = true } = {}) {
 			headers: new Headers({
 				'X-DocsBot-Voice-Call-Id': 'call-123',
 				'X-DocsBot-Conversation-Id': 'conversation-returned',
-				'X-DocsBot-Voice-Event-Token': 'event-token'
+				'X-DocsBot-Voice-Event-Token': 'event-token',
+				...responseHeaders
 			})
 		};
 	};
@@ -202,6 +203,7 @@ test('request builder uses raw SDP, auth, conversation, and flattened identify m
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/sdp',
+					'X-DocsBot-Live-Tool-Relay': 'v1',
 					'X-DocsBot-Conversation-Id': 'conversation-1',
 					Authorization: 'Bearer private-signature',
 					'X-DocsBot-Metadata': JSON.stringify({
@@ -524,4 +526,167 @@ test('SDP exchange times out and cleans media resources', async () => {
 	});
 	assert.equal(harness.lastPeerConnection.closed, true);
 	assert.ok(harness.localTrack.stopCalls >= 1);
+});
+
+test('negotiated Live submits only authenticated text, requires a submitted receipt, and never falls back to protocol items', async (t) => {
+	const harness = createHarness({ responseHeaders: { 'X-DocsBot-Live-Tool-Relay': 'v1' } });
+	const sent = [];
+	let completeText;
+	const session = new DocsBotVoiceCallSession({
+		apiBase: 'https://api.docsbot.ai',
+		teamId: 'team-1',
+		botId: 'bot-1',
+		fetchImpl: async (url, options) => {
+			if (url.endsWith('/tool-result')) return { status: 404, ok: false };
+			if (url.endsWith('/user-text')) {
+				sent.push({ url, options });
+				return new Promise((resolve) => { completeText = resolve; });
+			}
+			return harness.fetchImpl(url, options);
+		},
+		RTCPeerConnectionImpl: harness.FakePeerConnection,
+		getUserMedia: async () => harness.microphone
+	});
+	t.after(() => session.close());
+	await session.start();
+	const channel = harness.lastPeerConnection.dataChannel;
+	channel.readyState = 'open';
+	assert.equal(session.isLiveSession, true); // No provider session snapshot required.
+	const submitted = session.sendUserText('  No, thanks  ');
+	assert.equal(await session.sendUserText('repeat while first is pending'), false);
+	assert.equal(sent.length, 1);
+	assert.equal(sent[0].url, 'https://api.docsbot.ai/teams/team-1/bots/bot-1/voice/call-123/user-text');
+	assert.equal(sent[0].options.method, 'POST');
+	assert.equal(sent[0].options.redirect, 'error');
+	const inputId = sent[0].options.headers['X-DocsBot-Voice-Input-Id'];
+	assert.match(inputId, /^[a-f0-9-]{36}$/i);
+	assert.deepEqual(sent[0].options.headers, {
+		'Content-Type': 'application/json',
+		'X-DocsBot-Voice-Event-Token': 'event-token',
+		'X-DocsBot-Voice-Input-Id': inputId
+	});
+	assert.deepEqual(JSON.parse(sent[0].options.body), { text: 'No, thanks' });
+	assert.deepEqual(channel.sent, []);
+	completeText({ status: 202, json: async () => ({ status: 'submitted' }) });
+	assert.equal(await submitted, true);
+
+	const rejected = session.sendUserText('reject me');
+	assert.notEqual(sent[1].options.headers['X-DocsBot-Voice-Input-Id'], inputId);
+	completeText({ status: 403 });
+	assert.equal(await rejected, false);
+
+	const unconfirmed = session.sendUserText('unknown status');
+	completeText({ status: 202, json: async () => ({ status: 'pending' }) });
+	assert.equal(await unconfirmed, false);
+
+	const noReceipt = session.sendUserText('bare HTTP success');
+	completeText({ status: 204 });
+	assert.equal(await noReceipt, false);
+
+	const malformed = session.sendUserText('malformed receipt');
+	completeText({ status: 202, json: async () => { throw new SyntaxError(); } });
+	assert.equal(await malformed, false);
+	assert.deepEqual(channel.sent, []);
+
+	const late = session.sendUserText('close during submission');
+	let resolveBody;
+	const readingBody = new Promise((resolve) => {
+		completeText({
+			status: 202,
+			json: () => {
+				const body = new Promise((bodyResolve) => { resolveBody = bodyResolve; });
+				resolve();
+				return body;
+			}
+		});
+	});
+	await readingBody;
+	session.close();
+	assert.equal(sent.at(-1).options.signal.aborted, true);
+	resolveBody({ status: 'submitted' });
+	assert.equal(await late, false);
+	assert.equal(sent.length, 6); // No automatic retry of a rejected or ambiguous POST.
+	assert.deepEqual(channel.sent, []);
+});
+
+test('claimed Live relay with no token fails before applying SDP', async () => {
+	const harness = createHarness({ responseHeaders: {
+		'X-DocsBot-Live-Tool-Relay': 'v1', 'X-DocsBot-Voice-Event-Token': ''
+	} });
+	const session = new DocsBotVoiceCallSession({
+		apiBase: 'https://api.docsbot.ai',
+		teamId: 'team-1',
+		botId: 'bot-1',
+		fetchImpl: harness.fetchImpl,
+		RTCPeerConnectionImpl: harness.FakePeerConnection,
+		getUserMedia: async () => harness.microphone
+	});
+	await assert.rejects(session.start(), VoiceCallSessionError);
+	assert.equal(harness.lastPeerConnection.dataChannel.closed, true);
+	assert.equal(session.sendUserText('not sent'), false);
+	assert.equal(harness.requests.length, 1);
+});
+
+test('negotiated Live feeds only safe deduplicated receipts and stops on close', async (t) => {
+	const harness = createHarness({ responseHeaders: { 'X-DocsBot-Live-Tool-Relay': 'v1' } });
+	const observed = [];
+	const pending = { callId: 'call-booking', completed: false, toolName: 'show_calcom', arguments: 'never emitted' };
+	const completed = { ...pending, completed: true, clientAction: { type: 'calcom', eventPath: 'docsbot/demo' } };
+	const endCall = { callId: 'hangup', completed: true, toolName: 'end_call' };
+	const fetched = [];
+	let finishThird;
+	let releaseThird;
+	const thirdStarted = new Promise((resolve) => { releaseThird = resolve; });
+	const session = new DocsBotVoiceCallSession({
+		apiBase: 'https://api.docsbot.ai',
+		teamId: 'team-1',
+		botId: 'bot-1',
+		fetchImpl: async (url, options) => {
+			if (!url.endsWith('/tool-result')) return harness.fetchImpl(url, options);
+			assert.equal(options.cache, 'no-store');
+			assert.equal(options.headers['X-DocsBot-Voice-Event-Token'], 'event-token');
+			fetched.push(options.signal);
+			if (fetched.length === 3) {
+				return {
+					ok: true, status: 200,
+					json: () => {
+						releaseThird();
+						return new Promise((resolve) => { finishThird = resolve; });
+					}
+				};
+			}
+			const results = fetched.length === 1 ? [pending, pending] : [pending, completed, completed, endCall];
+			return { status: 200, ok: true, json: async () => ({ results }) };
+		},
+		RTCPeerConnectionImpl: harness.FakePeerConnection,
+		getUserMedia: async () => harness.microphone,
+		onRealtimeEvent: (event) => observed.push(event)
+	});
+	t.after(() => session.close());
+	// Preserve the production start path, but make the poll delay small.
+	const defaultPoll = session.pollLiveRelay.bind(session);
+	session.pollLiveRelay = (signal) => defaultPoll(signal, 1);
+	await session.start();
+	const emit = harness.lastPeerConnection.dataChannel.listeners.get('message');
+	emit({ data: JSON.stringify({ type: 'response.event', event: { private: 'not forwarded' } }) });
+	emit({ data: JSON.stringify({ type: 'session.started', session: { private: 'not forwarded' } }) });
+	const transcript = { type: 'session.output_transcript.delta', delta: 'hello' };
+	emit({ data: JSON.stringify(transcript) });
+	await thirdStarted;
+	assert.deepEqual(observed.filter((event) => event.type.startsWith('docsbot.')), [
+		{ type: 'docsbot.tool_started', call_id: 'call-booking', tool_name: 'show_calcom' },
+		{ type: 'docsbot.tool_result', call_id: 'call-booking', client_action: completed.clientAction },
+		{ type: 'docsbot.tool_started', call_id: 'hangup', tool_name: 'end_call' },
+		{ type: 'docsbot.tool_result', call_id: 'hangup', client_action: null }
+	]);
+	assert.deepEqual(observed.filter((event) => !event.type.startsWith('docsbot.')), [transcript]);
+	assert.equal(await session.waitForToolResult('call-booking'), null);
+	session.close();
+	assert.equal(fetched.at(-1).aborted, true);
+	finishThird({
+		results: [{ callId: 'late', completed: true, toolName: 'end_call' }]
+	});
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(observed.some((event) => event.call_id === 'late'), false);
+	assert.equal(fetched.length, 3);
 });

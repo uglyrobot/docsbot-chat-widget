@@ -920,3 +920,32 @@ test('voiceClientActionFromEvent ignores unknown or unsafe handoffs', () => {
 	assert.equal(action?.buttonText, 'Pricing');
 	assert.doesNotMatch(JSON.stringify(action), /must-not-leak|credential/);
 });
+
+test('app relay uses only safe tool-start fields and the ordinary result path', () => {
+	const started = {
+		type: 'docsbot.tool_started',
+		call_id: 'tool-1',
+		tool_name: 'search_documentation',
+		arguments: 'not retained'
+	};
+	assert.deepEqual(voiceToolCallFromEvent(started), {
+		callId: 'tool-1',
+		name: 'search_documentation',
+		data: null
+	});
+
+	let state = createVoiceRealtimeState();
+	assert.equal(reduceVoiceRealtimeEvent(state, { ...started, tool_name: '' }), state);
+	state = reduceVoiceRealtimeEvent(state, started);
+	assert.equal(state.status, VOICE_CALL_STATUS.USING_TOOL);
+	assert.deepEqual(state.pendingToolCallIds, ['tool-1']);
+	assert.equal(state.activeToolName, 'search_documentation');
+
+	state = reduceVoiceRealtimeEvent(state, {
+		type: 'docsbot.tool_result',
+		call_id: 'tool-1',
+		client_action: null
+	});
+	assert.deepEqual(state.pendingToolCallIds, []);
+	assert.notEqual(state.status, VOICE_CALL_STATUS.USING_TOOL);
+});

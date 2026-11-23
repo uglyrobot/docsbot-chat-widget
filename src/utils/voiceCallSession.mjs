@@ -1,9 +1,20 @@
+import { v4 as uuidv4 } from 'uuid';
 import { mergeIdentifyMetadata } from './identity.js';
 
 const MAX_SDP_BYTES = 512 * 1024;
 const SETUP_TIMEOUT_MS = 15 * 1000;
 const TOOL_RESULT_TIMEOUT_MS = 30 * 1000;
 const TOOL_RESULT_POLL_INTERVAL_MS = 350;
+const LIVE_RELAY_HEADER = 'X-DocsBot-Live-Tool-Relay';
+const LIVE_RELAY_VERSION = 'v1';
+const LIVE_RELAY_POLL_INTERVAL_MS = 1000;
+const LIVE_RELAY_FEED_LIMIT = 100;
+const LIVE_RELAY_MAX_TEXT = 500;
+const LIVE_RELAY_PROVIDER_EVENTS = new Set([
+	'session.input_transcript.delta',
+	'session.output_transcript.delta',
+	'session.delegation.created'
+]);
 const MICROPHONE_LEVEL_NOISE_FLOOR = 0.015;
 const MICROPHONE_LEVEL_RANGE = 0.16;
 
@@ -93,7 +104,10 @@ export function buildVoiceWebrtcRequest({
 	metadata,
 	sdp
 }) {
-	const headers = { 'Content-Type': 'application/sdp' };
+	const headers = {
+		'Content-Type': 'application/sdp',
+		[LIVE_RELAY_HEADER]: LIVE_RELAY_VERSION
+	};
 	if (conversationId) {
 		headers['X-DocsBot-Conversation-Id'] = conversationId;
 	}
@@ -137,6 +151,11 @@ export function buildVoiceToolResultRequest({
 	};
 }
 
+function liveRelayUrl({ apiBase, teamId, botId, callId }, path) {
+	return `${apiBase}/teams/${encodeURIComponent(teamId)}/bots/${encodeURIComponent(botId)}` +
+		`/voice/${encodeURIComponent(callId)}/${path}`;
+}
+
 function waitForPollInterval(milliseconds, signal) {
 	return new Promise((resolve, reject) => {
 		let timeoutId = null;
@@ -148,6 +167,7 @@ function waitForPollInterval(milliseconds, signal) {
 			cleanup();
 			reject(new DOMException('Cancelled', 'AbortError'));
 		};
+		if (signal?.aborted) return handleAbort();
 		timeoutId = globalThis.setTimeout(() => {
 			cleanup();
 			resolve();
@@ -224,7 +244,7 @@ async function fetchVoiceAnswerWithTimeout(
 	fetchImpl,
 	url,
 	options,
-	{ signal, timeoutMs = SETUP_TIMEOUT_MS } = {}
+	{ signal, timeoutMs = SETUP_TIMEOUT_MS, readResponse } = {}
 ) {
 	if (signal?.aborted) {
 		throw new DOMException('Voice call setup was cancelled.', 'AbortError');
@@ -240,10 +260,11 @@ async function fetchVoiceAnswerWithTimeout(
 	}, Math.max(1, timeoutMs));
 
 	try {
-		return await fetchImpl(url, {
+		const response = await fetchImpl(url, {
 			...options,
 			signal: controller.signal
 		});
+		return readResponse ? await readResponse(response) : response;
 	} catch (error) {
 		if (timedOut && !signal?.aborted) {
 			throw new VoiceCallSessionError(
@@ -331,6 +352,9 @@ export class DocsBotVoiceCallSession {
 		this.conversationId = conversationId || null;
 		this.widgetEventToken = '';
 		this.toolResultRequests = new Map();
+		this.liveRelay = false;
+		this.liveRelayController = null;
+		this.liveRelayTextController = null;
 		// GPT-Live identifies itself with session.started and uses the Responses
 		// command namespace for typed input; Realtime uses conversation.item.*.
 		this.isLiveSession = false;
@@ -505,6 +529,8 @@ export class DocsBotVoiceCallSession {
 				if (!this.closed) this.onConnectionState('connected');
 			});
 			events.addEventListener('close', () => {
+				this.liveRelayController?.abort();
+				this.liveRelayTextController?.abort();
 				if (!this.closed) this.onConnectionState('closed');
 			});
 			events.addEventListener('message', (messageEvent) => {
@@ -514,7 +540,12 @@ export class DocsBotVoiceCallSession {
 						if (event.type === 'session.started') {
 							this.isLiveSession = true;
 						}
-						this.onRealtimeEvent(event);
+						if (
+							!this.liveRelay ||
+							LIVE_RELAY_PROVIDER_EVENTS.has(event.type)
+						) {
+							this.onRealtimeEvent(event);
+						}
 					}
 				} catch {
 					// Ignore malformed server events without exposing their raw contents.
@@ -565,7 +596,8 @@ export class DocsBotVoiceCallSession {
 					'The voice service returned an empty answer.'
 				);
 			}
-			await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+			const relayVersion = response.headers.get(LIVE_RELAY_HEADER);
+			this.liveRelay = relayVersion === LIVE_RELAY_VERSION;
 			this.callId = response.headers.get('X-DocsBot-Voice-Call-Id');
 			this.widgetEventToken =
 				response.headers.get('X-DocsBot-Voice-Event-Token') || '';
@@ -574,6 +606,18 @@ export class DocsBotVoiceCallSession {
 				this.config.conversationId ||
 				null;
 
+			if (relayVersion && (!this.liveRelay || !this.callId || !this.widgetEventToken)) {
+				throw new VoiceCallSessionError(
+					'The voice service returned an invalid answer.'
+				);
+			}
+			if (this.liveRelay) this.isLiveSession = true;
+			await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+			if (this.liveRelay && !this.closed) {
+				this.liveRelayController = new AbortController();
+				void this.pollLiveRelay(this.liveRelayController.signal);
+			}
+
 			return {
 				callId: this.callId,
 				conversationId: this.conversationId
@@ -581,6 +625,122 @@ export class DocsBotVoiceCallSession {
 		} catch (error) {
 			this.close();
 			throw error;
+		}
+	}
+
+	async pollLiveRelay(signal, pollIntervalMs = LIVE_RELAY_POLL_INTERVAL_MS) {
+		const url = liveRelayUrl({ ...this.config, callId: this.callId }, 'tool-result');
+		const completed = new Set();
+		const seen = new Set();
+		while (!signal.aborted && !this.closed) {
+			try {
+				const { status, body } = await fetchVoiceAnswerWithTimeout(
+					this.fetchImpl,
+					url,
+					{
+						method: 'GET',
+						cache: 'no-store',
+						credentials: 'omit',
+						redirect: 'error',
+						headers: { 'X-DocsBot-Voice-Event-Token': this.widgetEventToken }
+					},
+					{
+						signal,
+						timeoutMs: 5000,
+						readResponse: async (response) => ({
+							status: response.status,
+							body: response.status === 200 ? await response.json() : null
+						})
+					}
+				);
+				if (signal.aborted || this.closed) return;
+				if ([401, 403, 404, 410].includes(status)) return;
+				if (body) {
+					const results = Array.isArray(body?.results)
+						? body.results.slice(-LIVE_RELAY_FEED_LIMIT)
+						: [];
+					for (const entry of results) {
+						if (signal.aborted || this.closed) return;
+						const callId = entry?.callId;
+						const name = entry?.toolName;
+						if (
+							typeof callId !== 'string' ||
+							!callId ||
+							callId.length > 128 ||
+							typeof name !== 'string' ||
+							!/^[A-Za-z0-9_-]{1,128}$/.test(name) ||
+							typeof entry.completed !== 'boolean' ||
+							completed.has(callId)
+						) continue;
+						if (!seen.has(callId)) {
+							seen.add(callId);
+							this.onRealtimeEvent({
+								type: 'docsbot.tool_started',
+								call_id: callId,
+								tool_name: name
+							});
+						}
+						if (entry.completed && !signal.aborted && !this.closed) {
+							completed.add(callId);
+							this.onRealtimeEvent({
+								type: 'docsbot.tool_result',
+								call_id: callId,
+								client_action: entry.clientAction ?? null
+							});
+						}
+					}
+				}
+			} catch {
+				// The call's audio must not depend on transient receipt fetches.
+			}
+			try {
+				await waitForPollInterval(pollIntervalMs, signal);
+			} catch {
+				return;
+			}
+		}
+	}
+
+	async sendLiveRelayText(text) {
+		if (
+			!this.callId ||
+			!this.widgetEventToken ||
+			this.liveRelayTextController ||
+			Array.from(text).length > LIVE_RELAY_MAX_TEXT
+		) return false;
+		const controller = new AbortController();
+		this.liveRelayTextController = controller;
+		try {
+			const inputId = uuidv4();
+			const submitted = await fetchVoiceAnswerWithTimeout(
+				this.fetchImpl,
+				liveRelayUrl({ ...this.config, callId: this.callId }, 'user-text'),
+				{
+					method: 'POST',
+					credentials: 'omit',
+					redirect: 'error',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-DocsBot-Voice-Event-Token': this.widgetEventToken,
+						'X-DocsBot-Voice-Input-Id': inputId
+					},
+					body: JSON.stringify({ text })
+				},
+				{
+					signal: controller.signal,
+					timeoutMs: 5000,
+					readResponse: async (response) =>
+						response.status === 202 &&
+						(await response.json())?.status === 'submitted'
+				}
+			);
+			// Submission does not confirm the provider processed the turn or
+			// completed any action. Do not retry an ambiguous result.
+			return submitted && !controller.signal.aborted && !this.closed;
+		} catch {
+			return false;
+		} finally {
+			this.liveRelayTextController = null;
 		}
 	}
 
@@ -595,6 +755,7 @@ export class DocsBotVoiceCallSession {
 			typeof toolCallId === 'string' ? toolCallId.trim() : '';
 		if (
 			this.closed ||
+			this.liveRelay ||
 			!this.isLiveSession ||
 			!this.callId ||
 			!this.widgetEventToken ||
@@ -663,12 +824,13 @@ export class DocsBotVoiceCallSession {
 	/**
 	 * Inject a text user turn into the live Realtime session and request a
 	 * response. Used for UI actions (e.g. declining support escalation).
-	 * @returns {boolean} true if events were sent on an open data channel
+	 * @returns {boolean | Promise<boolean>} true when the input was submitted (not processed)
 	 */
 	sendUserText(text) {
 		const trimmed = typeof text === 'string' ? text.trim() : '';
 		if (!trimmed) return false;
 		if (this.closed) return false;
+		if (this.liveRelay) return this.sendLiveRelayText(trimmed);
 		const channel = this.dataChannel;
 		if (!channel || channel.readyState !== 'open') return false;
 		if (typeof channel.send !== 'function') return false;
@@ -709,6 +871,10 @@ export class DocsBotVoiceCallSession {
 		this.closed = true;
 		this.setupController?.abort();
 		this.setupController = null;
+		this.liveRelayController?.abort();
+		this.liveRelayController = null;
+		this.liveRelayTextController?.abort();
+		this.liveRelayTextController = null;
 		for (const request of this.toolResultRequests.values()) {
 			request.controller.abort();
 		}

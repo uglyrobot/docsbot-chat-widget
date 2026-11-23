@@ -341,12 +341,14 @@ export function VoiceCallView({
 						}
 					})
 				);
-				void sessionRef.current
-					?.waitForToolResult(toolCall.callId)
-					.then((toolResultEvent) => {
-						if (!toolResultEvent || exitLifecycleRef.current) return;
-						handleRealtimeEventRef.current?.(toolResultEvent);
-					});
+				if (event.type !== 'docsbot.tool_started') {
+					void sessionRef.current
+						?.waitForToolResult(toolCall.callId)
+						.then((toolResultEvent) => {
+							if (!toolResultEvent || exitLifecycleRef.current) return;
+							handleRealtimeEventRef.current?.(toolResultEvent);
+						});
+				}
 			}
 
 			const clientAction = voiceClientActionFromEvent(event);
@@ -698,11 +700,18 @@ export function VoiceCallView({
 		return endCallLifecycle();
 	};
 	const sendVoiceUserText = useCallback(
-		(text) => {
+		async (text) => {
 			const trimmed = typeof text === 'string' ? text.trim() : '';
-			if (!trimmed) return false;
-			const sent = sessionRef.current?.sendUserText(trimmed) ?? false;
-			if (!sent) return false;
+			const session = sessionRef.current;
+			if (!trimmed || !session) return false;
+			const submitted = await session.sendUserText(trimmed);
+			if (
+				!submitted ||
+				sessionRef.current !== session ||
+				exitLifecycleRef.current
+			) return false;
+			// Reflect the caller's own submitted text, not a provider reply or
+			// completed action.
 			const { state: next, itemId } = appendLocalVoiceTranscript(
 				voiceStateRef.current,
 				{ role: 'caller', text: trimmed }
