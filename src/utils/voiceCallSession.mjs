@@ -712,7 +712,7 @@ export class DocsBotVoiceCallSession {
 		this.liveRelayTextController = controller;
 		try {
 			const inputId = uuidv4();
-			const response = await fetchVoiceAnswerWithTimeout(
+			const submitted = await fetchVoiceAnswerWithTimeout(
 				this.fetchImpl,
 				liveRelayUrl({ ...this.config, callId: this.callId }, 'user-text'),
 				{
@@ -726,9 +726,17 @@ export class DocsBotVoiceCallSession {
 					},
 					body: JSON.stringify({ text })
 				},
-				{ signal: controller.signal, timeoutMs: 5000 }
+				{
+					signal: controller.signal,
+					timeoutMs: 5000,
+					readResponse: async (response) =>
+						response.status === 202 &&
+						(await response.json())?.status === 'submitted'
+				}
 			);
-			return response.status === 204 && !controller.signal.aborted && !this.closed;
+			// Submission does not confirm the provider processed the turn or
+			// completed any action. Do not retry an ambiguous result.
+			return submitted && !controller.signal.aborted && !this.closed;
 		} catch {
 			return false;
 		} finally {
@@ -816,7 +824,7 @@ export class DocsBotVoiceCallSession {
 	/**
 	 * Inject a text user turn into the live Realtime session and request a
 	 * response. Used for UI actions (e.g. declining support escalation).
-	 * @returns {boolean | Promise<boolean>} true when the transport accepts the input
+	 * @returns {boolean | Promise<boolean>} true when the input was submitted (not processed)
 	 */
 	sendUserText(text) {
 		const trimmed = typeof text === 'string' ? text.trim() : '';

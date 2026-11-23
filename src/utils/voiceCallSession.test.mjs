@@ -528,7 +528,7 @@ test('SDP exchange times out and cleans media resources', async () => {
 	assert.ok(harness.localTrack.stopCalls >= 1);
 });
 
-test('negotiated Live submits only authenticated text, waits for acceptance, and never falls back to protocol items', async (t) => {
+test('negotiated Live submits only authenticated text, requires a submitted receipt, and never falls back to protocol items', async (t) => {
 	const harness = createHarness({ responseHeaders: { 'X-DocsBot-Live-Tool-Relay': 'v1' } });
 	const sent = [];
 	let completeText;
@@ -552,7 +552,7 @@ test('negotiated Live submits only authenticated text, waits for acceptance, and
 	const channel = harness.lastPeerConnection.dataChannel;
 	channel.readyState = 'open';
 	assert.equal(session.isLiveSession, true); // No provider session snapshot required.
-	const accepted = session.sendUserText('  No, thanks  ');
+	const submitted = session.sendUserText('  No, thanks  ');
 	assert.equal(await session.sendUserText('repeat while first is pending'), false);
 	assert.equal(sent.length, 1);
 	assert.equal(sent[0].url, 'https://api.docsbot.ai/teams/team-1/bots/bot-1/voice/call-123/user-text');
@@ -567,20 +567,46 @@ test('negotiated Live submits only authenticated text, waits for acceptance, and
 	});
 	assert.deepEqual(JSON.parse(sent[0].options.body), { text: 'No, thanks' });
 	assert.deepEqual(channel.sent, []);
-	completeText({ status: 204 });
-	assert.equal(await accepted, true);
+	completeText({ status: 202, json: async () => ({ status: 'submitted' }) });
+	assert.equal(await submitted, true);
 
 	const rejected = session.sendUserText('reject me');
 	assert.notEqual(sent[1].options.headers['X-DocsBot-Voice-Input-Id'], inputId);
 	completeText({ status: 403 });
 	assert.equal(await rejected, false);
+
+	const unconfirmed = session.sendUserText('unknown status');
+	completeText({ status: 202, json: async () => ({ status: 'pending' }) });
+	assert.equal(await unconfirmed, false);
+
+	const noReceipt = session.sendUserText('bare HTTP success');
+	completeText({ status: 204 });
+	assert.equal(await noReceipt, false);
+
+	const malformed = session.sendUserText('malformed receipt');
+	completeText({ status: 202, json: async () => { throw new SyntaxError(); } });
+	assert.equal(await malformed, false);
 	assert.deepEqual(channel.sent, []);
 
 	const late = session.sendUserText('close during submission');
+	let resolveBody;
+	const readingBody = new Promise((resolve) => {
+		completeText({
+			status: 202,
+			json: () => {
+				const body = new Promise((bodyResolve) => { resolveBody = bodyResolve; });
+				resolve();
+				return body;
+			}
+		});
+	});
+	await readingBody;
 	session.close();
 	assert.equal(sent.at(-1).options.signal.aborted, true);
-	completeText({ status: 204 });
+	resolveBody({ status: 'submitted' });
 	assert.equal(await late, false);
+	assert.equal(sent.length, 6); // No automatic retry of a rejected or ambiguous POST.
+	assert.deepEqual(channel.sent, []);
 });
 
 test('claimed Live relay with no token fails before applying SDP', async () => {

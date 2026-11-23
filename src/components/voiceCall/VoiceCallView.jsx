@@ -704,12 +704,14 @@ export function VoiceCallView({
 			const trimmed = typeof text === 'string' ? text.trim() : '';
 			const session = sessionRef.current;
 			if (!trimmed || !session) return false;
-			const sent = await session.sendUserText(trimmed);
+			const submitted = await session.sendUserText(trimmed);
 			if (
-				!sent ||
+				!submitted ||
 				sessionRef.current !== session ||
 				exitLifecycleRef.current
 			) return false;
+			// Reflect the caller's own submitted text, not a provider reply or
+			// completed action.
 			const { state: next, itemId } = appendLocalVoiceTranscript(
 				voiceStateRef.current,
 				{ role: 'caller', text: trimmed }
